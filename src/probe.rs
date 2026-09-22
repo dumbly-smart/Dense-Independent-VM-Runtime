@@ -618,6 +618,16 @@ fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
     let mut bserial = b.serial()?;
     aserial.command("ping", "PONG")?;
     bserial.command("ping", "PONG")?;
+    let a_identity = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    let b_identity = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    aserial.command(&format!("identity-set {a_identity}"), "IDENTITY-SET ")?;
+    bserial.command(&format!("identity-set {b_identity}"), "IDENTITY-SET ")?;
+    let a_identity_guest = aserial.command("identity-read", "IDENTITY ")?;
+    let b_identity_guest = bserial.command("identity-read", "IDENTITY ")?;
+    let identity_unique = a_identity_guest
+        == format!("IDENTITY {a_identity} densevm-aaaaaaaa {a_identity}")
+        && b_identity_guest == format!("IDENTITY {b_identity} densevm-bbbbbbbb {b_identity}")
+        && a_identity_guest != b_identity_guest;
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
     let initial_ok = expect_value(&mut aserial, "ram-read", "RAM 90")?
@@ -687,11 +697,11 @@ fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "baseline":{"vms":baseline_measurements,"time_to_two_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
-        "clones":{"count":count,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
-                  "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
+        "clones":{"count":count,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
+                  "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
                   "time_to_two_resumed_ms":clone_elapsed_ms},
-        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":mac_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
+        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":mac_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
     });
     fs::write(
         out.join("result.json"),
@@ -703,6 +713,7 @@ fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
         && disk_isolation
         && template_ram_unchanged
         && mac_unique
+        && identity_unique
         && vmgenid_unique
         && full_disk_isolation
         && b_survives_guest_reboot

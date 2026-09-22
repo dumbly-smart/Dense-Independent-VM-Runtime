@@ -56,6 +56,33 @@ fn reboot_guest() -> ! {
     panic!("reboot syscall failed: {result}");
 }
 
+fn valid_identity(value: &str) -> bool {
+    value.len() == 32 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn set_identity(value: &str) -> std::io::Result<()> {
+    if !valid_identity(value) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "identity must be 32 hexadecimal characters",
+        ));
+    }
+    fs::create_dir_all("/etc")?;
+    fs::write("/etc/machine-id", format!("{value}\n"))?;
+    fs::write("/etc/hostname", format!("densevm-{}\n", &value[..8]))?;
+    // This is a deterministic per-clone seed for the probe, not a claim of
+    // cryptographic entropy. A real distro guest must reseed its RNG.
+    fs::write("/etc/entropy-seed", value.as_bytes())?;
+    Ok(())
+}
+
+fn read_identity() -> std::io::Result<String> {
+    let machine_id = fs::read_to_string("/etc/machine-id")?.trim().to_string();
+    let hostname = fs::read_to_string("/etc/hostname")?.trim().to_string();
+    let entropy = fs::read_to_string("/etc/entropy-seed")?;
+    Ok(format!("IDENTITY {machine_id} {hostname} {entropy}"))
+}
+
 fn main() {
     mount_fs("devtmpfs", "/dev", "devtmpfs");
     mount_fs("sysfs", "/sys", "sysfs");
@@ -72,6 +99,7 @@ fn main() {
     let mut serial_out = OpenOptions::new().write(true).open("/dev/ttyS0").expect("serial output");
     let serial_in = OpenOptions::new().read(true).open("/dev/ttyS0").expect("serial input");
     let mut reader = BufReader::new(serial_in);
+    set_identity("00000000000000000000000000000000").expect("initialize template identity");
     let mut region = vec![0u8; 32 * 1024 * 1024];
     for page in region.chunks_mut(4096) {
         page[0] = 0x5a;
@@ -115,6 +143,14 @@ fn main() {
                 Err(_) => "ERROR invalid byte".to_string(),
             },
             ["reboot"] => reboot_guest(),
+            ["identity-set", value] => match set_identity(value) {
+                Ok(()) => format!("IDENTITY-SET {value}"),
+                Err(error) => format!("ERROR identity set: {error}"),
+            },
+            ["identity-read"] => match read_identity() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR identity read: {error}"),
+            },
             ["mac-read"] => {
                 let mut address = None;
                 for _ in 0..50 {

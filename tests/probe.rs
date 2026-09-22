@@ -26,6 +26,7 @@ fn two_clones_resume_and_isolate_ram_and_disk() {
     assert_eq!(result["template_ram_unchanged"], true);
     assert_eq!(result["backing_verified"], true);
     assert_eq!(result["vmgenid_unique"], true);
+    assert_eq!(result["identity_unique"], true);
     assert!(
         result["template"]["qemu_command"]
             .as_array()
