@@ -395,9 +395,18 @@ pub fn run(out: &Path) -> Result<(), String> {
 }
 
 pub fn run_with_count(out: &Path, count: u32) -> Result<(), String> {
+    run_with_options(out, count, false)
+}
+
+pub fn run_with_options(out: &Path, count: u32, ksm: bool) -> Result<(), String> {
     if count != 2 {
         return Err("the full template restore probe currently supports exactly 2 clones; use benchmark baseline for arbitrary counts".to_string());
     }
+    let _ksm_guard = if ksm {
+        Some(crate::ksm::KsmGuard::enable()?)
+    } else {
+        None
+    };
     run_two_clone(out)
 }
 

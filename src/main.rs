@@ -9,7 +9,7 @@ fn main() {
         }
     };
     let result = match command {
-        Command::Probe { out, count } => densevm::probe::run_with_count(&out, count),
+        Command::Probe { out, count, ksm } => densevm::probe::run_with_options(&out, count, ksm),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
         Command::MemoryMap { pid, path } => {

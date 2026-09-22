@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
-    Probe { out: PathBuf, count: u32 },
+    Probe { out: PathBuf, count: u32, ksm: bool },
     BenchmarkBaseline { out: PathBuf, count: u32 },
     InspectDisk { image: PathBuf },
     MemoryMap { pid: u32, path: PathBuf },
@@ -40,6 +40,35 @@ where
     Ok((out.ok_or("--out is required")?, count))
 }
 
+fn parse_probe<I>(args: &mut I) -> Result<Command, String>
+where
+    I: Iterator<Item = String>,
+{
+    let mut out = None;
+    let mut count = 2;
+    let mut ksm = false;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--out" => out = Some(PathBuf::from(value(args, "--out")?)),
+            "--count" => {
+                count = value(args, "--count")?
+                    .parse()
+                    .map_err(|_| "--count must be a positive integer".to_string())?;
+                if count == 0 {
+                    return Err("--count must be a positive integer".to_string());
+                }
+            }
+            "--ksm" => ksm = true,
+            flag => return Err(format!("unknown option {flag}")),
+        }
+    }
+    Ok(Command::Probe {
+        out: out.ok_or("--out is required")?,
+        count,
+        ksm,
+    })
+}
+
 pub fn parse_args<I, S>(args: I) -> Result<Command, String>
 where
     I: IntoIterator<Item = S>,
@@ -49,8 +78,7 @@ where
     let _program = args.next().ok_or("program name is required")?;
     match args.next().as_deref() {
         Some("probe") => {
-            let (out, count) = parse_out_count(&mut args, 2)?;
-            Ok(Command::Probe { out, count })
+            parse_probe(&mut args)
         }
         Some("benchmark") if args.next().as_deref() == Some("baseline") => {
             let (out, count) = parse_out_count(&mut args, 1)?;
