@@ -47,3 +47,5 @@ residency.
 This prototype is pinned to mechanisms confirmed on QEMU 11.1.1.
 `x-ignore-shared` is experimental. Do not treat this probe as evidence that
 arbitrary distributions, devices, or QEMU versions can be cloned safely.
+
+The 15-item acceptance record is in [docs/milestone1.md](docs/milestone1.md).
