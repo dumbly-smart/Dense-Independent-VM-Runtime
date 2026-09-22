@@ -391,6 +391,17 @@ fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool
 }
 
 pub fn run(out: &Path) -> Result<(), String> {
+    run_with_count(out, 2)
+}
+
+pub fn run_with_count(out: &Path, count: u32) -> Result<(), String> {
+    if count != 2 {
+        return Err("the full template restore probe currently supports exactly 2 clones; use benchmark baseline for arbitrary counts".to_string());
+    }
+    run_two_clone(out)
+}
+
+fn run_two_clone(out: &Path) -> Result<(), String> {
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
         .lines()
@@ -643,5 +654,83 @@ pub fn run(out: &Path) -> Result<(), String> {
     {
         return Err("one or more isolation checks failed; see result.json".into());
     }
+    Ok(())
+}
+
+fn mac_for(index: u32) -> String {
+    format!(
+        "52:54:00:d5:{:02x}:{:02x}",
+        (index / 256) & 0xff,
+        index & 0xff
+    )
+}
+
+pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
+    if count == 0 || count > 32 {
+        return Err("baseline count must be between 1 and 32".to_string());
+    }
+    let available_kib: u64 = fs::read_to_string("/proc/meminfo")
+        .map_err(|e| e.to_string())?
+        .lines()
+        .find_map(|line| line.strip_prefix("MemAvailable:"))
+        .and_then(|tail| tail.split_whitespace().next())
+        .ok_or("MemAvailable missing from /proc/meminfo")?
+        .parse()
+        .map_err(|e| format!("invalid MemAvailable: {e}"))?;
+    let required_kib = u64::from(count) * 300 * 1024;
+    if available_kib < required_kib {
+        return Err(format!(
+            "need {required_kib} KiB available for {count} baseline VMs; found {available_kib} KiB"
+        ));
+    }
+    fs::create_dir(out).map_err(|e| format!("create new output directory: {e}"))?;
+    let out = out.canonicalize().map_err(|e| e.to_string())?;
+    let initramfs = build_initramfs(&out)?;
+    let base = out.join("base.qcow2");
+    checked(
+        Command::new("qemu-img")
+            .args(["create", "-f", "qcow2"])
+            .arg(&base)
+            .arg("64M"),
+    )?;
+    let start = Instant::now();
+    let mut vms = Vec::new();
+    for index in 0..count {
+        let name = format!("baseline-{index:03}");
+        let disk = out.join(format!("{name}.qcow2"));
+        checked(
+            Command::new("qemu-img")
+                .args(["convert", "-f", "qcow2", "-O", "qcow2"])
+                .arg(&base)
+                .arg(&disk),
+        )?;
+        let mac = mac_for(index);
+        let vm = launch(
+            &out,
+            &name,
+            &disk,
+            RamBackend::Anonymous,
+            &initramfs,
+            Some(&mac),
+            false,
+        )?;
+        let mut serial = vm.serial()?;
+        serial.expect("READY", Duration::from_secs(60))?;
+        vms.push(vm);
+    }
+    let elapsed = start.elapsed().as_millis();
+    let mut guests = Vec::new();
+    for index in 0..count {
+        let vm = &vms[index as usize];
+        let disk = out.join(format!("baseline-{index:03}.qcow2"));
+        guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"disk_allocated_bytes":allocated_bytes(&disk)?}));
+    }
+    let result = json!({"experiment":"baseline","count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"vms":guests});
+    fs::write(
+        out.join("baseline.json"),
+        serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    println!("{}", out.join("baseline.json").display());
     Ok(())
 }

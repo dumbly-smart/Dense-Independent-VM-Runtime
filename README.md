@@ -27,6 +27,12 @@ cargo test
 cargo test --test probe -- --ignored --nocapture
 # Or run outside the test harness, specifying a NEW directory:
 cargo run -- probe --out /tmp/densevm-my-run
+# Run a conventional baseline at a requested count:
+cargo run -- benchmark baseline --count 8 --out /tmp/densevm-baseline-8
+# Inspect saved disk and live RAM metadata:
+cargo run -- inspect /tmp/densevm-my-run/clone-a.qcow2 disk
+cargo run -- memory-map QEMU_PID /tmp/densevm-my-run/memory.img
+cargo run -- ksm status
 ```
 
 The command prints the path to `result.json`. It leaves the RAM, migration,
@@ -49,3 +55,8 @@ This prototype is pinned to mechanisms confirmed on QEMU 11.1.1.
 arbitrary distributions, devices, or QEMU versions can be cloned safely.
 
 The 15-item acceptance record is in [docs/milestone1.md](docs/milestone1.md).
+
+The baseline command supports counts from 1 through 32 and writes
+`baseline.json`. The full template restore probe remains intentionally limited
+to two clones until the larger clone matrix has its own isolation and resource
+budget checks.
