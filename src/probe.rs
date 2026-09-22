@@ -399,18 +399,20 @@ pub fn run_with_count(out: &Path, count: u32) -> Result<(), String> {
 }
 
 pub fn run_with_options(out: &Path, count: u32, ksm: bool) -> Result<(), String> {
-    if count != 2 {
-        return Err("the full template restore probe currently supports exactly 2 clones; use benchmark baseline for arbitrary counts".to_string());
+    if !(2..=32).contains(&count) {
+        return Err(
+            "the template restore probe supports clone counts from 2 through 32".to_string(),
+        );
     }
     let _ksm_guard = if ksm {
         Some(crate::ksm::KsmGuard::enable()?)
     } else {
         None
     };
-    run_two_clone(out)
+    run_two_clone(out, count)
 }
 
-fn run_two_clone(out: &Path) -> Result<(), String> {
+fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
         .lines()
@@ -536,7 +538,8 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
     let ram_hash_before = sha256(&ram)?;
 
     let mut overlays = Vec::new();
-    for name in ["clone-a", "clone-b"] {
+    for index in 0..count {
+        let name = format!("clone-{index:03}");
         let overlay = out.join(format!("{name}.qcow2"));
         checked(
             Command::new("qemu-img")
@@ -551,7 +554,7 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
     let clone_start = Instant::now();
     let mut a = launch(
         &out,
-        "clone-a",
+        "clone-000",
         &overlays[0],
         RamBackend::File {
             path: &ram,
@@ -563,7 +566,7 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
     )?;
     let b = launch(
         &out,
-        "clone-b",
+        "clone-001",
         &overlays[1],
         RamBackend::File {
             path: &ram,
@@ -589,6 +592,27 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
         a_vmgenid != b_vmgenid && a_vmgenid != template_vmgenid && b_vmgenid != template_vmgenid;
     add_nic(&mut aq, A_MAC)?;
     add_nic(&mut bq, B_MAC)?;
+    let mut extra_clones = Vec::new();
+    for index in 2..count {
+        let name = format!("clone-{index:03}");
+        let vm = launch(
+            &out,
+            &name,
+            &overlays[index as usize],
+            RamBackend::File {
+                path: &ram,
+                source: false,
+            },
+            &initramfs,
+            None,
+            true,
+        )?;
+        let mut qmp = vm.qmp()?;
+        let migration = restore(&mut qmp, &state)?;
+        let mac = mac_for(index);
+        add_nic(&mut qmp, &mac)?;
+        extra_clones.push((vm, qmp, migration));
+    }
     let clone_elapsed_ms = clone_start.elapsed().as_millis();
     let mut aserial = a.serial()?;
     let mut bserial = b.serial()?;
@@ -640,6 +664,20 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
     a.child.kill().map_err(|e| e.to_string())?;
     a.child.wait().map_err(|e| e.to_string())?;
     let b_survives_a_kill = expect_value(&mut bserial, "ping", "PONG")?;
+    let extra_measurements = extra_clones
+        .iter()
+        .enumerate()
+        .map(|(offset, (vm, _, migration))| {
+            Ok(json!({
+                "index": offset + 2,
+                "pid": vm.pid(),
+                "qemu_command": vm.command,
+                "memory": measure(vm.pid())?,
+                "ram_mapping": measure_mapping(vm.pid(), &ram)?,
+                "migration": migration,
+            }))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     let result = json!({
         "experiment":"two-clone-cow-probe",
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
@@ -649,8 +687,9 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "baseline":{"vms":baseline_measurements,"time_to_two_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
-        "clones":{"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
+        "clones":{"count":count,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
+                  "extra":extra_measurements,
                   "time_to_two_resumed_ms":clone_elapsed_ms},
         "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":mac_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
     });

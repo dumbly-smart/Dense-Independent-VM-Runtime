@@ -59,6 +59,6 @@ arbitrary distributions, devices, or QEMU versions can be cloned safely.
 The 15-item acceptance record is in [docs/milestone1.md](docs/milestone1.md).
 
 The baseline command supports counts from 1 through 32 and writes
-`baseline.json`. The full template restore probe remains intentionally limited
-to two clones until the larger clone matrix has its own isolation and resource
-budget checks.
+`baseline.json`. The template restore probe supports 2 through 32 clones;
+the first two receive detailed RAM, disk, reboot, and process-kill isolation
+checks, while additional clones contribute restore and memory-map measurements.

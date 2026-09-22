@@ -23,6 +23,10 @@ test; it is not a distribution image or a claim about login services.
 | Memory is materially lower than baseline | PASS with scope | Clone process PSS is 104,900 KiB versus 408,515 KiB for two baseline VMs. The report separately records 160,612 KiB of template file cache and excludes kernel KVM metadata. |
 | Results are reproducible and machine-readable | PASS | JSON includes commands, migration results, PSS/smaps data, file residency, disk allocation, hashes, and all isolation booleans. |
 
+The same probe now accepts 2 through 32 clones; clones after A and B are
+restored and included in the result's `extra` measurements. A and B remain the
+adversarial isolation pair.
+
 This closes the Milestone 1 mechanism gate. It does not close the broader
 semantic-fidelity work: machine-id, SSH keys, DHCP identity, entropy behavior,
 ordinary distribution services/login, guest reaction to vmgenid, timer behavior,
