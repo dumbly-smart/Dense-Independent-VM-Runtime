@@ -1,0 +1,40 @@
+use densevm::metrics::{MemoryTotals, parse_smaps_for_path, parse_smaps_rollup};
+
+#[test]
+fn parses_resident_shared_and_private_kib() {
+    let sample = "Rss:                 120 kB\nPss:                  70 kB\nShared_Clean:         40 kB\nShared_Dirty:         20 kB\nPrivate_Clean:        10 kB\nPrivate_Dirty:        50 kB\n";
+    let got = parse_smaps_rollup(sample).unwrap();
+    assert_eq!(
+        got,
+        MemoryTotals {
+            rss_kib: 120,
+            pss_kib: 70,
+            shared_clean_kib: 40,
+            shared_dirty_kib: 20,
+            private_clean_kib: 10,
+            private_dirty_kib: 50,
+        }
+    );
+}
+
+#[test]
+fn rejects_missing_pss_instead_of_reporting_zero() {
+    assert!(parse_smaps_rollup("Rss: 120 kB\n").is_err());
+}
+
+#[test]
+fn sums_only_the_template_ram_file_mappings() {
+    let sample = "1000-2000 rw-p 00000000 00:00 0 /tmp/memory.img\nRss: 40 kB\nPss: 20 kB\nShared_Clean: 30 kB\nShared_Dirty: 0 kB\nPrivate_Clean: 0 kB\nPrivate_Dirty: 10 kB\n2000-3000 rw-p 00000000 00:00 0 [heap]\nRss: 90 kB\nPss: 90 kB\nShared_Clean: 0 kB\nShared_Dirty: 0 kB\nPrivate_Clean: 0 kB\nPrivate_Dirty: 90 kB\n3000-4000 rw-p 00000000 00:00 0 /tmp/memory.img\nRss: 20 kB\nPss: 10 kB\nShared_Clean: 20 kB\nShared_Dirty: 0 kB\nPrivate_Clean: 0 kB\nPrivate_Dirty: 0 kB\n";
+    assert_eq!(
+        parse_smaps_for_path(sample, "/tmp/memory.img").unwrap(),
+        MemoryTotals {
+            rss_kib: 60,
+            pss_kib: 30,
+            shared_clean_kib: 50,
+            shared_dirty_kib: 0,
+            private_clean_kib: 0,
+            private_dirty_kib: 10,
+        }
+    );
+    assert!(parse_smaps_for_path(sample, "/tmp/absent.img").is_err());
+}
