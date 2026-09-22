@@ -12,6 +12,23 @@ fn parses_probe_with_count_and_output() {
             divergence_mib: 32
         }
     );
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "probe",
+            "--out",
+            "/tmp/run",
+            "--divergence-mib",
+            "8"
+        ])
+        .unwrap(),
+        Command::Probe {
+            out: PathBuf::from("/tmp/run"),
+            count: 2,
+            ksm: false,
+            divergence_mib: 8
+        }
+    );
 }
 
 #[test]
