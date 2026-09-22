@@ -27,6 +27,8 @@ cargo test
 cargo test --test probe -- --ignored --nocapture
 # Or run outside the test harness, specifying a NEW directory:
 cargo run -- probe --out /tmp/densevm-my-run
+# Compare the same probe with KSM temporarily enabled; prior KSM settings are restored:
+cargo run -- probe --out /tmp/densevm-my-ksm-run --ksm
 # Run a conventional baseline at a requested count:
 cargo run -- benchmark baseline --count 8 --out /tmp/densevm-baseline-8
 # Inspect saved disk and live RAM metadata:
