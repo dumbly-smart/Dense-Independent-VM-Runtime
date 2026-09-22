@@ -75,7 +75,10 @@ that contradict COW are failures, not partial successes.
 ## Identity and semantics
 
 The first probe hotplugs a new NIC with a distinct MAC into each restored
-clone and assigns distinct QMP/serial sockets. An initial run with NICs in the
+clone and assigns distinct QMP/serial sockets. It also writes and reads a
+synthetic per-clone machine-id, hostname, and deterministic seed token through
+the guest serial control path; this is an identity-divergence mechanism test,
+not a cryptographic RNG proof. An initial run with NICs in the
 template showed that migration restored the template MAC over clone launch
 arguments; command-line MAC differences alone did not provide uniqueness.
 It also presents a distinct vmgenid to each clone if migration preserves the

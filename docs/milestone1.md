@@ -27,8 +27,9 @@ The same probe now accepts 2 through 32 clones; clones after A and B are
 restored and included in the result's `extra` measurements. A and B remain the
 adversarial isolation pair.
 
-This closes the Milestone 1 mechanism gate. It does not close the broader
-semantic-fidelity work: machine-id, SSH keys, DHCP identity, entropy behavior,
-ordinary distribution services/login, guest reaction to vmgenid, timer behavior,
-and kernel page-table accounting remain explicitly unverified in
-`docs/semantic-differences.md`.
+The probe now also assigns and reads distinct synthetic machine-id, hostname,
+and seed-token values in A and B. The seed token is deliberately deterministic
+and is not cryptographic entropy. This closes the mechanism gate while leaving
+SSH keys, DHCP identity, ordinary distribution services/login, guest reaction
+to vmgenid, timer behavior, and kernel page-table accounting explicitly
+unverified in `docs/semantic-differences.md`.
