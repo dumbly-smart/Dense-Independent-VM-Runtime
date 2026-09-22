@@ -83,6 +83,17 @@ fn read_identity() -> std::io::Result<String> {
     Ok(format!("IDENTITY {machine_id} {hostname} {entropy}"))
 }
 
+fn write_ram_mib(region: &mut [u8], mib: usize, value: u8) -> Result<(), &'static str> {
+    let bytes = mib.checked_mul(1024 * 1024).ok_or("size overflow")?;
+    if bytes > region.len() {
+        return Err("requested RAM divergence exceeds probe region");
+    }
+    for page in region[..bytes].chunks_mut(4096) {
+        page[0] = value;
+    }
+    Ok(())
+}
+
 fn main() {
     mount_fs("devtmpfs", "/dev", "devtmpfs");
     mount_fs("sysfs", "/sys", "sysfs");
@@ -117,12 +128,17 @@ fn main() {
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {
-                    for page in region.chunks_mut(4096) {
-                        page[0] = value;
-                    }
+                    write_ram_mib(&mut region, 32, value).unwrap();
                     format!("RAM-WROTE {value}")
                 }
                 Err(_) => "ERROR invalid byte".to_string(),
+            },
+            ["ram-write-mib", mib, value] => match (mib.parse::<usize>(), value.parse::<u8>()) {
+                (Ok(mib), Ok(value)) => match write_ram_mib(&mut region, mib, value) {
+                    Ok(()) => format!("RAM-WROTE-MIB {mib} {value}"),
+                    Err(error) => format!("ERROR {error}"),
+                },
+                _ => "ERROR invalid RAM write arguments".to_string(),
             },
             ["disk-read"] => match disk_byte() {
                 Ok(value) => format!("DISK {value}"),

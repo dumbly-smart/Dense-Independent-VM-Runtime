@@ -27,6 +27,8 @@ cargo test
 cargo test --test probe -- --ignored --nocapture
 # Or run outside the test harness, specifying a NEW directory:
 cargo run -- probe --out /tmp/densevm-my-run
+# Limit the intentional RAM divergence used by the isolation probe:
+cargo run -- probe --out /tmp/densevm-my-8m-run --divergence-mib 8
 # Compare the same probe with KSM temporarily enabled; prior KSM settings are restored:
 cargo run -- probe --out /tmp/densevm-my-ksm-run --ksm
 # Run a conventional baseline at a requested count:
@@ -62,3 +64,5 @@ The baseline command supports counts from 1 through 32 and writes
 `baseline.json`. The template restore probe supports 2 through 32 clones;
 the first two receive detailed RAM, disk, reboot, and process-kill isolation
 checks, while additional clones contribute restore and memory-map measurements.
+`--divergence-mib` controls how much of A's 32 MiB test region is dirtied
+(1--32 MiB), making repeated divergence measurements reproducible.

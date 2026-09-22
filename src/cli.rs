@@ -2,10 +2,23 @@ use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
-    Probe { out: PathBuf, count: u32, ksm: bool },
-    BenchmarkBaseline { out: PathBuf, count: u32 },
-    InspectDisk { image: PathBuf },
-    MemoryMap { pid: u32, path: PathBuf },
+    Probe {
+        out: PathBuf,
+        count: u32,
+        ksm: bool,
+        divergence_mib: u32,
+    },
+    BenchmarkBaseline {
+        out: PathBuf,
+        count: u32,
+    },
+    InspectDisk {
+        image: PathBuf,
+    },
+    MemoryMap {
+        pid: u32,
+        path: PathBuf,
+    },
     KsmStatus,
 }
 
@@ -47,6 +60,7 @@ where
     let mut out = None;
     let mut count = 2;
     let mut ksm = false;
+    let mut divergence_mib = 32;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--out" => out = Some(PathBuf::from(value(args, "--out")?)),
@@ -59,6 +73,14 @@ where
                 }
             }
             "--ksm" => ksm = true,
+            "--divergence-mib" => {
+                divergence_mib = value(args, "--divergence-mib")?
+                    .parse()
+                    .map_err(|_| "--divergence-mib must be an integer from 1 to 32".to_string())?;
+                if !(1..=32).contains(&divergence_mib) {
+                    return Err("--divergence-mib must be an integer from 1 to 32".to_string());
+                }
+            }
             flag => return Err(format!("unknown option {flag}")),
         }
     }
@@ -66,6 +88,7 @@ where
         out: out.ok_or("--out is required")?,
         count,
         ksm,
+        divergence_mib,
     })
 }
 

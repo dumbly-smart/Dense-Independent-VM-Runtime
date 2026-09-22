@@ -8,7 +8,8 @@ fn parses_probe_with_count_and_output() {
         Command::Probe {
             out: PathBuf::from("/tmp/run"),
             count: 8,
-            ksm: false
+            ksm: false,
+            divergence_mib: 32
         }
     );
 }

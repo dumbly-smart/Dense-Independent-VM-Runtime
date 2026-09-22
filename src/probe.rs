@@ -399,6 +399,15 @@ pub fn run_with_count(out: &Path, count: u32) -> Result<(), String> {
 }
 
 pub fn run_with_options(out: &Path, count: u32, ksm: bool) -> Result<(), String> {
+    run_with_options_and_divergence(out, count, ksm, 32)
+}
+
+pub fn run_with_options_and_divergence(
+    out: &Path,
+    count: u32,
+    ksm: bool,
+    divergence_mib: u32,
+) -> Result<(), String> {
     if !(2..=32).contains(&count) {
         return Err(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
@@ -409,10 +418,10 @@ pub fn run_with_options(out: &Path, count: u32, ksm: bool) -> Result<(), String>
     } else {
         None
     };
-    run_two_clone(out, count)
+    run_two_clone(out, count, divergence_mib)
 }
 
-fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
+fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), String> {
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
         .lines()
@@ -642,7 +651,10 @@ fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
         allocated_bytes(&overlays[0])?,
         allocated_bytes(&overlays[1])?,
     ];
-    aserial.command("ram-write 165", "RAM-WROTE 165")?;
+    aserial.command(
+        &format!("ram-write-mib {divergence_mib} 165"),
+        &format!("RAM-WROTE-MIB {divergence_mib} 165"),
+    )?;
     let ram_isolation = initial_ok
         && expect_value(&mut aserial, "ram-read", "RAM 165")?
         && expect_value(&mut bserial, "ram-read", "RAM 90")?;
@@ -693,6 +705,7 @@ fn run_two_clone(out: &Path, count: u32) -> Result<(), String> {
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
         "kernel_version":output(Command::new("uname").arg("-r"))?.trim(),
         "guest_ram_mib":RAM_MIB,
+        "requested_ram_divergence_mib":divergence_mib,
         "host_mem_available_kib_at_start":available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "baseline":{"vms":baseline_measurements,"time_to_two_ready_ms":baseline_elapsed_ms},

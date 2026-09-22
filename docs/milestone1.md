@@ -27,6 +27,10 @@ The same probe now accepts 2 through 32 clones; clones after A and B are
 restored and included in the result's `extra` measurements. A and B remain the
 adversarial isolation pair.
 
+The probe accepts `--divergence-mib 1..32` to control the amount of A's RAM
+test region dirtied during the COW experiment. The selected value is recorded
+as `requested_ram_divergence_mib` in `result.json`.
+
 The probe now also assigns and reads distinct synthetic machine-id, hostname,
 and seed-token values in A and B. The seed token is deliberately deterministic
 and is not cryptographic entropy. This closes the mechanism gate while leaving
