@@ -615,6 +615,12 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
     let disk_isolation = disk_isolation
         && expect_value(&mut aserial, "disk-read", "DISK 165")?
         && expect_value(&mut bserial, "disk-read", "DISK 66")?;
+    aserial.command("disk-fill 165", "DISK-FILLED 165")?;
+    let full_disk_isolation = expect_value(&mut bserial, "disk-read", "DISK 66")?;
+    let a_overlay_after_full_write = allocated_bytes(&overlays[0])?;
+    aserial.command("reboot", "").ok();
+    thread::sleep(Duration::from_millis(500));
+    let b_survives_guest_reboot = expect_value(&mut bserial, "ping", "PONG")?;
     let overlay_after = [
         allocated_bytes(&overlays[0])?,
         allocated_bytes(&overlays[1])?,
@@ -634,10 +640,10 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "baseline":{"vms":baseline_measurements,"time_to_two_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
-        "clones":{"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"migration":a_migration},
+        "clones":{"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "time_to_two_resumed_ms":clone_elapsed_ms},
-        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":mac_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
+        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":mac_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
     });
     fs::write(
         out.join("result.json"),
@@ -650,6 +656,8 @@ fn run_two_clone(out: &Path) -> Result<(), String> {
         && template_ram_unchanged
         && mac_unique
         && vmgenid_unique
+        && full_disk_isolation
+        && b_survives_guest_reboot
         && b_survives_a_kill)
     {
         return Err("one or more isolation checks failed; see result.json".into());

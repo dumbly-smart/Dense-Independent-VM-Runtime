@@ -42,6 +42,20 @@ fn write_disk(value: u8) -> std::io::Result<()> {
     file.sync_all()
 }
 
+fn fill_disk(value: u8) -> std::io::Result<()> {
+    let mut file = OpenOptions::new().write(true).open("/dev/vda")?;
+    let block = [value; 1024 * 1024];
+    for _ in 0..64 {
+        file.write_all(&block)?;
+    }
+    file.sync_all()
+}
+
+fn reboot_guest() -> ! {
+    let result = unsafe { syscall(169, 0xfee1dead_u32, 672274793_u32, 0x01234567_u32, 0_u32) };
+    panic!("reboot syscall failed: {result}");
+}
+
 fn main() {
     mount_fs("devtmpfs", "/dev", "devtmpfs");
     mount_fs("sysfs", "/sys", "sysfs");
@@ -93,6 +107,14 @@ fn main() {
                 },
                 Err(_) => "ERROR invalid byte".to_string(),
             },
+            ["disk-fill", value] => match value.parse::<u8>() {
+                Ok(value) => match fill_disk(value) {
+                    Ok(()) => format!("DISK-FILLED {value}"),
+                    Err(error) => format!("ERROR disk fill: {error}"),
+                },
+                Err(_) => "ERROR invalid byte".to_string(),
+            },
+            ["reboot"] => reboot_guest(),
             ["mac-read"] => {
                 let mut address = None;
                 for _ in 0..50 {

@@ -17,12 +17,12 @@ where
         .ok_or_else(|| format!("missing value for {flag}"))
 }
 
-fn parse_out_count<I>(args: &mut I) -> Result<(PathBuf, u32), String>
+fn parse_out_count<I>(args: &mut I, default_count: u32) -> Result<(PathBuf, u32), String>
 where
     I: Iterator<Item = String>,
 {
     let mut out = None;
-    let mut count = 1;
+    let mut count = default_count;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--out" => out = Some(PathBuf::from(value(args, "--out")?)),
@@ -49,11 +49,11 @@ where
     let _program = args.next().ok_or("program name is required")?;
     match args.next().as_deref() {
         Some("probe") => {
-            let (out, count) = parse_out_count(&mut args)?;
+            let (out, count) = parse_out_count(&mut args, 2)?;
             Ok(Command::Probe { out, count })
         }
         Some("benchmark") if args.next().as_deref() == Some("baseline") => {
-            let (out, count) = parse_out_count(&mut args)?;
+            let (out, count) = parse_out_count(&mut args, 1)?;
             Ok(Command::BenchmarkBaseline { out, count })
         }
         Some("inspect") => {
