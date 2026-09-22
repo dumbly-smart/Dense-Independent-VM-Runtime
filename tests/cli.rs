@@ -7,7 +7,8 @@ fn parses_probe_with_count_and_output() {
         parse_args(["densevm", "probe", "--out", "/tmp/run", "--count", "8"]).unwrap(),
         Command::Probe {
             out: PathBuf::from("/tmp/run"),
-            count: 8
+            count: 8,
+            ksm: false
         }
     );
 }
