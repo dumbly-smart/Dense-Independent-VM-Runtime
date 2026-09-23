@@ -51,6 +51,20 @@ fn parses_inspection_commands() {
 #[test]
 fn rejects_unknown_commands_and_invalid_counts() {
     assert!(parse_args(["densevm", "unknown"]).is_err());
+    for value in ["0", "33", "not-a-number"] {
+        assert!(
+            parse_args([
+                "densevm",
+                "probe",
+                "--out",
+                "/tmp/run",
+                "--divergence-mib",
+                value
+            ])
+            .is_err(),
+            "accepted invalid divergence size {value}"
+        );
+    }
     assert!(
         parse_args([
             "densevm",
