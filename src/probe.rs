@@ -664,7 +664,24 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
         let migration = restore(&mut qmp, &state)?;
         let mac = mac_for(index);
         add_nic(&mut qmp, &mac)?;
-        extra_clones.push((vm, qmp, migration));
+        let identity = identity_for(index);
+        let mut serial = vm.serial()?;
+        serial.command(&format!("identity-set {identity}"), "IDENTITY-SET ")?;
+        let identity_guest = serial.command("identity-read", "IDENTITY ")?;
+        let mac_guest = serial.command("mac-read", "MAC ")?;
+        let vmgenid = qmp.execute("query-vm-generation-id", None)?["guid"]
+            .as_str()
+            .ok_or("extra clone vmgenid missing")?
+            .to_string();
+        extra_clones.push((
+            vm,
+            migration,
+            serial,
+            index,
+            identity_guest,
+            mac_guest,
+            vmgenid,
+        ));
     }
     let clone_elapsed_ms = clone_start.elapsed().as_millis();
     let mut aserial = a.serial()?;
@@ -681,8 +698,44 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
     let mut identity_unique = identity_matches(&a_identity_guest, &a_identity)
         && identity_matches(&b_identity_guest, &b_identity)
         && a_identity_guest != b_identity_guest;
+    let mut all_vmgenids = vec![
+        a_vmgenid.clone(),
+        b_vmgenid.clone(),
+        template_vmgenid.clone(),
+    ];
+    for (_, _, _, index, identity_guest, _, vmgenid) in &extra_clones {
+        let expected_identity = identity_for(*index);
+        identity_unique &= identity_matches(identity_guest, &expected_identity)
+            && !guest_identities.contains(identity_guest);
+        guest_identities.push(identity_guest.clone());
+        vmgenid_unique &= !all_vmgenids.iter().any(|existing| existing == vmgenid);
+        all_vmgenids.push(vmgenid.clone());
+    }
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
+    let mut extra_guest_isolation = true;
+    for (_, _, serial, index, _, _, _) in &mut extra_clones {
+        let ram_value = 100 + *index as u8;
+        let disk_value = 10 + *index as u8;
+        serial.command(
+            &format!("ram-write-pages 1 {ram_value}"),
+            &format!("RAM-WROTE-PAGES 1 {ram_value}"),
+        )?;
+        serial.command(
+            &format!("disk-write {disk_value}"),
+            &format!("DISK-WROTE {disk_value}"),
+        )?;
+    }
+    for (_, _, serial, index, _, _, _) in &mut extra_clones {
+        let ram_value = 100 + *index as u8;
+        let disk_value = 10 + *index as u8;
+        extra_guest_isolation &= serial.command("ram-read", "RAM ")? == format!("RAM {ram_value}")
+            && serial.command("disk-read", "DISK ")? == format!("DISK {disk_value}");
+    }
+    extra_guest_isolation &= expect_value(&mut aserial, "ram-read", "RAM 90")?
+        && expect_value(&mut bserial, "ram-read", "RAM 90")?
+        && expect_value(&mut aserial, "disk-read", "DISK 0")?
+        && expect_value(&mut bserial, "disk-read", "DISK 0")?;
     let initial_ok = expect_value(&mut aserial, "ram-read", "RAM 90")?
         && expect_value(&mut bserial, "ram-read", "RAM 90")?
         && expect_value(&mut aserial, "disk-read", "DISK 0")?
@@ -732,52 +785,27 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
     a.child.wait().map_err(|e| e.to_string())?;
     let b_survives_a_kill = expect_value(&mut bserial, "ping", "PONG")?;
     let extra_measurements = extra_clones
-        .iter_mut()
-        .enumerate()
-        .map(|(offset, (vm, qmp, migration))| {
-            let index = offset as u32 + 2;
-            let identity = identity_for(index);
-            let mut serial = vm.serial()?;
-            serial.command(&format!("identity-set {identity}"), "IDENTITY-SET ")?;
-            let identity_guest = serial.command("identity-read", "IDENTITY ")?;
-            let mac_guest = serial.command("mac-read", "MAC ")?;
-            let vmgenid = qmp.execute("query-vm-generation-id", None)?["guid"]
-                .as_str()
-                .ok_or("extra clone vmgenid missing")?
-                .to_string();
-            identity_unique &= identity_matches(&identity_guest, &identity)
-                && !guest_identities.contains(&identity_guest);
-            guest_identities.push(identity_guest.clone());
-            Ok(json!({
-                "index": index,
-                "pid": vm.pid(),
-                "qemu_command": vm.command,
-                "memory": measure(vm.pid())?,
-                "ram_mapping": measure_mapping(vm.pid(), &ram)?,
-                "overlay_allocated_bytes": allocated_bytes(&overlays[index as usize])?,
-                "identity_guest": identity_guest,
-                "mac_guest": mac_guest,
-                "vmgenid": vmgenid,
-                "migration": migration,
-            }))
-        })
+        .iter()
+        .map(
+            |(vm, migration, _, index, identity_guest, mac_guest, vmgenid)| {
+                Ok(json!({
+                    "index": index,
+                    "pid": vm.pid(),
+                    "qemu_command": vm.command,
+                    "memory": measure(vm.pid())?,
+                    "ram_mapping": measure_mapping(vm.pid(), &ram)?,
+                    "overlay_allocated_bytes": allocated_bytes(&overlays[*index as usize])?,
+                    "identity_guest": identity_guest,
+                    "mac_guest": mac_guest,
+                    "vmgenid": vmgenid,
+                    "migration": migration,
+                }))
+            },
+        )
         .collect::<Result<Vec<_>, String>>()?;
-    let mut all_vmgenids = vec![
-        a_vmgenid.clone(),
-        b_vmgenid.clone(),
-        template_vmgenid.clone(),
-    ];
-    for extra in &extra_measurements {
-        let guid = extra["vmgenid"]
-            .as_str()
-            .ok_or("extra clone vmgenid missing")?;
-        vmgenid_unique &= !all_vmgenids.iter().any(|existing| existing == guid);
-        all_vmgenids.push(guid.to_string());
-    }
     let mut all_macs_unique = mac_unique;
-    for extra in &extra_measurements {
-        let index = extra["index"].as_u64().ok_or("extra clone index missing")? as u32;
-        all_macs_unique &= extra["mac_guest"] == format!("MAC {}", mac_for(index));
+    for (_, _, _, index, _, mac_guest, _) in &extra_clones {
+        all_macs_unique &= mac_guest == &format!("MAC {}", mac_for(*index));
     }
     let total_overlay_allocated_bytes = overlays
         .iter()
@@ -808,8 +836,8 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
         "clones":{"count":count,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
-                  "time_to_two_resumed_ms":clone_elapsed_ms},
-        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
+                  "time_to_count_resumed_ms":clone_elapsed_ms},
+        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
     });
     fs::write(
         out.join("result.json"),
@@ -823,6 +851,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
         && all_macs_unique
         && identity_unique
         && vmgenid_unique
+        && extra_guest_isolation
         && full_disk_isolation
         && b_survives_guest_reboot
         && b_survives_a_kill)

@@ -24,8 +24,10 @@ test; it is not a distribution image or a claim about login services.
 | Results are reproducible and machine-readable | PASS | JSON includes commands, migration results, PSS/smaps data, file residency, disk allocation, hashes, and all isolation booleans. |
 
 The same probe now accepts 2 through 32 clones; clones after A and B are
-restored and included in the result's `extra` measurements. A and B remain the
-adversarial isolation pair.
+restored and included in memory, disk, identity, and device measurements. Each
+additional clone writes a unique RAM value and disk value; after all writes,
+every clone reads its own values while A and B retain their original values.
+The result records this as `extra_clone_isolation`.
 
 The probe accepts `--divergence-mib 0..32` and `--divergence-percent 0..100`
 to control how much of A's test region is dirtied. The percentage mode maps to
