@@ -15,7 +15,7 @@ Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
 | Independent virtual device state | YES | PARTIAL | Separate QMP, serial, block and hotplugged NIC observed; timer/interrupt behavior untested. |
 | Unique MAC visible inside guest | YES | YES | Guest sysfs returned distinct MACs after NIC hotplug. Launch-time MAC changes alone failed because migration restored the template MAC. |
 | Unique vmgenid in QEMU | optional | YES | QMP returned three distinct GUIDs for template, A, and B. Guest reaction to generation change is UNKNOWN. |
-| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Probe assigns and reads unique machine-id/hostname values; SSH keys and ordinary distribution identity rotation remain untested. |
+| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Every restored probe clone receives and reads a unique synthetic machine-id/hostname; SSH keys and ordinary distribution identity rotation remain untested. |
 | Independent entropy/RNG state | expected | PARTIAL | Probe records a deterministic per-clone seed token only; it is not cryptographic entropy and distro RNG reseeding remains untested. |
 | Independent DHCP identity/IP | expected | UNKNOWN | Network access is restricted; no DHCP client runs in the probe. |
 | Independent wall clock/timers | YES | UNKNOWN | Time and timer divergence after restore have not been tested. |

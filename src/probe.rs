@@ -597,7 +597,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         .as_str()
         .ok_or("clone B vmgenid missing")?
         .to_string();
-    let vmgenid_unique =
+    let mut vmgenid_unique =
         a_vmgenid != b_vmgenid && a_vmgenid != template_vmgenid && b_vmgenid != template_vmgenid;
     add_nic(&mut aq, A_MAC)?;
     add_nic(&mut bq, B_MAC)?;
@@ -627,15 +627,15 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
     let mut bserial = b.serial()?;
     aserial.command("ping", "PONG")?;
     bserial.command("ping", "PONG")?;
-    let a_identity = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    let b_identity = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    let a_identity = identity_for(0);
+    let b_identity = identity_for(1);
     aserial.command(&format!("identity-set {a_identity}"), "IDENTITY-SET ")?;
     bserial.command(&format!("identity-set {b_identity}"), "IDENTITY-SET ")?;
     let a_identity_guest = aserial.command("identity-read", "IDENTITY ")?;
     let b_identity_guest = bserial.command("identity-read", "IDENTITY ")?;
-    let identity_unique = a_identity_guest
-        == format!("IDENTITY {a_identity} densevm-aaaaaaaa {a_identity}")
-        && b_identity_guest == format!("IDENTITY {b_identity} densevm-bbbbbbbb {b_identity}")
+    let mut guest_identities = vec![a_identity_guest.clone(), b_identity_guest.clone()];
+    let mut identity_unique = identity_matches(&a_identity_guest, &a_identity)
+        && identity_matches(&b_identity_guest, &b_identity)
         && a_identity_guest != b_identity_guest;
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
@@ -687,19 +687,52 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
     a.child.wait().map_err(|e| e.to_string())?;
     let b_survives_a_kill = expect_value(&mut bserial, "ping", "PONG")?;
     let extra_measurements = extra_clones
-        .iter()
+        .iter_mut()
         .enumerate()
-        .map(|(offset, (vm, _, migration))| {
+        .map(|(offset, (vm, qmp, migration))| {
+            let index = offset as u32 + 2;
+            let identity = identity_for(index);
+            let mut serial = vm.serial()?;
+            serial.command(&format!("identity-set {identity}"), "IDENTITY-SET ")?;
+            let identity_guest = serial.command("identity-read", "IDENTITY ")?;
+            let mac_guest = serial.command("mac-read", "MAC ")?;
+            let vmgenid = qmp.execute("query-vm-generation-id", None)?["guid"]
+                .as_str()
+                .ok_or("extra clone vmgenid missing")?
+                .to_string();
+            identity_unique &= identity_matches(&identity_guest, &identity)
+                && !guest_identities.contains(&identity_guest);
+            guest_identities.push(identity_guest.clone());
             Ok(json!({
-                "index": offset + 2,
+                "index": index,
                 "pid": vm.pid(),
                 "qemu_command": vm.command,
                 "memory": measure(vm.pid())?,
                 "ram_mapping": measure_mapping(vm.pid(), &ram)?,
+                "identity_guest": identity_guest,
+                "mac_guest": mac_guest,
+                "vmgenid": vmgenid,
                 "migration": migration,
             }))
         })
         .collect::<Result<Vec<_>, String>>()?;
+    let mut all_vmgenids = vec![
+        a_vmgenid.clone(),
+        b_vmgenid.clone(),
+        template_vmgenid.clone(),
+    ];
+    for extra in &extra_measurements {
+        let guid = extra["vmgenid"]
+            .as_str()
+            .ok_or("extra clone vmgenid missing")?;
+        vmgenid_unique &= !all_vmgenids.iter().any(|existing| existing == guid);
+        all_vmgenids.push(guid.to_string());
+    }
+    let mut all_macs_unique = mac_unique;
+    for extra in &extra_measurements {
+        let index = extra["index"].as_u64().ok_or("extra clone index missing")? as u32;
+        all_macs_unique &= extra["mac_guest"] == format!("MAC {}", mac_for(index));
+    }
     let result = json!({
         "experiment":"two-clone-cow-probe",
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
@@ -714,7 +747,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
                   "time_to_two_resumed_ms":clone_elapsed_ms},
-        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":mac_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
+        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
     });
     fs::write(
         out.join("result.json"),
@@ -725,7 +758,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
     if !(ram_isolation
         && disk_isolation
         && template_ram_unchanged
-        && mac_unique
+        && all_macs_unique
         && identity_unique
         && vmgenid_unique
         && full_disk_isolation
@@ -743,6 +776,14 @@ fn mac_for(index: u32) -> String {
         (index / 256) & 0xff,
         index & 0xff
     )
+}
+
+fn identity_for(index: u32) -> String {
+    format!("{:032x}", u64::from(index) + 1)
+}
+
+fn identity_matches(reply: &str, identity: &str) -> bool {
+    reply == format!("IDENTITY {identity} densevm-{} {identity}", &identity[..8])
 }
 
 pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
