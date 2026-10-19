@@ -22,3 +22,9 @@ metadata noted in `docs/semantic-differences.md`.
 
 When run with `--ksm`, each result also records before/after host-global KSM
 counters and `ksmd` CPU ticks. Other host workloads can affect these values.
+
+Baseline and clone results also sample each QEMU process's `/proc/<pid>/stat`
+CPU ticks over an approximately one-second idle interval. The JSON reports
+raw scheduler ticks and interval duration, not a CPU percentage. This captures
+time charged to the QEMU process; kernel-side KVM work is not separately
+accounted here.
