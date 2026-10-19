@@ -710,6 +710,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
                 "qemu_command": vm.command,
                 "memory": measure(vm.pid())?,
                 "ram_mapping": measure_mapping(vm.pid(), &ram)?,
+                "overlay_allocated_bytes": allocated_bytes(&overlays[index as usize])?,
                 "identity_guest": identity_guest,
                 "mac_guest": mac_guest,
                 "vmgenid": vmgenid,
@@ -734,6 +735,12 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         let index = extra["index"].as_u64().ok_or("extra clone index missing")? as u32;
         all_macs_unique &= extra["mac_guest"] == format!("MAC {}", mac_for(index));
     }
+    let total_overlay_allocated_bytes = overlays
+        .iter()
+        .map(|overlay| allocated_bytes(overlay))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .sum::<u64>();
     let result = json!({
         "experiment":"two-clone-cow-probe",
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
@@ -745,6 +752,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "baseline":{"count":count,"vms":baseline_measurements,"time_to_count_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
+        "disk_storage":{"base_allocated_bytes":allocated_bytes(&base)?,"total_clone_overlay_allocated_bytes":total_overlay_allocated_bytes},
         "clones":{"count":count,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
