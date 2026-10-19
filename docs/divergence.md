@@ -28,3 +28,9 @@ CPU ticks over an approximately one-second idle interval. The JSON reports
 raw scheduler ticks and interval duration, not a CPU percentage. This captures
 time charged to the QEMU process; kernel-side KVM work is not separately
 accounted here.
+
+Pass `--park-idle` to stop every restored guest through QMP, sample QEMU
+process CPU ticks while paused, explicitly resume each guest, and check that
+the guests answer again. This is an experiment: guest timers stop while
+paused, so it changes timing semantics. The control is explicit; there is no
+automatic idle detector or packet-triggered wakeup.

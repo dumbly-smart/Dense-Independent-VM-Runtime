@@ -14,7 +14,14 @@ fn main() {
             count,
             ksm,
             divergence_pages,
-        } => densevm::probe::run_with_options_and_divergence(&out, count, ksm, divergence_pages),
+            park_idle,
+        } => densevm::probe::run_with_options_and_divergence_and_parking(
+            &out,
+            count,
+            ksm,
+            divergence_pages,
+            park_idle,
+        ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
         Command::MemoryMap { pid, path } => {

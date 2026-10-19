@@ -461,6 +461,16 @@ fn add_nic(qmp: &mut Qmp, mac: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn stop_and_verify(qmp: &mut Qmp) -> Result<bool, String> {
+    qmp.execute("stop", None)?;
+    Ok(qmp.execute("query-status", None)?["status"] == "paused")
+}
+
+fn resume_and_verify(qmp: &mut Qmp) -> Result<bool, String> {
+    qmp.execute("cont", None)?;
+    Ok(qmp.execute("query-status", None)?["status"] == "running")
+}
+
 fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool, String> {
     Ok(serial.command(command, wanted)? == wanted)
 }
@@ -483,6 +493,16 @@ pub fn run_with_options_and_divergence(
     ksm: bool,
     divergence_pages: u32,
 ) -> Result<(), String> {
+    run_with_options_and_divergence_and_parking(out, count, ksm, divergence_pages, false)
+}
+
+pub fn run_with_options_and_divergence_and_parking(
+    out: &Path,
+    count: u32,
+    ksm: bool,
+    divergence_pages: u32,
+    park_idle: bool,
+) -> Result<(), String> {
     if !(2..=32).contains(&count) {
         return Err(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
@@ -498,10 +518,15 @@ pub fn run_with_options_and_divergence(
             "RAM divergence must be at most {TEST_REGION_PAGES} pages"
         ));
     }
-    run_two_clone(out, count, divergence_pages)
+    run_two_clone(out, count, divergence_pages, park_idle)
 }
 
-fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), String> {
+fn run_two_clone(
+    out: &Path,
+    count: u32,
+    divergence_pages: u32,
+    park_idle: bool,
+) -> Result<(), String> {
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let ksmd_cpu_ticks_before = ksmd_cpu_ticks();
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
@@ -815,6 +840,43 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
     aserial.command("disk-fill 165", "DISK-FILLED 165")?;
     let full_disk_isolation = expect_value(&mut bserial, "disk-read", "DISK 66")?;
     let a_overlay_after_full_write = allocated_bytes(&overlays[0])?;
+    let mut parking_verified = !park_idle;
+    let mut parking_details = json!({"requested":park_idle});
+    if park_idle {
+        let mut paused_statuses = Vec::new();
+        let mut resumed_statuses = Vec::new();
+        paused_statuses.push(stop_and_verify(&mut aq)?);
+        paused_statuses.push(stop_and_verify(&mut bq)?);
+        let mut extra_qmps = Vec::new();
+        for (vm, _, _, _, _, _, _) in &extra_clones {
+            let mut qmp = vm.qmp()?;
+            paused_statuses.push(stop_and_verify(&mut qmp)?);
+            extra_qmps.push(qmp);
+        }
+        let (parked_cpu_sample_interval_ms, parked_cpu_ticks) = sample_cpu_ticks(&clone_pids)?;
+        resumed_statuses.push(resume_and_verify(&mut aq)?);
+        resumed_statuses.push(resume_and_verify(&mut bq)?);
+        for qmp in &mut extra_qmps {
+            resumed_statuses.push(resume_and_verify(qmp)?);
+        }
+        let mut guests_responsive_after_resume = expect_value(&mut aserial, "ping", "PONG")?
+            && expect_value(&mut bserial, "ping", "PONG")?;
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guests_responsive_after_resume &= expect_value(serial, "ping", "PONG")?;
+        }
+        parking_verified = paused_statuses.iter().all(|paused| *paused)
+            && resumed_statuses.iter().all(|running| *running)
+            && guests_responsive_after_resume;
+        parking_details = json!({
+            "requested":true,
+            "paused_statuses":paused_statuses,
+            "resumed_statuses":resumed_statuses,
+            "cpu_sample_interval_ms":parked_cpu_sample_interval_ms,
+            "qemu_process_cpu_ticks":parked_cpu_ticks,
+            "guests_responsive_after_resume":guests_responsive_after_resume,
+            "wall_clock_semantics":"guest timers stop while paused; explicit QMP cont resumes execution"
+        });
+    }
     aserial.command("reboot", "").ok();
     thread::sleep(Duration::from_millis(500));
     let b_survives_guest_reboot = expect_value(&mut bserial, "ping", "PONG")?;
@@ -882,7 +944,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"idle_cpu_ticks":clone_idle_cpu_ticks[1],"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
                   "time_to_count_resumed_ms":clone_elapsed_ms},
-        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill
+        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details
     });
     fs::write(
         out.join("result.json"),
@@ -899,7 +961,8 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
         && extra_guest_isolation
         && full_disk_isolation
         && b_survives_guest_reboot
-        && b_survives_a_kill)
+        && b_survives_a_kill
+        && parking_verified)
     {
         return Err("one or more isolation checks failed; see result.json".into());
     }

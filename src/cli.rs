@@ -7,6 +7,7 @@ pub enum Command {
         count: u32,
         ksm: bool,
         divergence_pages: u32,
+        park_idle: bool,
     },
     BenchmarkBaseline {
         out: PathBuf,
@@ -60,6 +61,7 @@ where
     let mut out = None;
     let mut count = 2;
     let mut ksm = false;
+    let mut park_idle = false;
     let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -73,6 +75,7 @@ where
                 }
             }
             "--ksm" => ksm = true,
+            "--park-idle" => park_idle = true,
             "--divergence-mib" => {
                 let divergence_mib = value(args, "--divergence-mib")?
                     .parse::<u32>()
@@ -101,6 +104,7 @@ where
         count,
         ksm,
         divergence_pages,
+        park_idle,
     })
 }
 

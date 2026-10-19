@@ -9,7 +9,8 @@ fn parses_probe_with_count_and_output() {
             out: PathBuf::from("/tmp/run"),
             count: 8,
             ksm: false,
-            divergence_pages: 8192
+            divergence_pages: 8192,
+            park_idle: false
         }
     );
     assert_eq!(
@@ -26,7 +27,8 @@ fn parses_probe_with_count_and_output() {
             out: PathBuf::from("/tmp/run"),
             count: 2,
             ksm: false,
-            divergence_pages: 2048
+            divergence_pages: 2048,
+            park_idle: false
         }
     );
 }

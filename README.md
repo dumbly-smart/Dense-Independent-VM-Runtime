@@ -29,6 +29,8 @@ cargo test --test probe -- --ignored --nocapture
 cargo run -- probe --out /tmp/densevm-my-run
 # Limit the intentional RAM divergence used by the isolation probe:
 cargo run -- probe --out /tmp/densevm-my-8m-run --divergence-mib 8
+# Measure explicit QMP stop/resume of idle clones:
+cargo run -- probe --out /tmp/densevm-park-run --park-idle
 # Compare the same probe with KSM temporarily enabled; prior KSM settings are restored:
 cargo run -- probe --out /tmp/densevm-my-ksm-run --ksm
 # Run a conventional baseline at a requested count:
