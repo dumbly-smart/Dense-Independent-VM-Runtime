@@ -26,3 +26,8 @@ template file COW, not KSM. Each guest still executes its own instructions on
 KVM; no CPU work is deduplicated. The source RAM file and disk base are made
 read-only after freezing and their backing relationships and hashes are
 checked by the probe, but a privileged host actor can still change them.
+
+Probe results include host-global KSM counters and `ksmd` CPU ticks before and
+after the run when procfs/sysfs expose them. These deltas are not attributable
+solely to DenseVM if other host processes use KSM concurrently; CPU values are
+raw scheduler ticks and should be converted using the host's clock-tick rate.

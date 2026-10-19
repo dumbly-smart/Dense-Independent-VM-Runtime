@@ -306,6 +306,40 @@ fn allocated_bytes(path: &Path) -> Result<u64, String> {
         .map_err(|e| e.to_string())
 }
 
+fn ksmd_cpu_ticks() -> Option<u64> {
+    let entries = fs::read_dir("/proc").ok()?;
+    let mut total = 0u64;
+    let mut found = false;
+    for entry in entries.flatten() {
+        let pid = entry.file_name().to_string_lossy().parse::<u32>().ok();
+        let Some(pid) = pid else { continue };
+        let proc_dir = PathBuf::from("/proc").join(pid.to_string());
+        let Ok(comm) = fs::read_to_string(proc_dir.join("comm")) else {
+            continue;
+        };
+        if comm.trim() != "ksmd" {
+            continue;
+        }
+        let Ok(stat) = fs::read_to_string(proc_dir.join("stat")) else {
+            continue;
+        };
+        let Some((_, tail)) = stat.rsplit_once(')') else {
+            continue;
+        };
+        let fields: Vec<_> = tail.split_whitespace().collect();
+        let (Some(user), Some(system)) = (fields.get(11), fields.get(12)) else {
+            continue;
+        };
+        let (Ok(user_ticks), Ok(system_ticks)) = (user.parse::<u64>(), system.parse::<u64>())
+        else {
+            continue;
+        };
+        total += user_ticks + system_ticks;
+        found = true;
+    }
+    found.then_some(total)
+}
+
 fn resident_file_bytes(path: &Path) -> Result<u64, String> {
     let raw = output(
         Command::new("fincore")
@@ -429,6 +463,8 @@ pub fn run_with_options_and_divergence(
 }
 
 fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), String> {
+    let ksm_counters_before = crate::inspect::ksm_status().ok();
+    let ksmd_cpu_ticks_before = ksmd_cpu_ticks();
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
         .lines()
@@ -749,6 +785,11 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .sum::<u64>();
+    let ksm_counters_after = crate::inspect::ksm_status().ok();
+    let ksmd_cpu_ticks_after = ksmd_cpu_ticks();
+    let ksmd_cpu_ticks_delta = ksmd_cpu_ticks_before
+        .zip(ksmd_cpu_ticks_after)
+        .and_then(|(before, after)| after.checked_sub(before));
     let result = json!({
         "experiment":"two-clone-cow-probe",
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
@@ -760,6 +801,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), St
         "host_mem_available_kib_at_start":available_kib,
         "host_mem_required_kib":required_available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
+        "ksm_telemetry":{"scope":"host-global counters; other KSM workloads may affect deltas","counters_before":ksm_counters_before,"counters_after":ksm_counters_after,"ksmd_cpu_ticks_before":ksmd_cpu_ticks_before,"ksmd_cpu_ticks_after":ksmd_cpu_ticks_after,"ksmd_cpu_ticks_delta":ksmd_cpu_ticks_delta},
         "baseline":{"count":count,"vms":baseline_measurements,"time_to_count_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
         "disk_storage":{"base_allocated_bytes":allocated_bytes(&base)?,"total_clone_overlay_allocated_bytes":total_overlay_allocated_bytes},

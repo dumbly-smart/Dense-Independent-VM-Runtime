@@ -19,3 +19,6 @@ This is a measurement harness, not a fabricated prediction. The host must
 have enough memory for each sequential QEMU run, and the resulting values must
 be interpreted together with the kernel/QEMU version and unmeasured KVM kernel
 metadata noted in `docs/semantic-differences.md`.
+
+When run with `--ksm`, each result also records before/after host-global KSM
+counters and `ksmd` CPU ticks. Other host workloads can affect these values.
