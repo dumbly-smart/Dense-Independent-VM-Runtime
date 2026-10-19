@@ -44,10 +44,11 @@ disk, and QEMU log artifacts in that new directory for inspection. QEMU
 processes are stopped when the experiment exits, including on error. The
 output directory is never reused or deleted automatically.
 
-The probe first boots two ordinary QEMU/KVM guests from equivalent independent
-qcow2 images and measures them after both report ready. It then boots the
-template, freezes it with QMP, migrates nonshared state to `machine-state`,
-and starts two clones. Clone NICs are hotplugged after restore so migrated NIC
+The probe first boots the requested number of ordinary QEMU/KVM guests from
+equivalent independent qcow2 images and measures them after each reports ready.
+It then boots the template, freezes it with QMP, migrates nonshared state to
+`machine-state`, and starts the same number of clones. Clone NICs are
+hotplugged after restore so migrated NIC
 state cannot duplicate the template MAC. The guest commands verify RAM and
 disk isolation, guest-visible MACs, and continued operation of B after A's
 QEMU process is killed. Results include whole-process RSS/PSS/private/shared

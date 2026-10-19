@@ -450,7 +450,8 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
 
     let mut baseline_vms = Vec::new();
     let baseline_start = Instant::now();
-    for (name, mac) in [("baseline-a", A_MAC), ("baseline-b", B_MAC)] {
+    for index in 0..count {
+        let name = format!("baseline-{index:03}");
         let disk = out.join(format!("{name}.qcow2"));
         checked(
             Command::new("qemu-img")
@@ -458,13 +459,14 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
                 .arg(&base)
                 .arg(&disk),
         )?;
+        let mac = mac_for(index);
         let vm = launch(
             &out,
-            name,
+            &name,
             &disk,
             RamBackend::Anonymous,
             &initramfs,
-            Some(mac),
+            Some(&mac),
             false,
         )?;
         let mut serial = vm.serial()?;
@@ -474,11 +476,8 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
     let baseline_elapsed_ms = baseline_start.elapsed().as_millis();
     let mut baseline_measurements = Vec::new();
     for (index, vm) in baseline_vms.iter().enumerate() {
-        let disk = out.join(format!(
-            "baseline-{}.qcow2",
-            if index == 0 { "a" } else { "b" }
-        ));
-        baseline_measurements.push(json!({"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"disk_allocated_bytes":allocated_bytes(&disk)?}));
+        let disk = out.join(format!("baseline-{index:03}.qcow2"));
+        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
     drop(baseline_vms);
 
@@ -744,7 +743,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         "host_mem_available_kib_at_start":available_kib,
         "host_mem_required_kib":required_available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
-        "baseline":{"vms":baseline_measurements,"time_to_two_ready_ms":baseline_elapsed_ms},
+        "baseline":{"count":count,"vms":baseline_measurements,"time_to_count_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
         "clones":{"count":count,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
