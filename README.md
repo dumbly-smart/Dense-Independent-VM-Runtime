@@ -65,5 +65,5 @@ The baseline command supports counts from 1 through 32 and writes
 `baseline.json`. The template restore probe supports 2 through 32 clones;
 the first two receive detailed RAM, disk, reboot, and process-kill isolation
 checks, while additional clones contribute restore and memory-map measurements.
-`--divergence-mib` controls how much of A's 32 MiB test region is dirtied
-(1--32 MiB), making repeated divergence measurements reproducible.
+`--divergence-mib` controls how much of A's 32 MiB test region is dirtied;
+`--divergence-percent` supports exact page-count sweeps from 0% to 100%.

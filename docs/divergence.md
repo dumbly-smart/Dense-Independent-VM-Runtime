@@ -1,9 +1,12 @@
 # Controlled divergence experiment
 
-`experiments/divergence/run.sh` runs the two-clone COW probe at 1, 2, 4, 8,
-16, and 32 MiB of intentional RAM divergence. Each run uses a fresh output
+`experiments/divergence/run.sh` runs the two-clone COW probe at 0%, 5%, 10%,
+25%, 50%, and 100% of the 32 MiB guest test region. Each run uses a fresh output
 directory and records the full `result.json`; the script also writes a compact
-`divergence.json` containing PSS, private RAM mapping, and isolation fields.
+`divergence.json` containing the effective percentage and exact page count,
+PSS, private RAM mapping, and isolation fields. The `--divergence-mib` option
+remains available for whole-MiB experiments; `--divergence-percent` provides
+the percentage sweep, including an undirtied 0% control.
 
 Run it after building the binary:
 

@@ -12,6 +12,8 @@ use std::time::{Duration, Instant};
 
 const RAM_MIB: u64 = 256;
 const RAM_BYTES: u64 = RAM_MIB * 1024 * 1024;
+const TEST_REGION_MIB: u32 = 32;
+const TEST_REGION_PAGES: u32 = TEST_REGION_MIB * 256;
 const A_MAC: &str = "52:54:00:d5:00:02";
 const B_MAC: &str = "52:54:00:d5:00:03";
 
@@ -399,14 +401,14 @@ pub fn run_with_count(out: &Path, count: u32) -> Result<(), String> {
 }
 
 pub fn run_with_options(out: &Path, count: u32, ksm: bool) -> Result<(), String> {
-    run_with_options_and_divergence(out, count, ksm, 32)
+    run_with_options_and_divergence(out, count, ksm, TEST_REGION_PAGES)
 }
 
 pub fn run_with_options_and_divergence(
     out: &Path,
     count: u32,
     ksm: bool,
-    divergence_mib: u32,
+    divergence_pages: u32,
 ) -> Result<(), String> {
     if !(2..=32).contains(&count) {
         return Err(
@@ -418,10 +420,15 @@ pub fn run_with_options_and_divergence(
     } else {
         None
     };
-    run_two_clone(out, count, divergence_mib)
+    if divergence_pages > TEST_REGION_PAGES {
+        return Err(format!(
+            "RAM divergence must be at most {TEST_REGION_PAGES} pages"
+        ));
+    }
+    run_two_clone(out, count, divergence_pages)
 }
 
-fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), String> {
+fn run_two_clone(out: &Path, count: u32, divergence_pages: u32) -> Result<(), String> {
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
         .lines()
@@ -653,11 +660,12 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         allocated_bytes(&overlays[1])?,
     ];
     aserial.command(
-        &format!("ram-write-mib {divergence_mib} 165"),
-        &format!("RAM-WROTE-MIB {divergence_mib} 165"),
+        &format!("ram-write-pages {divergence_pages} 165"),
+        &format!("RAM-WROTE-PAGES {divergence_pages} 165"),
     )?;
+    let a_expected_ram = if divergence_pages == 0 { 90 } else { 165 };
     let ram_isolation = initial_ok
-        && expect_value(&mut aserial, "ram-read", "RAM 165")?
+        && expect_value(&mut aserial, "ram-read", &format!("RAM {a_expected_ram}"))?
         && expect_value(&mut bserial, "ram-read", "RAM 90")?;
     let after_ram_a = measure(a.pid())?;
     let after_ram_b = measure(b.pid())?;
@@ -746,7 +754,9 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
         "kernel_version":output(Command::new("uname").arg("-r"))?.trim(),
         "guest_ram_mib":RAM_MIB,
-        "requested_ram_divergence_mib":divergence_mib,
+        "ram_divergence_pages":divergence_pages,
+        "ram_divergence_bytes":u64::from(divergence_pages) * 4096,
+        "effective_ram_divergence_percent":(u64::from(divergence_pages) * 100 + u64::from(TEST_REGION_PAGES) / 2) / u64::from(TEST_REGION_PAGES),
         "host_mem_available_kib_at_start":available_kib,
         "host_mem_required_kib":required_available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),

@@ -88,7 +88,15 @@ fn write_ram_mib(region: &mut [u8], mib: usize, value: u8) -> Result<(), &'stati
     if bytes > region.len() {
         return Err("requested RAM divergence exceeds probe region");
     }
-    for page in region[..bytes].chunks_mut(4096) {
+    write_ram_pages(region, bytes / 4096, value)
+}
+
+fn write_ram_pages(region: &mut [u8], pages: usize, value: u8) -> Result<(), &'static str> {
+    let max_pages = region.len() / 4096;
+    if pages > max_pages {
+        return Err("requested RAM divergence exceeds probe region");
+    }
+    for page in region[..pages * 4096].chunks_mut(4096) {
         page[0] = value;
     }
     Ok(())
@@ -140,6 +148,15 @@ fn main() {
                 },
                 _ => "ERROR invalid RAM write arguments".to_string(),
             },
+            ["ram-write-pages", pages, value] => {
+                match (pages.parse::<usize>(), value.parse::<u8>()) {
+                    (Ok(pages), Ok(value)) => match write_ram_pages(&mut region, pages, value) {
+                        Ok(()) => format!("RAM-WROTE-PAGES {pages} {value}"),
+                        Err(error) => format!("ERROR {error}"),
+                    },
+                    _ => "ERROR invalid RAM write arguments".to_string(),
+                }
+            }
             ["disk-read"] => match disk_byte() {
                 Ok(value) => format!("DISK {value}"),
                 Err(error) => format!("ERROR disk read: {error}"),

@@ -6,7 +6,7 @@ pub enum Command {
         out: PathBuf,
         count: u32,
         ksm: bool,
-        divergence_mib: u32,
+        divergence_pages: u32,
     },
     BenchmarkBaseline {
         out: PathBuf,
@@ -60,7 +60,7 @@ where
     let mut out = None;
     let mut count = 2;
     let mut ksm = false;
-    let mut divergence_mib = 32;
+    let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--out" => out = Some(PathBuf::from(value(args, "--out")?)),
@@ -74,12 +74,24 @@ where
             }
             "--ksm" => ksm = true,
             "--divergence-mib" => {
-                divergence_mib = value(args, "--divergence-mib")?
-                    .parse()
-                    .map_err(|_| "--divergence-mib must be an integer from 1 to 32".to_string())?;
-                if !(1..=32).contains(&divergence_mib) {
-                    return Err("--divergence-mib must be an integer from 1 to 32".to_string());
+                let divergence_mib = value(args, "--divergence-mib")?
+                    .parse::<u32>()
+                    .map_err(|_| "--divergence-mib must be an integer from 0 to 32".to_string())?;
+                if divergence_mib > 32 {
+                    return Err("--divergence-mib must be an integer from 0 to 32".to_string());
                 }
+                divergence_pages = divergence_mib * 256;
+            }
+            "--divergence-percent" => {
+                let percent = value(args, "--divergence-percent")?
+                    .parse::<u32>()
+                    .map_err(|_| {
+                        "--divergence-percent must be an integer from 0 to 100".to_string()
+                    })?;
+                if percent > 100 {
+                    return Err("--divergence-percent must be an integer from 0 to 100".to_string());
+                }
+                divergence_pages = (32 * 1024 / 4 * percent + 50) / 100;
             }
             flag => return Err(format!("unknown option {flag}")),
         }
@@ -88,7 +100,7 @@ where
         out: out.ok_or("--out is required")?,
         count,
         ksm,
-        divergence_mib,
+        divergence_pages,
     })
 }
 

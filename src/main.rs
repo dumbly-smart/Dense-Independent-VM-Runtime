@@ -13,8 +13,8 @@ fn main() {
             out,
             count,
             ksm,
-            divergence_mib,
-        } => densevm::probe::run_with_options_and_divergence(&out, count, ksm, divergence_mib),
+            divergence_pages,
+        } => densevm::probe::run_with_options_and_divergence(&out, count, ksm, divergence_pages),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
         Command::MemoryMap { pid, path } => {

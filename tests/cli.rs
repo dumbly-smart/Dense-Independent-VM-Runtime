@@ -9,7 +9,7 @@ fn parses_probe_with_count_and_output() {
             out: PathBuf::from("/tmp/run"),
             count: 8,
             ksm: false,
-            divergence_mib: 32
+            divergence_pages: 8192
         }
     );
     assert_eq!(
@@ -26,7 +26,7 @@ fn parses_probe_with_count_and_output() {
             out: PathBuf::from("/tmp/run"),
             count: 2,
             ksm: false,
-            divergence_mib: 8
+            divergence_pages: 2048
         }
     );
 }
@@ -51,7 +51,7 @@ fn parses_inspection_commands() {
 #[test]
 fn rejects_unknown_commands_and_invalid_counts() {
     assert!(parse_args(["densevm", "unknown"]).is_err());
-    for value in ["0", "33", "not-a-number"] {
+    for value in ["33", "not-a-number"] {
         assert!(
             parse_args([
                 "densevm",
@@ -65,6 +65,17 @@ fn rejects_unknown_commands_and_invalid_counts() {
             "accepted invalid divergence size {value}"
         );
     }
+    assert!(
+        parse_args([
+            "densevm",
+            "probe",
+            "--out",
+            "/tmp/run",
+            "--divergence-percent",
+            "101"
+        ])
+        .is_err()
+    );
     assert!(
         parse_args([
             "densevm",
