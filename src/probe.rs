@@ -430,9 +430,11 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         .ok_or("MemAvailable missing from /proc/meminfo")?
         .parse()
         .map_err(|e| format!("invalid MemAvailable: {e}"))?;
-    if available_kib < 2 * 1024 * 1024 {
+    let estimated_clone_budget_kib = (u64::from(count) * RAM_MIB + 512) * 1024;
+    let required_available_kib = estimated_clone_budget_kib.max(2 * 1024 * 1024);
+    if available_kib < required_available_kib {
         return Err(format!(
-            "need at least 2 GiB MemAvailable for the probe, found {available_kib} KiB"
+            "need at least {required_available_kib} KiB MemAvailable for {count} clones, found {available_kib} KiB"
         ));
     }
     fs::create_dir(out).map_err(|e| format!("create new output directory: {e}"))?;
@@ -740,6 +742,7 @@ fn run_two_clone(out: &Path, count: u32, divergence_mib: u32) -> Result<(), Stri
         "guest_ram_mib":RAM_MIB,
         "requested_ram_divergence_mib":divergence_mib,
         "host_mem_available_kib_at_start":available_kib,
+        "host_mem_required_kib":required_available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "baseline":{"vms":baseline_measurements,"time_to_two_ready_ms":baseline_elapsed_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
