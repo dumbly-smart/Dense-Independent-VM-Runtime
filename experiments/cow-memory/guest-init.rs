@@ -10,6 +10,8 @@ use std::time::Duration;
 unsafe extern "C" {
     fn mount(source: *const c_char, target: *const c_char, kind: *const c_char, flags: c_ulong, data: *const c_void) -> c_int;
     fn syscall(number: c_long, ...) -> c_long;
+    fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
+    fn sethostname(name: *const c_char, len: usize) -> c_int;
 }
 
 fn load_module(name: &str) {
@@ -69,18 +71,39 @@ fn set_identity(value: &str) -> std::io::Result<()> {
     }
     fs::create_dir_all("/etc")?;
     fs::write("/etc/machine-id", format!("{value}\n"))?;
-    fs::write("/etc/hostname", format!("densevm-{}\n", &value[..8]))?;
-    // This is a deterministic per-clone seed for the probe, not a claim of
-    // cryptographic entropy. A real distro guest must reseed its RNG.
-    fs::write("/etc/entropy-seed", value.as_bytes())?;
+    let hostname = format!("densevm-{}", &value[..12]);
+    fs::write("/etc/hostname", format!("{hostname}\n"))?;
+    if unsafe { sethostname(hostname.as_ptr().cast(), hostname.len()) } != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
     Ok(())
 }
 
-fn read_identity() -> std::io::Result<String> {
+fn reseed(value: &str) -> std::io::Result<()> {
+    if value.len() != 64 || !value.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "expected 32 bytes of host entropy"));
+    }
+    // Linux UAPI linux/random.h: rand_pool_info and RNDADDENTROPY,
+    // followed by RNDRESEEDCRNG to force a new CRNG key before networking.
+    #[repr(C)]
+    struct Pool { entropy_count: c_int, size: c_int, bytes: [u8; 32] }
+    let mut pool = Pool { entropy_count: 256, size: 32, bytes: [0; 32] };
+    for (i, byte) in pool.bytes.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&value[i*2..i*2+2], 16).unwrap();
+    }
+    let random = OpenOptions::new().read(true).write(true).open("/dev/random")?;
+    if unsafe { ioctl(random.as_raw_fd(), 0x40085203, &pool as *const Pool) } != 0
+        || unsafe { ioctl(random.as_raw_fd(), 0x5207, 0) } != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+fn read_identity(prepared: bool) -> std::io::Result<String> {
     let machine_id = fs::read_to_string("/etc/machine-id")?.trim().to_string();
     let hostname = fs::read_to_string("/etc/hostname")?.trim().to_string();
-    let entropy = fs::read_to_string("/etc/entropy-seed")?;
-    Ok(format!("IDENTITY {machine_id} {hostname} {entropy}"))
+    let status = if prepared { "RNG-RESEEDED" } else { "UNPREPARED" };
+    Ok(format!("IDENTITY {machine_id} {hostname} {status}"))
 }
 
 fn write_ram_mib(region: &mut [u8], mib: usize, value: u8) -> Result<(), &'static str> {
@@ -124,6 +147,7 @@ fn main() {
         page[0] = 0x5a;
     }
     writeln!(serial_out, "DENSEVM READY").unwrap();
+    let mut prepared = false;
     loop {
         let mut line = String::new();
         if reader.read_line(&mut line).unwrap_or(0) == 0 {
@@ -176,11 +200,16 @@ fn main() {
                 Err(_) => "ERROR invalid byte".to_string(),
             },
             ["reboot"] => reboot_guest(),
+            ["entropy-add", value] => match reseed(value) {
+                Ok(()) => { prepared = true; "RNG-RESEEDED".to_string() },
+                Err(error) => format!("ERROR reseed: {error}"),
+            },
+            ["identity-set", _] if !prepared => "ERROR reseed required before identity preparation".to_string(),
             ["identity-set", value] => match set_identity(value) {
                 Ok(()) => format!("IDENTITY-SET {value}"),
                 Err(error) => format!("ERROR identity set: {error}"),
             },
-            ["identity-read"] => match read_identity() {
+            ["identity-read"] => match read_identity(prepared) {
                 Ok(value) => value,
                 Err(error) => format!("ERROR identity read: {error}"),
             },

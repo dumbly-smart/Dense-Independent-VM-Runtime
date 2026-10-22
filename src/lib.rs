@@ -1,5 +1,6 @@
 pub mod capabilities;
 pub mod cli;
+pub mod identity;
 pub mod inspect;
 pub mod ksm;
 pub mod metrics;

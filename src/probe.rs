@@ -1,9 +1,10 @@
+use crate::identity::CloneIdentity;
 use crate::metrics::{MemoryTotals, parse_smaps_for_path, parse_smaps_rollup};
 use crate::qmp::Qmp;
 use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -14,8 +15,6 @@ const RAM_MIB: u64 = 256;
 const RAM_BYTES: u64 = RAM_MIB * 1024 * 1024;
 const TEST_REGION_MIB: u32 = 32;
 const TEST_REGION_PAGES: u32 = TEST_REGION_MIB * 256;
-const A_MAC: &str = "52:54:00:d5:00:02";
-const B_MAC: &str = "52:54:00:d5:00:03";
 
 struct Vm {
     child: Child,
@@ -530,6 +529,22 @@ fn run_two_clone(
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
     crate::capabilities::require_template_support(&host)?;
+    let clone_identities = (0..count)
+        .map(|_| CloneIdentity::generate())
+        .collect::<Result<Vec<_>, _>>()?;
+    let ids = clone_identities
+        .iter()
+        .map(|id| &id.machine_id)
+        .collect::<std::collections::HashSet<_>>();
+    let macs = clone_identities
+        .iter()
+        .map(|id| &id.mac)
+        .collect::<std::collections::HashSet<_>>();
+    if ids.len() != count as usize || macs.len() != count as usize {
+        return Err(
+            "host RNG returned duplicate clone identities; refusing network attachment".into(),
+        );
+    }
     let ksmd_cpu_ticks_before = ksmd_cpu_ticks();
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
@@ -546,7 +561,10 @@ fn run_two_clone(
             "need at least {required_available_kib} KiB MemAvailable for {count} clones, found {available_kib} KiB"
         ));
     }
-    fs::create_dir(out).map_err(|e| format!("create new output directory: {e}"))?;
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(out)
+        .map_err(|e| format!("create new output directory: {e}"))?;
     let out = out.canonicalize().map_err(|e| e.to_string())?;
     let initramfs = build_initramfs(&out)?;
     let base = out.join("base.qcow2");
@@ -568,7 +586,7 @@ fn run_two_clone(
                 .arg(&base)
                 .arg(&disk),
         )?;
-        let mac = mac_for(index);
+        let mac = CloneIdentity::generate()?.mac;
         let vm = launch(
             &out,
             &name,
@@ -714,8 +732,6 @@ fn run_two_clone(
         .to_string();
     let mut vmgenid_unique =
         a_vmgenid != b_vmgenid && a_vmgenid != template_vmgenid && b_vmgenid != template_vmgenid;
-    add_nic(&mut aq, A_MAC)?;
-    add_nic(&mut bq, B_MAC)?;
     let mut extra_clones = Vec::new();
     for index in 2..count {
         let name = format!("clone-{index:03}");
@@ -733,12 +749,10 @@ fn run_two_clone(
         )?;
         let mut qmp = vm.qmp()?;
         let migration = restore(&mut qmp, &state)?;
-        let mac = mac_for(index);
-        add_nic(&mut qmp, &mac)?;
-        let identity = identity_for(index);
+        let identity = &clone_identities[index as usize];
         let mut serial = vm.serial()?;
-        serial.command(&format!("identity-set {identity}"), "IDENTITY-SET ")?;
-        let identity_guest = serial.command("identity-read", "IDENTITY ")?;
+        let identity_guest = prepare_identity(&mut serial, identity)?;
+        add_nic(&mut qmp, &identity.mac)?;
         let mac_guest = serial.command("mac-read", "MAC ")?;
         let vmgenid = qmp.execute("query-vm-generation-id", None)?["guid"]
             .as_str()
@@ -759,12 +773,12 @@ fn run_two_clone(
     let mut bserial = b.serial()?;
     aserial.command("ping", "PONG")?;
     bserial.command("ping", "PONG")?;
-    let a_identity = identity_for(0);
-    let b_identity = identity_for(1);
-    aserial.command(&format!("identity-set {a_identity}"), "IDENTITY-SET ")?;
-    bserial.command(&format!("identity-set {b_identity}"), "IDENTITY-SET ")?;
-    let a_identity_guest = aserial.command("identity-read", "IDENTITY ")?;
-    let b_identity_guest = bserial.command("identity-read", "IDENTITY ")?;
+    let a_identity = &clone_identities[0].machine_id;
+    let b_identity = &clone_identities[1].machine_id;
+    let a_identity_guest = prepare_identity(&mut aserial, &clone_identities[0])?;
+    let b_identity_guest = prepare_identity(&mut bserial, &clone_identities[1])?;
+    add_nic(&mut aq, &clone_identities[0].mac)?;
+    add_nic(&mut bq, &clone_identities[1].mac)?;
     let mut guest_identities = vec![a_identity_guest.clone(), b_identity_guest.clone()];
     let mut identity_unique = identity_matches(&a_identity_guest, &a_identity)
         && identity_matches(&b_identity_guest, &b_identity)
@@ -775,7 +789,7 @@ fn run_two_clone(
         template_vmgenid.clone(),
     ];
     for (_, _, _, index, identity_guest, _, vmgenid) in &extra_clones {
-        let expected_identity = identity_for(*index);
+        let expected_identity = &clone_identities[*index as usize].machine_id;
         identity_unique &= identity_matches(identity_guest, &expected_identity)
             && !guest_identities.contains(identity_guest);
         guest_identities.push(identity_guest.clone());
@@ -891,7 +905,8 @@ fn run_two_clone(
     ];
     let ram_hash_after = sha256(&ram)?;
     let template_ram_unchanged = ram_hash_before == ram_hash_after;
-    let mac_unique = a_mac_guest == format!("MAC {A_MAC}") && b_mac_guest == format!("MAC {B_MAC}");
+    let mac_unique = a_mac_guest == format!("MAC {}", clone_identities[0].mac)
+        && b_mac_guest == format!("MAC {}", clone_identities[1].mac);
     a.child.kill().map_err(|e| e.to_string())?;
     a.child.wait().map_err(|e| e.to_string())?;
     let b_survives_a_kill = expect_value(&mut bserial, "ping", "PONG")?;
@@ -917,7 +932,7 @@ fn run_two_clone(
         .collect::<Result<Vec<_>, String>>()?;
     let mut all_macs_unique = mac_unique;
     for (_, _, _, index, _, mac_guest, _) in &extra_clones {
-        all_macs_unique &= mac_guest == &format!("MAC {}", mac_for(*index));
+        all_macs_unique &= mac_guest == &format!("MAC {}", clone_identities[*index as usize].mac);
     }
     let total_overlay_allocated_bytes = overlays
         .iter()
@@ -975,20 +990,24 @@ fn run_two_clone(
     Ok(())
 }
 
-fn mac_for(index: u32) -> String {
-    format!(
-        "52:54:00:d5:{:02x}:{:02x}",
-        (index / 256) & 0xff,
-        index & 0xff
-    )
-}
-
-fn identity_for(index: u32) -> String {
-    format!("{:032x}", u64::from(index) + 1)
+fn prepare_identity(serial: &mut Serial, identity: &CloneIdentity) -> Result<String, String> {
+    serial.command(
+        &format!("entropy-add {}", identity.entropy_hex()),
+        "RNG-RESEEDED",
+    )?;
+    serial.command(
+        &format!("identity-set {}", identity.machine_id),
+        "IDENTITY-SET ",
+    )?;
+    serial.command("identity-read", "IDENTITY ")
 }
 
 fn identity_matches(reply: &str, identity: &str) -> bool {
-    reply == format!("IDENTITY {identity} densevm-{} {identity}", &identity[..8])
+    reply
+        == format!(
+            "IDENTITY {identity} densevm-{} RNG-RESEEDED",
+            &identity[..12]
+        )
 }
 
 pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
@@ -1031,7 +1050,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
                 .arg(&base)
                 .arg(&disk),
         )?;
-        let mac = mac_for(index);
+        let mac = CloneIdentity::generate()?.mac;
         let vm = launch(
             &out,
             &name,

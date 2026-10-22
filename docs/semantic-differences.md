@@ -1,5 +1,17 @@
 # Semantic status after the first probe
 
+Update, 2026-10-22: the current synthetic guest receives a fresh host-kernel
+entropy payload per clone, credits it with Linux `RNDADDENTROPY`, and forces
+CRNG reseeding with `RNDRESEEDCRNG` before identity preparation and NIC hotplug.
+The three-clone run on QEMU 11.1.2 / Linux 7.2.11 completed this protocol.
+Machine IDs and locally administered unicast MACs are random per run and checked
+for collisions within the clone batch. The kernel hostname is updated too.
+Entropy payloads are excluded from result metadata; control sockets reside in
+a mode-0700 output directory. This proves the explicit synthetic-kernel reseed
+path, not reseeding of every existing userspace PRNG or application secret.
+SSH host keys, distribution service caches, and DHCP identity still need their
+own guest integration. The historical table below describes the original run.
+
 `YES` below means the named behavior was observed in the synthetic two-clone
 experiment. `UNKNOWN` means the behavior remains untested for an ordinary
 Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
