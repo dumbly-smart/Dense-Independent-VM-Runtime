@@ -1,6 +1,10 @@
 #!/bin/sh
 # Build an ext4-backed Alpine KVM test guest without mounting or chrooting.
 set -eu
+if [ -z "${FAKEROOTKEY:-}" ]; then
+    command -v fakeroot >/dev/null
+    exec fakeroot -- sh "$0" "$@"
+fi
 archive=$(realpath "${1:?usage: prepare.sh ROOTFS_TAR SHA256 NEW_OUTPUT_DIR}")
 checksum=${2:?expected SHA256 required}
 out=${3:?new output directory required}
@@ -16,7 +20,7 @@ out=$(CDPATH= cd -- "$out" && pwd)
 root="$out/root"
 boot="$out/bootroot"
 mkdir "$root"
-tar --extract --gzip --file "$archive" --directory "$root" --no-same-owner
+tar --extract --gzip --file "$archive" --directory "$root" --same-owner
 test -f "$root/etc/alpine-release"
 mkdir -p "$root/modules" "$root/var/lib/densevm" "$root/proc" "$root/sys" "$root/dev" "$root/etc/crontabs"
 for module in failover net_failover virtio_net; do
@@ -34,6 +38,7 @@ chmod 755 "$boot/init"
 cp /boot/vmlinuz-linux "$out/kernel"
 truncate -s 256M "$out/root.raw"
 mkfs.ext4 -q -F -m 0 -d "$root" "$out/root.raw"
+debugfs -R 'stat /etc/passwd' "$out/root.raw" 2>/dev/null | grep -Eq 'User: +0 +Group: +0'
 qemu-img convert -f raw -O qcow2 "$out/root.raw" "$out/disk.qcow2"
 kernel_hash=$(sha256sum "$out/kernel")
 initramfs_hash=$(sha256sum "$out/initramfs.cpio")

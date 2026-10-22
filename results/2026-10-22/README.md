@@ -39,3 +39,10 @@ Temporary paths can disappear; the checked-in preparation scripts, source
 archive checksum, command lines, and JSON data are the reproducibility record.
 The KSM comparison was unavailable: sysfs `run` is owned by root and the
 current account cannot enable it. Its value remained 0.
+
+Filesystem fidelity correction: the first Alpine fixture above extracted
+files as host UID 1000, which `mkfs.ext4 -d` preserved. Its RAM/disk isolation
+results remain valid, but it is not evidence of faithful Unix file ownership.
+The builder now runs under fakeroot, preserves archive UID/GID metadata, and
+checks `/etc/passwd` is root:root in the generated ext4 image. The subsequent
+`alpine-owned-2.json` run uses the corrected fixture.
