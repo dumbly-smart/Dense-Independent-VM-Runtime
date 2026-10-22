@@ -35,30 +35,107 @@ impl KsmSnapshot {
             sleep_millisecs: read_value(root, "sleep_millisecs")?,
         })
     }
-
-    fn restore_to(&self, root: &Path) -> Result<(), String> {
-        write_value(root, "pages_to_scan", self.pages_to_scan)?;
-        write_value(root, "sleep_millisecs", self.sleep_millisecs)?;
-        write_value(root, "run", self.run)
-    }
 }
 
 pub struct KsmGuard {
     root: PathBuf,
     snapshot: KsmSnapshot,
+    changed: bool,
 }
 
 impl KsmGuard {
     pub fn enable() -> Result<Self, String> {
-        let root = PathBuf::from(KSM_ROOT);
+        Self::enable_at(PathBuf::from(KSM_ROOT))
+    }
+
+    fn enable_at(root: PathBuf) -> Result<Self, String> {
         let snapshot = KsmSnapshot::read_from(&root)?;
-        write_value(&root, "run", 1)?;
-        Ok(Self { root, snapshot })
+        if snapshot.run > 1 {
+            return Err("KSM is unmerging pages; refusing to interrupt host operation".into());
+        }
+        let mut guard = Self {
+            root,
+            snapshot,
+            changed: false,
+        };
+        if snapshot.run == 0 {
+            // Arm rollback before the write, including partial-write failures.
+            guard.changed = true;
+            write_value(&guard.root, "run", 1)?;
+            if read_value(&guard.root, "run")? != 1 {
+                return Err("KSM did not enable".into());
+            }
+        }
+        Ok(guard)
+    }
+
+    pub fn restore(&mut self) -> Result<(), String> {
+        if self.changed {
+            write_value(&self.root, "run", self.snapshot.run)?;
+            if read_value(&self.root, "run")? != self.snapshot.run {
+                return Err("KSM restoration verification failed".into());
+            }
+            self.changed = false;
+        }
+        Ok(())
     }
 }
 
 impl Drop for KsmGuard {
     fn drop(&mut self) {
-        let _ = self.snapshot.restore_to(&self.root);
+        if let Err(error) = self.restore() {
+            eprintln!("densevm: KSM restoration failed: {error}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> PathBuf {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("densevm-ksm-test-{}-{stamp}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        for (name, value) in [
+            ("run", "0"),
+            ("pages_to_scan", "100"),
+            ("sleep_millisecs", "20"),
+        ] {
+            fs::write(root.join(name), value).unwrap();
+        }
+        root
+    }
+
+    #[test]
+    fn guard_restores_only_its_own_change_and_reports_restore_failure() {
+        let root = fixture();
+        let mut guard = KsmGuard::enable_at(root.clone()).unwrap();
+        assert_eq!(read_value(&root, "run").unwrap(), 1);
+        fs::write(root.join("pages_to_scan"), "222").unwrap();
+        guard.restore().unwrap();
+        assert_eq!(read_value(&root, "run").unwrap(), 0);
+        assert_eq!(read_value(&root, "pages_to_scan").unwrap(), 222);
+        drop(guard);
+        let mut guard = KsmGuard::enable_at(root.clone()).unwrap();
+        fs::remove_file(root.join("run")).unwrap();
+        fs::create_dir(root.join("run")).unwrap();
+        assert!(guard.restore().is_err());
+        fs::remove_dir(root.join("run")).unwrap();
+        drop(guard);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn refuses_to_interrupt_a_host_unmerge_operation() {
+        let root = fixture();
+        fs::write(root.join("run"), "2").unwrap();
+        assert!(KsmGuard::enable_at(root.clone()).is_err());
+        assert_eq!(read_value(&root, "run").unwrap(), 2);
+        fs::remove_dir_all(root).unwrap();
     }
 }

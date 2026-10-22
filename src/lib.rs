@@ -2,6 +2,7 @@ pub mod capabilities;
 pub mod cli;
 pub mod identity;
 pub mod inspect;
+pub mod interrupt;
 pub mod ksm;
 pub mod metrics;
 pub mod probe;

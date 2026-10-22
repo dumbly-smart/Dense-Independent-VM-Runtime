@@ -81,6 +81,7 @@ impl Serial {
     fn expect(&mut self, wanted: &str, timeout: Duration) -> Result<String, String> {
         let deadline = Instant::now() + timeout;
         loop {
+            crate::interrupt::check()?;
             if Instant::now() >= deadline {
                 return Err(format!("serial timeout waiting for {wanted}"));
             }
@@ -105,6 +106,7 @@ impl Serial {
         }
     }
     fn command(&mut self, command: &str, wanted: &str) -> Result<String, String> {
+        crate::interrupt::check()?;
         writeln!(self.writer, "{command}").map_err(|e| format!("serial write: {e}"))?;
         self.writer.flush().map_err(|e| e.to_string())?;
         self.expect(wanted, Duration::from_secs(12))
@@ -530,17 +532,21 @@ pub fn run_experiment(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
         );
     }
-    let _ksm_guard = if ksm {
-        Some(crate::ksm::KsmGuard::enable()?)
-    } else {
-        None
-    };
     if divergence_pages > TEST_REGION_PAGES {
         return Err(format!(
             "RAM divergence must be at most {TEST_REGION_PAGES} pages"
         ));
     }
-    run_two_clone(out, count, divergence_pages, park_idle, divergence_all)
+    let mut ksm_guard = if ksm {
+        Some(crate::ksm::KsmGuard::enable()?)
+    } else {
+        None
+    };
+    let result = run_two_clone(out, count, divergence_pages, park_idle, divergence_all);
+    if let Some(guard) = &mut ksm_guard {
+        guard.restore()?;
+    }
+    result
 }
 
 fn run_two_clone(

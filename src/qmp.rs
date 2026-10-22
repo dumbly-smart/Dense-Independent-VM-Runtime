@@ -34,6 +34,7 @@ impl Qmp {
     }
 
     fn read_json(&mut self) -> Result<Value, String> {
+        crate::interrupt::check()?;
         let mut line = String::new();
         let length = self
             .reader

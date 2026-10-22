@@ -12,6 +12,15 @@ path, not reseeding of every existing userspace PRNG or application secret.
 SSH host keys, distribution service caches, and DHCP identity still need their
 own guest integration. The historical table below describes the original run.
 
+KSM is opt-in and host-global. DenseVM changes only `run`, restores its own
+change with readback verification, preserves concurrent changes to tuning
+knobs, and refuses to interrupt `run=2` (host unmerging). SIGINT and SIGTERM
+are handled as cancellation errors so VM/setting guards can clean up; SIGKILL
+and host crashes cannot run cleanup. Restore errors are reported. Restoring
+`run=0` stops scanning but does not undo unrelated merges that occurred while
+the scanner ran. KSM can introduce cross-VM content/timing side channels and
+CPU scanning cost; use only within an appropriate trust boundary.
+
 `YES` below means the named behavior was observed in the synthetic two-clone
 experiment. `UNKNOWN` means the behavior remains untested for an ordinary
 Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.

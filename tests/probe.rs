@@ -68,3 +68,61 @@ fn two_clones_resume_and_isolate_ram_and_disk() {
     assert!(a_private_after >= a_private_before + 24 * 1024);
     assert!(b_private_after < b_private_before + 4096);
 }
+
+#[test]
+#[ignore = "requires local KVM and QEMU; sends SIGTERM only to its own supervisor"]
+fn interruption_reaps_owned_qemu_processes() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out =
+        std::env::temp_dir().join(format!("densevm-interrupt-{}-{stamp}", std::process::id()));
+    let mut child = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args(["probe", "--out", out.to_str().unwrap()])
+        .spawn()
+        .unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    while !out.join("baseline-000.qmp.sock").exists() {
+        assert!(
+            child.try_wait().unwrap().is_none(),
+            "probe exited before child was launched"
+        );
+        if std::time::Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("QEMU did not start");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(
+        Command::new("kill")
+            .args(["-TERM", &child.id().to_string()])
+            .status()
+            .unwrap()
+            .success()
+    );
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            assert!(!status.success());
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("interrupted probe failed to exit");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    for entry in std::fs::read_dir("/proc").unwrap().flatten() {
+        if let Ok(bytes) = std::fs::read(entry.path().join("cmdline")) {
+            let command = String::from_utf8_lossy(&bytes);
+            let program = command.split('\0').next().unwrap_or("");
+            assert!(
+                !(program.ends_with("qemu-system-x86_64")
+                    && command.contains(out.to_str().unwrap())),
+                "leaked QEMU: {command}"
+            );
+        }
+    }
+}

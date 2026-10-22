@@ -1,6 +1,10 @@
 use densevm::cli::{Command, parse_args};
 
 fn main() {
+    if let Err(error) = densevm::interrupt::install() {
+        eprintln!("densevm: {error}");
+        std::process::exit(1);
+    }
     let command = match parse_args(std::env::args()) {
         Ok(command) => command,
         Err(error) => {
