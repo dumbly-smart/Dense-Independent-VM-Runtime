@@ -38,3 +38,29 @@ fn sums_only_the_template_ram_file_mappings() {
     );
     assert!(parse_smaps_for_path(sample, "/tmp/absent.img").is_err());
 }
+
+#[test]
+fn supports_paths_with_spaces_and_rejects_shared_or_readonly_clone_mappings() {
+    let sample = "1000-2000 rw-p 00000000 00:00 0 /tmp/a b.img\nRss: 4 kB\nPss: 4 kB\nShared_Clean: 0 kB\nShared_Dirty: 0 kB\nPrivate_Clean: 0 kB\nPrivate_Dirty: 4 kB\n";
+    assert_eq!(
+        parse_smaps_for_path(sample, "/tmp/a b.img")
+            .unwrap()
+            .pss_kib,
+        4
+    );
+    assert!(densevm::metrics::verify_private_ram_mapping(sample, "/tmp/a b.img").is_ok());
+    assert!(
+        densevm::metrics::verify_private_ram_mapping(
+            &sample.replace("rw-p", "rw-s"),
+            "/tmp/a b.img"
+        )
+        .is_err()
+    );
+    assert!(
+        densevm::metrics::verify_private_ram_mapping(
+            &sample.replace("rw-p", "r--p"),
+            "/tmp/a b.img"
+        )
+        .is_err()
+    );
+}

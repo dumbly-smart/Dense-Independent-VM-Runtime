@@ -76,7 +76,7 @@ pub fn parse_smaps_for_path(input: &str, path: &str) -> Result<MemoryTotals, Str
                 totals.add(parse_smaps_rollup(&section)?);
                 section.clear();
             }
-            selected = line.split_whitespace().last() == Some(path);
+            selected = mapping_path(line) == Some(path);
             found |= selected;
         } else if selected {
             section.push_str(line);
@@ -91,4 +91,30 @@ pub fn parse_smaps_for_path(input: &str, path: &str) -> Result<MemoryTotals, Str
     } else {
         Err(format!("no smaps mapping for {path}"))
     }
+}
+
+fn mapping_path(line: &str) -> Option<&str> {
+    let mut rest = line;
+    for _ in 0..5 {
+        rest = rest.trim_start();
+        rest = &rest[rest.find(char::is_whitespace)?..];
+    }
+    Some(rest.trim_start())
+}
+
+pub fn verify_private_ram_mapping(input: &str, path: &str) -> Result<(), String> {
+    let mut found = false;
+    for line in input
+        .lines()
+        .filter(|line| mapping_path(line) == Some(path))
+    {
+        found = true;
+        if line.split_whitespace().nth(1) != Some("rw-p") {
+            return Err(format!("clone RAM must be writable MAP_PRIVATE: {line}"));
+        }
+    }
+    if !found {
+        return Err(format!("no smaps mapping for {path}"));
+    }
+    Ok(())
 }
