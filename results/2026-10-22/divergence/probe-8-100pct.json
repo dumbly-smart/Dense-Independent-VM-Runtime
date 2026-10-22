@@ -1,0 +1,1738 @@
+{
+  "b_survives_a_kill": true,
+  "b_survives_guest_reboot": true,
+  "backing_verified": true,
+  "baseline": {
+    "count": 8,
+    "idle_cpu_sample_interval_ms": 1000,
+    "time_to_count_ready_ms": 6474,
+    "vms": [
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 3,
+        "index": 0,
+        "memory": {
+          "private_clean_kib": 28,
+          "private_dirty_kib": 203144,
+          "pss_kib": 205249,
+          "rss_kib": 228620,
+          "shared_clean_kib": 25448,
+          "shared_dirty_kib": 0
+        },
+        "pid": 81825,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-000.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=f2:2f:c1:08:42:c7,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-000.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-000.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 1,
+        "index": 1,
+        "memory": {
+          "private_clean_kib": 28,
+          "private_dirty_kib": 203228,
+          "pss_kib": 205398,
+          "rss_kib": 228504,
+          "shared_clean_kib": 25248,
+          "shared_dirty_kib": 0
+        },
+        "pid": 82101,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-001.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=9a:ec:15:2b:bd:6c,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-001.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-001.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 3,
+        "index": 2,
+        "memory": {
+          "private_clean_kib": 24,
+          "private_dirty_kib": 203256,
+          "pss_kib": 205303,
+          "rss_kib": 228560,
+          "shared_clean_kib": 25280,
+          "shared_dirty_kib": 0
+        },
+        "pid": 82215,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-002.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=36:d9:90:db:69:51,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-002.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-002.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 2,
+        "index": 3,
+        "memory": {
+          "private_clean_kib": 28,
+          "private_dirty_kib": 203112,
+          "pss_kib": 205201,
+          "rss_kib": 228388,
+          "shared_clean_kib": 25248,
+          "shared_dirty_kib": 0
+        },
+        "pid": 82281,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-003.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=d6:51:8f:74:91:fa,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-003.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-003.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 3,
+        "index": 4,
+        "memory": {
+          "private_clean_kib": 20,
+          "private_dirty_kib": 190984,
+          "pss_kib": 193033,
+          "rss_kib": 216276,
+          "shared_clean_kib": 25272,
+          "shared_dirty_kib": 0
+        },
+        "pid": 82431,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-004.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=02:79:63:71:8e:73,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-004.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-004.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 1,
+        "index": 5,
+        "memory": {
+          "private_clean_kib": 20,
+          "private_dirty_kib": 199040,
+          "pss_kib": 201102,
+          "rss_kib": 224380,
+          "shared_clean_kib": 25320,
+          "shared_dirty_kib": 0
+        },
+        "pid": 82502,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-005.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=22:b0:37:90:ed:24,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-005.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-005.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 0,
+        "index": 6,
+        "memory": {
+          "private_clean_kib": 100,
+          "private_dirty_kib": 197756,
+          "pss_kib": 199993,
+          "rss_kib": 223192,
+          "shared_clean_kib": 25336,
+          "shared_dirty_kib": 0
+        },
+        "pid": 82772,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-006.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=f6:6e:2c:d8:ea:f8,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-006.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-006.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "disk_allocated_bytes": 200704,
+        "idle_cpu_ticks": 3,
+        "index": 7,
+        "memory": {
+          "private_clean_kib": 20,
+          "private_dirty_kib": 197856,
+          "pss_kib": 199920,
+          "rss_kib": 223212,
+          "shared_clean_kib": 25336,
+          "shared_dirty_kib": 0
+        },
+        "pid": 83161,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-007.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=ce:1e:82:7e:18:3a,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-007.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/baseline-007.qmp.sock,server=on,wait=off"
+        ]
+      }
+    ]
+  },
+  "clones": {
+    "a": {
+      "after_ram_write_memory": {
+        "private_clean_kib": 404,
+        "private_dirty_kib": 68172,
+        "pss_kib": 73724,
+        "rss_kib": 118184,
+        "shared_clean_kib": 49608,
+        "shared_dirty_kib": 0
+      },
+      "after_ram_write_ram_mapping": {
+        "private_clean_kib": 380,
+        "private_dirty_kib": 35352,
+        "pss_kib": 39010,
+        "rss_kib": 61472,
+        "shared_clean_kib": 25740,
+        "shared_dirty_kib": 0
+      },
+      "identity_guest": "IDENTITY 86dd977f43d2fdc73196ad32f1e02178 densevm-86dd977f43d2 RNG-RESEEDED",
+      "idle_cpu_ticks": 3,
+      "mac_guest": "MAC 3e:bd:92:3c:3b:78",
+      "memory": {
+        "private_clean_kib": 344,
+        "private_dirty_kib": 35312,
+        "pss_kib": 40835,
+        "rss_kib": 85500,
+        "shared_clean_kib": 49844,
+        "shared_dirty_kib": 0
+      },
+      "migration": {
+        "status": "completed"
+      },
+      "overlay_after_full_write_allocated_bytes": 67379200,
+      "overlay_final_allocated_bytes": 67379200,
+      "overlay_initial_allocated_bytes": 200704,
+      "pid": 83791,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-object",
+        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+        "-machine",
+        "memory-backend=ram",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-000.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-000.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-000.qmp.sock,server=on,wait=off",
+        "-incoming",
+        "defer"
+      ],
+      "ram_mapping": {
+        "private_clean_kib": 320,
+        "private_dirty_kib": 2492,
+        "pss_kib": 6121,
+        "rss_kib": 28788,
+        "shared_clean_kib": 25976,
+        "shared_dirty_kib": 0
+      },
+      "vmgenid": "94897b7e-af1b-4b12-8db5-0f14b1f6520a"
+    },
+    "b": {
+      "after_a_ram_write_memory": {
+        "private_clean_kib": 76,
+        "private_dirty_kib": 35260,
+        "pss_kib": 40517,
+        "rss_kib": 84932,
+        "shared_clean_kib": 49596,
+        "shared_dirty_kib": 0
+      },
+      "after_a_ram_write_ram_mapping": {
+        "private_clean_kib": 32,
+        "private_dirty_kib": 2472,
+        "pss_kib": 5809,
+        "rss_kib": 28404,
+        "shared_clean_kib": 25900,
+        "shared_dirty_kib": 0
+      },
+      "identity_guest": "IDENTITY ff43347759b0ebe1ae0ca35effbce1cb densevm-ff43347759b0 RNG-RESEEDED",
+      "idle_cpu_ticks": 2,
+      "mac_guest": "MAC 3a:55:ba:86:f8:c6",
+      "memory": {
+        "private_clean_kib": 72,
+        "private_dirty_kib": 35260,
+        "pss_kib": 40512,
+        "rss_kib": 84932,
+        "shared_clean_kib": 49600,
+        "shared_dirty_kib": 0
+      },
+      "migration": {
+        "status": "completed"
+      },
+      "overlay_final_allocated_bytes": 331776,
+      "overlay_initial_allocated_bytes": 200704,
+      "pid": 83792,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-object",
+        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+        "-machine",
+        "memory-backend=ram",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-001.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-001.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-001.qmp.sock,server=on,wait=off",
+        "-incoming",
+        "defer"
+      ],
+      "ram_mapping": {
+        "private_clean_kib": 28,
+        "private_dirty_kib": 2472,
+        "pss_kib": 5802,
+        "rss_kib": 28404,
+        "shared_clean_kib": 25904,
+        "shared_dirty_kib": 0
+      },
+      "vmgenid": "7ed3b21b-7005-4dc0-befa-03d9b9872c94"
+    },
+    "count": 8,
+    "extra": [
+      {
+        "identity_guest": "IDENTITY fe2923694388e7f71b5ba340028b4863 densevm-fe2923694388 RNG-RESEEDED",
+        "idle_cpu_ticks": 4,
+        "index": 2,
+        "mac_guest": "MAC c6:59:eb:87:e6:27",
+        "memory": {
+          "private_clean_kib": 156,
+          "private_dirty_kib": 68440,
+          "pss_kib": 74493,
+          "rss_kib": 118664,
+          "shared_clean_kib": 50068,
+          "shared_dirty_kib": 0
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "overlay_allocated_bytes": 331776,
+        "pid": 83807,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-object",
+          "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+          "-machine",
+          "memory-backend=ram",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-002.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-002.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-002.qmp.sock,server=on,wait=off",
+          "-incoming",
+          "defer"
+        ],
+        "ram_mapping": {
+          "private_clean_kib": 128,
+          "private_dirty_kib": 35408,
+          "pss_kib": 39386,
+          "rss_kib": 61804,
+          "shared_clean_kib": 26268,
+          "shared_dirty_kib": 0
+        },
+        "vmgenid": "bc6b0ed7-bbd1-4633-9f81-479015ecdb33"
+      },
+      {
+        "identity_guest": "IDENTITY 9dfdc94e64d2b1936cf2e2512bc4def5 densevm-9dfdc94e64d2 RNG-RESEEDED",
+        "idle_cpu_ticks": 2,
+        "index": 3,
+        "mac_guest": "MAC 76:74:d3:86:f9:cb",
+        "memory": {
+          "private_clean_kib": 24,
+          "private_dirty_kib": 68344,
+          "pss_kib": 74208,
+          "rss_kib": 118448,
+          "shared_clean_kib": 50080,
+          "shared_dirty_kib": 0
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "overlay_allocated_bytes": 331776,
+        "pid": 83815,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-object",
+          "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+          "-machine",
+          "memory-backend=ram",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-003.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-003.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-003.qmp.sock,server=on,wait=off",
+          "-incoming",
+          "defer"
+        ],
+        "ram_mapping": {
+          "private_clean_kib": 0,
+          "private_dirty_kib": 35392,
+          "pss_kib": 39123,
+          "rss_kib": 61420,
+          "shared_clean_kib": 26028,
+          "shared_dirty_kib": 0
+        },
+        "vmgenid": "effb076a-a7ed-47ec-ac0d-76fd39bfdf21"
+      },
+      {
+        "identity_guest": "IDENTITY 28b3c36af2cb4947f4cf47042b9d5a23 densevm-28b3c36af2cb RNG-RESEEDED",
+        "idle_cpu_ticks": 3,
+        "index": 4,
+        "mac_guest": "MAC fa:fc:06:40:de:71",
+        "memory": {
+          "private_clean_kib": 32,
+          "private_dirty_kib": 68312,
+          "pss_kib": 74129,
+          "rss_kib": 118280,
+          "shared_clean_kib": 49936,
+          "shared_dirty_kib": 0
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "overlay_allocated_bytes": 331776,
+        "pid": 83869,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-object",
+          "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+          "-machine",
+          "memory-backend=ram",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-004.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-004.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-004.qmp.sock,server=on,wait=off",
+          "-incoming",
+          "defer"
+        ],
+        "ram_mapping": {
+          "private_clean_kib": 0,
+          "private_dirty_kib": 35388,
+          "pss_kib": 39101,
+          "rss_kib": 61352,
+          "shared_clean_kib": 25964,
+          "shared_dirty_kib": 0
+        },
+        "vmgenid": "40f7c74b-3ef2-418e-9221-4125ac6cd488"
+      },
+      {
+        "identity_guest": "IDENTITY 8e870bc68295cca870c6ba8a1977580d densevm-8e870bc68295 RNG-RESEEDED",
+        "idle_cpu_ticks": 3,
+        "index": 5,
+        "mac_guest": "MAC fa:d4:be:6e:5f:0e",
+        "memory": {
+          "private_clean_kib": 48,
+          "private_dirty_kib": 68344,
+          "pss_kib": 74245,
+          "rss_kib": 118480,
+          "shared_clean_kib": 50088,
+          "shared_dirty_kib": 0
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "overlay_allocated_bytes": 331776,
+        "pid": 83897,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-object",
+          "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+          "-machine",
+          "memory-backend=ram",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-005.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-005.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-005.qmp.sock,server=on,wait=off",
+          "-incoming",
+          "defer"
+        ],
+        "ram_mapping": {
+          "private_clean_kib": 0,
+          "private_dirty_kib": 35420,
+          "pss_kib": 39206,
+          "rss_kib": 61552,
+          "shared_clean_kib": 26132,
+          "shared_dirty_kib": 0
+        },
+        "vmgenid": "0715807f-b0ff-4124-9f84-e8b39587bd8d"
+      },
+      {
+        "identity_guest": "IDENTITY 248c1fd81d9ef4e18ff15ebc06dddc78 densevm-248c1fd81d9e RNG-RESEEDED",
+        "idle_cpu_ticks": 5,
+        "index": 6,
+        "mac_guest": "MAC 6e:d7:18:7e:33:d2",
+        "memory": {
+          "private_clean_kib": 104,
+          "private_dirty_kib": 68420,
+          "pss_kib": 74375,
+          "rss_kib": 118636,
+          "shared_clean_kib": 50112,
+          "shared_dirty_kib": 0
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "overlay_allocated_bytes": 331776,
+        "pid": 83904,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-object",
+          "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+          "-machine",
+          "memory-backend=ram",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-006.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-006.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-006.qmp.sock,server=on,wait=off",
+          "-incoming",
+          "defer"
+        ],
+        "ram_mapping": {
+          "private_clean_kib": 0,
+          "private_dirty_kib": 35388,
+          "pss_kib": 39101,
+          "rss_kib": 61352,
+          "shared_clean_kib": 25964,
+          "shared_dirty_kib": 0
+        },
+        "vmgenid": "973736cc-7094-4133-a638-b48bb9b8ddda"
+      },
+      {
+        "identity_guest": "IDENTITY eecb8114bbe569a53bb195da62e6fe5a densevm-eecb8114bbe5 RNG-RESEEDED",
+        "idle_cpu_ticks": 4,
+        "index": 7,
+        "mac_guest": "MAC ca:61:3f:43:da:59",
+        "memory": {
+          "private_clean_kib": 60,
+          "private_dirty_kib": 68404,
+          "pss_kib": 74389,
+          "rss_kib": 118676,
+          "shared_clean_kib": 50212,
+          "shared_dirty_kib": 0
+        },
+        "migration": {
+          "status": "completed"
+        },
+        "overlay_allocated_bytes": 331776,
+        "pid": 83911,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-object",
+          "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=off,readonly=on,rom=off",
+          "-machine",
+          "memory-backend=ram",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-007.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-007.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/clone-007.qmp.sock,server=on,wait=off",
+          "-incoming",
+          "defer"
+        ],
+        "ram_mapping": {
+          "private_clean_kib": 4,
+          "private_dirty_kib": 35368,
+          "pss_kib": 39166,
+          "rss_kib": 61528,
+          "shared_clean_kib": 26156,
+          "shared_dirty_kib": 0
+        },
+        "vmgenid": "57c8f26d-64fb-450e-ab18-3e8638770022"
+      }
+    ],
+    "idle_cpu_sample_interval_ms": 1000,
+    "time_to_count_resumed_ms": 2168
+  },
+  "disk_isolation": true,
+  "disk_storage": {
+    "base_allocated_bytes": 200704,
+    "total_clone_overlay_allocated_bytes": 69701632
+  },
+  "divergence_all_verified": true,
+  "divergence_region_bytes": 33554432,
+  "divergence_scope": "all clones",
+  "effective_ram_divergence_percent": 100,
+  "experiment": "two-clone-cow-probe",
+  "extra_clone_isolation": true,
+  "full_disk_isolation": true,
+  "guest_ram_mib": 256,
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "host_mem_available_kib_at_start": 7280536,
+  "host_mem_required_kib": 2621440,
+  "identity_unique": true,
+  "kernel_version": "7.2.11-arch1-1",
+  "ksm_run": "0",
+  "ksm_telemetry": {
+    "counters_after": {
+      "full_scans": 0,
+      "pages_shared": 0,
+      "pages_sharing": 0,
+      "pages_unshared": 0,
+      "pages_volatile": 0,
+      "run": 0
+    },
+    "counters_before": {
+      "full_scans": 0,
+      "pages_shared": 0,
+      "pages_sharing": 0,
+      "pages_unshared": 0,
+      "pages_volatile": 0,
+      "run": 0
+    },
+    "ksmd_cpu_ticks_after": 0,
+    "ksmd_cpu_ticks_before": 0,
+    "ksmd_cpu_ticks_delta": 0,
+    "scope": "host-global counters; other KSM workloads may affect deltas"
+  },
+  "mac_unique": true,
+  "parking": {
+    "requested": false
+  },
+  "parking_verified": true,
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "ram_divergence_bytes": 33554432,
+  "ram_divergence_pages": 8192,
+  "ram_isolation": true,
+  "snapshots": {
+    "after_divergence": {
+      "clones": [
+        {
+          "memory": {
+            "private_clean_kib": 344,
+            "private_dirty_kib": 68172,
+            "pss_kib": 73679,
+            "rss_kib": 118184,
+            "shared_clean_kib": 49668,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83791,
+          "ram_mapping": {
+            "private_clean_kib": 320,
+            "private_dirty_kib": 35352,
+            "pss_kib": 38965,
+            "rss_kib": 61472,
+            "shared_clean_kib": 25800,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 72,
+            "private_dirty_kib": 68124,
+            "pss_kib": 73359,
+            "rss_kib": 117616,
+            "shared_clean_kib": 49420,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83792,
+          "ram_mapping": {
+            "private_clean_kib": 28,
+            "private_dirty_kib": 35336,
+            "pss_kib": 38649,
+            "rss_kib": 61088,
+            "shared_clean_kib": 25724,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 156,
+            "private_dirty_kib": 68420,
+            "pss_kib": 73769,
+            "rss_kib": 118404,
+            "shared_clean_kib": 49828,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83807,
+          "ram_mapping": {
+            "private_clean_kib": 128,
+            "private_dirty_kib": 35388,
+            "pss_kib": 38867,
+            "rss_kib": 61672,
+            "shared_clean_kib": 26156,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 24,
+            "private_dirty_kib": 68344,
+            "pss_kib": 73563,
+            "rss_kib": 118320,
+            "shared_clean_kib": 49952,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83815,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 35392,
+            "pss_kib": 38682,
+            "rss_kib": 61420,
+            "shared_clean_kib": 26028,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 48,
+            "private_dirty_kib": 68280,
+            "pss_kib": 73435,
+            "rss_kib": 118032,
+            "shared_clean_kib": 49704,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83869,
+          "ram_mapping": {
+            "private_clean_kib": 16,
+            "private_dirty_kib": 35356,
+            "pss_kib": 38622,
+            "rss_kib": 61232,
+            "shared_clean_kib": 25860,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 32,
+            "private_dirty_kib": 68308,
+            "pss_kib": 73470,
+            "rss_kib": 118156,
+            "shared_clean_kib": 49816,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83897,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 35384,
+            "pss_kib": 38659,
+            "rss_kib": 61356,
+            "shared_clean_kib": 25972,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 104,
+            "private_dirty_kib": 68404,
+            "pss_kib": 73689,
+            "rss_kib": 118388,
+            "shared_clean_kib": 49880,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83904,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 35372,
+            "pss_kib": 38622,
+            "rss_kib": 61232,
+            "shared_clean_kib": 25860,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 60,
+            "private_dirty_kib": 68388,
+            "pss_kib": 73715,
+            "rss_kib": 118484,
+            "shared_clean_kib": 50036,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83911,
+          "ram_mapping": {
+            "private_clean_kib": 4,
+            "private_dirty_kib": 35352,
+            "pss_kib": 38695,
+            "rss_kib": 61464,
+            "shared_clean_kib": 26108,
+            "shared_dirty_kib": 0
+          }
+        }
+      ],
+      "sampling": "sequential procfs reads while all clones are alive",
+      "template_file_resident_bytes": 268435456
+    },
+    "before_divergence": {
+      "clones": [
+        {
+          "memory": {
+            "private_clean_kib": 344,
+            "private_dirty_kib": 35312,
+            "pss_kib": 40835,
+            "rss_kib": 85500,
+            "shared_clean_kib": 49844,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83791,
+          "ram_mapping": {
+            "private_clean_kib": 320,
+            "private_dirty_kib": 2492,
+            "pss_kib": 6121,
+            "rss_kib": 28788,
+            "shared_clean_kib": 25976,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 72,
+            "private_dirty_kib": 35260,
+            "pss_kib": 40512,
+            "rss_kib": 84932,
+            "shared_clean_kib": 49600,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83792,
+          "ram_mapping": {
+            "private_clean_kib": 28,
+            "private_dirty_kib": 2472,
+            "pss_kib": 5802,
+            "rss_kib": 28404,
+            "shared_clean_kib": 25904,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 156,
+            "private_dirty_kib": 35572,
+            "pss_kib": 40934,
+            "rss_kib": 85724,
+            "shared_clean_kib": 49996,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83807,
+          "ram_mapping": {
+            "private_clean_kib": 128,
+            "private_dirty_kib": 2540,
+            "pss_kib": 6032,
+            "rss_kib": 28992,
+            "shared_clean_kib": 26324,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 24,
+            "private_dirty_kib": 35488,
+            "pss_kib": 40721,
+            "rss_kib": 85636,
+            "shared_clean_kib": 50124,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83815,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2536,
+            "pss_kib": 5840,
+            "rss_kib": 28736,
+            "shared_clean_kib": 26200,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 48,
+            "private_dirty_kib": 35436,
+            "pss_kib": 40618,
+            "rss_kib": 85412,
+            "shared_clean_kib": 49928,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83869,
+          "ram_mapping": {
+            "private_clean_kib": 16,
+            "private_dirty_kib": 2512,
+            "pss_kib": 5805,
+            "rss_kib": 28612,
+            "shared_clean_kib": 26084,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 32,
+            "private_dirty_kib": 35460,
+            "pss_kib": 40650,
+            "rss_kib": 85536,
+            "shared_clean_kib": 50044,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83897,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2536,
+            "pss_kib": 5840,
+            "rss_kib": 28736,
+            "shared_clean_kib": 26200,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 104,
+            "private_dirty_kib": 35552,
+            "pss_kib": 40867,
+            "rss_kib": 85768,
+            "shared_clean_kib": 50112,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83904,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2520,
+            "pss_kib": 5799,
+            "rss_kib": 28612,
+            "shared_clean_kib": 26092,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 60,
+            "private_dirty_kib": 35536,
+            "pss_kib": 40893,
+            "rss_kib": 85864,
+            "shared_clean_kib": 50268,
+            "shared_dirty_kib": 0
+          },
+          "pid": 83911,
+          "ram_mapping": {
+            "private_clean_kib": 4,
+            "private_dirty_kib": 2500,
+            "pss_kib": 5873,
+            "rss_kib": 28844,
+            "shared_clean_kib": 26340,
+            "shared_dirty_kib": 0
+          }
+        }
+      ],
+      "sampling": "sequential procfs reads while all clones are alive",
+      "template_file_resident_bytes": 268435456
+    }
+  },
+  "template": {
+    "machine_state_allocated_bytes": 311296,
+    "memory_file_allocated_bytes": 171970560,
+    "memory_file_bytes": 268435456,
+    "memory_file_resident_bytes": 268435456,
+    "memory_sha256": "02e7bf022c87ac056a6eaa8d4322c88c3f8016cec16c93454782d188ec9ac021",
+    "migration": {
+      "downtime": 1,
+      "ram": {
+        "dirty-pages-rate": 0,
+        "dirty-sync-count": 2,
+        "dirty-sync-missed-zero-copy": 0,
+        "downtime-bytes": 177340,
+        "duplicate": 87,
+        "mbps": 1240.788,
+        "multifd-bytes": 0,
+        "normal": 43,
+        "normal-bytes": 176128,
+        "page-size": 4096,
+        "pages-per-second": 0,
+        "postcopy-bytes": 0,
+        "postcopy-requests": 0,
+        "precopy-bytes": 0,
+        "remaining": 0,
+        "total": 532480,
+        "transferred": 310197
+      },
+      "setup-time": 1,
+      "status": "completed",
+      "total-time": 3
+    },
+    "qemu_command": [
+      "qemu-system-x86_64",
+      "-machine",
+      "pc-q35-11.1,accel=kvm",
+      "-cpu",
+      "host",
+      "-m",
+      "256M",
+      "-smp",
+      "1",
+      "-object",
+      "memory-backend-file,id=ram,mem-path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/memory.img,size=256M,share=on,readonly=off",
+      "-machine",
+      "memory-backend=ram",
+      "-kernel",
+      "/boot/vmlinuz-linux",
+      "-initrd",
+      "/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/initramfs.cpio",
+      "-append",
+      "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+      "-display",
+      "none",
+      "-monitor",
+      "none",
+      "-nodefaults",
+      "-no-reboot",
+      "-drive",
+      "if=none,id=disk,file=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/base.qcow2,format=qcow2",
+      "-device",
+      "virtio-blk-pci,drive=disk,id=blk0",
+      "-netdev",
+      "user,id=net0,restrict=on",
+      "-device",
+      "pcie-root-port,id=rp1,slot=2,chassis=1",
+      "-device",
+      "vmgenid,guid=auto",
+      "-chardev",
+      "socket,id=serial,path=/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/template.serial.sock,server=on,wait=off",
+      "-serial",
+      "chardev:serial",
+      "-qmp",
+      "unix:/home/xtrmn8/densevm-sweep-20261022/divergence-100pct/template.qmp.sock,server=on,wait=off"
+    ],
+    "vmgenid": "ae9812eb-8e48-4ef7-9e3d-a04e1a4a2ec4"
+  },
+  "template_ram_unchanged": true,
+  "vmgenid_unique": true
+}
