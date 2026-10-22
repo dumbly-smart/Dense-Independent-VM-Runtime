@@ -13,6 +13,7 @@ pub enum Command {
         divergence_pages: u32,
         park_idle: bool,
         divergence_all: bool,
+        guest_dir: Option<PathBuf>,
     },
     BenchmarkBaseline {
         out: PathBuf,
@@ -68,6 +69,7 @@ where
     let mut ksm = false;
     let mut park_idle = false;
     let mut divergence_all = false;
+    let mut guest_dir = None;
     let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -83,6 +85,7 @@ where
             "--ksm" => ksm = true,
             "--park-idle" => park_idle = true,
             "--divergence-all" => divergence_all = true,
+            "--guest" => guest_dir = Some(PathBuf::from(value(args, "--guest")?)),
             "--divergence-mib" => {
                 let divergence_mib = value(args, "--divergence-mib")?
                     .parse::<u32>()
@@ -113,6 +116,7 @@ where
         divergence_pages,
         park_idle,
         divergence_all,
+        guest_dir,
     })
 }
 

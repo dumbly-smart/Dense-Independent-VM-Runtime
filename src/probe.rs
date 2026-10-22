@@ -3,7 +3,7 @@ use crate::metrics::{MemoryTotals, parse_smaps_for_path, parse_smaps_rollup};
 use crate::qmp::Qmp;
 use serde_json::{Value, json};
 use std::fs::{self, File};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
@@ -21,6 +21,7 @@ struct Vm {
     qmp_path: PathBuf,
     serial_path: PathBuf,
     command: Vec<String>,
+    login_stream: Option<UnixStream>,
 }
 
 impl Vm {
@@ -194,12 +195,126 @@ enum RamBackend<'a> {
     File { path: &'a Path, source: bool },
 }
 
+struct GuestArtifacts {
+    kernel: PathBuf,
+    initramfs: PathBuf,
+    disk: Option<PathBuf>,
+    metadata: Value,
+}
+
+fn prepare_guest(out: &Path, guest_dir: Option<&Path>) -> Result<GuestArtifacts, String> {
+    if let Some(directory) = guest_dir {
+        let directory = directory
+            .canonicalize()
+            .map_err(|e| format!("guest directory: {e}"))?;
+        let metadata: Value = serde_json::from_slice(
+            &fs::read(directory.join("metadata.json")).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        if metadata["kind"] != "alpine-ext4-v1" {
+            return Err("unsupported prepared guest kind".into());
+        }
+        for (file, key) in [
+            ("kernel", "kernel_sha256"),
+            ("initramfs.cpio", "initramfs_sha256"),
+            ("disk.qcow2", "disk_sha256"),
+        ] {
+            if metadata[key].as_str() != Some(sha256(&directory.join(file))?.as_str()) {
+                return Err(format!("prepared guest {file} hash mismatch"));
+            }
+        }
+        Ok(GuestArtifacts {
+            kernel: directory.join("kernel"),
+            initramfs: directory.join("initramfs.cpio"),
+            disk: Some(directory.join("disk.qcow2")),
+            metadata,
+        })
+    } else {
+        Ok(GuestArtifacts {
+            kernel: PathBuf::from("/boot/vmlinuz-linux"),
+            initramfs: build_initramfs(out)?,
+            disk: None,
+            metadata: json!({"kind":"synthetic-initramfs"}),
+        })
+    }
+}
+
+fn create_base(base: &Path, guest: &GuestArtifacts) -> Result<(), String> {
+    if let Some(disk) = &guest.disk {
+        checked(
+            Command::new("qemu-img")
+                .args(["convert", "-f", "qcow2", "-O", "qcow2"])
+                .arg(disk)
+                .arg(base),
+        )
+    } else {
+        checked(
+            Command::new("qemu-img")
+                .args(["create", "-f", "qcow2"])
+                .arg(base)
+                .arg("64M"),
+        )
+    }
+}
+
+fn login_prompt(stream: &mut UnixStream) -> Result<bool, String> {
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|e| e.to_string())?;
+    stream
+        .set_write_timeout(Some(Duration::from_secs(2)))
+        .map_err(|e| e.to_string())?;
+    let mut bytes = [0u8; 1024];
+    let mut text = String::new();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline && text.len() < 4096 {
+        crate::interrupt::check()?;
+        match stream.read(&mut bytes) {
+            Ok(0) => break,
+            Ok(n) => {
+                text.push_str(&String::from_utf8_lossy(&bytes[..n]));
+                if text.contains("login:") {
+                    return Ok(true);
+                }
+            }
+            Err(error)
+                if error.kind() == std::io::ErrorKind::WouldBlock
+                    || error.kind() == std::io::ErrorKind::TimedOut => {}
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    Err(format!(
+        "serial login prompt not observed; captured {text:?}"
+    ))
+}
+
+#[cfg(test)]
+mod login_tests {
+    use super::*;
+    #[test]
+    fn accepts_a_prompt_split_across_many_serial_reads() {
+        let (mut client, mut server) = UnixStream::pair().unwrap();
+        let writer = thread::spawn(move || {
+            for byte in b"\r\nWelcome to Linux\r\nhost login:" {
+                if server.write_all(&[*byte]).is_err() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(2));
+            }
+        });
+        let result = login_prompt(&mut client);
+        drop(client);
+        writer.join().unwrap();
+        assert_eq!(result.unwrap(), true);
+    }
+}
+
 fn launch(
     out: &Path,
     name: &str,
     disk: &Path,
     backend: RamBackend<'_>,
-    initramfs: &Path,
+    guest: &GuestArtifacts,
     mac_at_boot: Option<&str>,
     incoming: bool,
 ) -> Result<Vm, String> {
@@ -232,9 +347,9 @@ fn launch(
         cmd.args(["-object", &opts, "-machine", "memory-backend=ram"]);
     }
     cmd.arg("-kernel")
-        .arg("/boot/vmlinuz-linux")
+        .arg(&guest.kernel)
         .arg("-initrd")
-        .arg(initramfs)
+        .arg(&guest.initramfs)
         .args([
             "-append",
             "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
@@ -267,6 +382,13 @@ fn launch(
         serial_path.display()
     ));
     cmd.args(["-serial", "chardev:serial"]);
+    if guest.disk.is_some() {
+        cmd.arg("-chardev").arg(format!(
+            "socket,id=login,path={},server=on,wait=on",
+            out.join(format!("{name}.login.sock")).display()
+        ));
+        cmd.args(["-serial", "chardev:login"]);
+    }
     cmd.arg("-qmp")
         .arg(format!("unix:{},server=on,wait=off", qmp_path.display()));
     if incoming {
@@ -281,12 +403,29 @@ fn launch(
         .stdin(Stdio::null())
         .spawn()
         .map_err(|e| format!("launch {name}: {e}"))?;
-    Ok(Vm {
+    let mut vm = Vm {
         child,
         qmp_path,
         serial_path,
         command,
-    })
+        login_stream: None,
+    };
+    if guest.disk.is_some() {
+        let login = out.join(format!("{name}.login.sock"));
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            crate::interrupt::check()?;
+            match UnixStream::connect(&login) {
+                Ok(stream) => {
+                    vm.login_stream = Some(stream);
+                    break;
+                }
+                Err(_) if Instant::now() < deadline => thread::sleep(Duration::from_millis(10)),
+                Err(error) => return Err(format!("connect login console: {error}")),
+            }
+        }
+    }
+    Ok(vm)
 }
 
 fn measure(pid: u32) -> Result<MemoryTotals, String> {
@@ -527,6 +666,26 @@ pub fn run_experiment(
     park_idle: bool,
     divergence_all: bool,
 ) -> Result<(), String> {
+    run_guest_experiment(
+        out,
+        count,
+        ksm,
+        divergence_pages,
+        park_idle,
+        divergence_all,
+        None,
+    )
+}
+
+pub fn run_guest_experiment(
+    out: &Path,
+    count: u32,
+    ksm: bool,
+    divergence_pages: u32,
+    park_idle: bool,
+    divergence_all: bool,
+    guest_dir: Option<&Path>,
+) -> Result<(), String> {
     if !(2..=32).contains(&count) {
         return Err(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
@@ -542,7 +701,14 @@ pub fn run_experiment(
     } else {
         None
     };
-    let result = run_two_clone(out, count, divergence_pages, park_idle, divergence_all);
+    let result = run_two_clone(
+        out,
+        count,
+        divergence_pages,
+        park_idle,
+        divergence_all,
+        guest_dir,
+    );
     if let Some(guard) = &mut ksm_guard {
         guard.restore()?;
     }
@@ -555,6 +721,7 @@ fn run_two_clone(
     divergence_pages: u32,
     park_idle: bool,
     divergence_all: bool,
+    guest_dir: Option<&Path>,
 ) -> Result<(), String> {
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
@@ -596,14 +763,9 @@ fn run_two_clone(
         .create(out)
         .map_err(|e| format!("create new output directory: {e}"))?;
     let out = out.canonicalize().map_err(|e| e.to_string())?;
-    let initramfs = build_initramfs(&out)?;
+    let guest = prepare_guest(&out, guest_dir)?;
     let base = out.join("base.qcow2");
-    checked(
-        Command::new("qemu-img")
-            .args(["create", "-f", "qcow2"])
-            .arg(&base)
-            .arg("64M"),
-    )?;
+    create_base(&base, &guest)?;
 
     let mut baseline_vms = Vec::new();
     let baseline_start = Instant::now();
@@ -622,7 +784,7 @@ fn run_two_clone(
             &name,
             &disk,
             RamBackend::Anonymous,
-            &initramfs,
+            &guest,
             Some(&mac),
             false,
         )?;
@@ -652,7 +814,7 @@ fn run_two_clone(
             path: &ram,
             source: true,
         },
-        &initramfs,
+        &guest,
         None,
         false,
     )?;
@@ -664,6 +826,24 @@ fn run_two_clone(
         return Err("template guest initial values differ".into());
     }
     let mut template_qmp = template.qmp()?;
+    template_serial.command("sync", "SYNCED")?;
+    let distribution = if guest.disk.is_some() {
+        let services = template_serial.command("services-read", "SERVICES ")?;
+        let login = login_prompt(
+            template
+                .login_stream
+                .as_mut()
+                .ok_or("missing login console")?,
+        )?;
+        if services != "SERVICES init=true syslogd=true crond=true getty=true" || !login {
+            return Err(format!(
+                "distribution checkpoint is not ready: {services}; login_prompt={login}"
+            ));
+        }
+        json!({"services":services,"serial_login_prompt":login,"disk_probe_scope":"64 MiB root filesystem test file"})
+    } else {
+        json!({"kind":"synthetic","disk_probe_scope":"entire 64 MiB raw test disk"})
+    };
     if template_qmp.execute("query-kvm", None)?["enabled"] != true {
         return Err("template is not executing with KVM".into());
     }
@@ -732,7 +912,7 @@ fn run_two_clone(
             path: &ram,
             source: false,
         },
-        &initramfs,
+        &guest,
         None,
         true,
     )?;
@@ -744,7 +924,7 @@ fn run_two_clone(
             path: &ram,
             source: false,
         },
-        &initramfs,
+        &guest,
         None,
         true,
     )?;
@@ -773,7 +953,7 @@ fn run_two_clone(
                 path: &ram,
                 source: false,
             },
-            &initramfs,
+            &guest,
             None,
             true,
         )?;
@@ -1012,6 +1192,8 @@ fn run_two_clone(
     let result = json!({
         "experiment":"two-clone-cow-probe",
         "host":host,
+        "guest":guest.metadata,
+        "distribution_checkpoint":distribution,
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
         "kernel_version":output(Command::new("uname").arg("-r"))?.trim(),
         "guest_ram_mib":RAM_MIB,
@@ -1100,7 +1282,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
     }
     fs::create_dir(out).map_err(|e| format!("create new output directory: {e}"))?;
     let out = out.canonicalize().map_err(|e| e.to_string())?;
-    let initramfs = build_initramfs(&out)?;
+    let guest = prepare_guest(&out, None)?;
     let base = out.join("base.qcow2");
     checked(
         Command::new("qemu-img")
@@ -1125,7 +1307,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
             &name,
             &disk,
             RamBackend::Anonymous,
-            &initramfs,
+            &guest,
             Some(&mac),
             false,
         )?;

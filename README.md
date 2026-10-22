@@ -6,9 +6,9 @@ from that state, maps the same RAM file privately, and uses distinct qcow2
 disk overlays. It measures isolation and host memory with QMP, `/proc/smaps`,
 and `fincore`.
 
-The included guest is a small static Rust `/init` running the host's Linux
-kernel. It proves the mechanism, not yet a general Linux distribution with a
-login prompt. See [design](docs/design.md),
+The default guest is a small static Rust `/init` running the host's Linux
+kernel. A supported [Alpine ext4 guest](examples/alpine/README.md) also boots
+normal distribution userspace and a serial login prompt. See [design](docs/design.md),
 [measured findings](docs/first-probe.md), and
 [semantic differences](docs/semantic-differences.md).
 
@@ -25,6 +25,7 @@ disk. KSM stays in its existing state; the reference run had it disabled.
 ```sh
 cargo test
 cargo run -- doctor
+cargo run -- stats /tmp/densevm-my-run/result.json
 cargo test --test probe -- --ignored --nocapture
 # Or run outside the test harness, specifying a NEW directory:
 cargo run -- probe --out /tmp/densevm-my-run

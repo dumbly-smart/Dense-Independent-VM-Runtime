@@ -1,5 +1,24 @@
 # Milestone 1 acceptance record
 
+## Supported distribution profile, 2026-10-22
+
+`examples/alpine/prepare.sh` now builds a hash-verified Alpine 3.24.2 ext4
+root image. A two-clone run on QEMU 11.1.2 / Linux 7.2.11 verified a checkpoint
+with BusyBox init, syslogd, crond, getty, and an observed serial login prompt.
+Both independent QEMU clones resumed, reseeded their kernel RNGs, received
+unique machine IDs/hostnames/MACs before NIC hotplug, and passed RAM and
+filesystem-file isolation plus process-kill and explicit parking checks.
+The prepared image has no SSH server or DHCP client, so it duplicates neither
+SSH host keys nor a DHCP client identity. Arbitrary distribution services and
+application secrets remain outside this demonstrated profile.
+
+The original synthetic reference record is retained below. The eight-clone
+0/5/10/25/50/100% buffer-divergence sweep is saved under
+`results/2026-10-22/divergence/`; the percentage is of each 32 MiB test buffer,
+not of all guest RAM. Host kernel/KVM memory overhead remains unmeasured.
+
+## Historical synthetic reference
+
 Reference run: `results/probe-2026-09-22-qemu-11.1.1.json` on QEMU 11.1.1,
 Linux 7.2.6, `/dev/kvm` available, and KSM disabled. The probe uses the host
 Linux kernel plus a static Rust initramfs. It is a genuine KVM guest mechanism

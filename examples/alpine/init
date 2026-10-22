@@ -1,0 +1,7 @@
+#!/bin/busybox sh
+set -eu
+/bin/busybox --install -s /bin
+mount -t devtmpfs devtmpfs /dev
+mount -t ext4 -o rw /dev/vda /newroot
+mount --move /dev /newroot/dev
+exec switch_root /newroot /sbin/init

@@ -1,5 +1,13 @@
 # Semantic status after the first probe
 
+Supported distribution update: Alpine 3.24.2 now boots from ext4-backed qcow2
+and reaches BusyBox init, syslogd, crond, and an observed serial login prompt.
+The two-clone run verifies private root-filesystem test-file writes and the
+same RAM/identity/parking checks as the synthetic guest. There is no SSH server
+or DHCP client in this image. Existing application PRNG caches, vmgenid's
+implicit guest response, arbitrary service identity caches, and independent
+timer behavior still require separate tests. See `examples/alpine/README.md`.
+
 Update, 2026-10-22: the current synthetic guest receives a fresh host-kernel
 entropy payload per clone, credits it with Linux `RNDADDENTROPY`, and forces
 CRNG reseeding with `RNDRESEEDCRNG` before identity preparation and NIC hotplug.

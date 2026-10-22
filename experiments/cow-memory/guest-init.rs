@@ -31,26 +31,39 @@ fn mount_fs(source: &str, target: &str, kind: &str) {
 }
 
 fn disk_byte() -> std::io::Result<u8> {
-    let mut file = File::open("/dev/vda")?;
+    let mut file = File::open(disk_path())?;
     let mut byte = [0u8; 1];
     file.read_exact(&mut byte)?;
     Ok(byte[0])
 }
 
 fn write_disk(value: u8) -> std::io::Result<()> {
-    let mut file = OpenOptions::new().write(true).open("/dev/vda")?;
+    let mut file = OpenOptions::new().write(true).open(disk_path())?;
     file.seek(SeekFrom::Start(0))?;
     file.write_all(&[value; 4096])?;
     file.sync_all()
 }
 
 fn fill_disk(value: u8) -> std::io::Result<()> {
-    let mut file = OpenOptions::new().write(true).open("/dev/vda")?;
+    let mut file = OpenOptions::new().write(true).open(disk_path())?;
     let block = [value; 1024 * 1024];
     for _ in 0..64 {
         file.write_all(&block)?;
     }
     file.sync_all()
+}
+
+fn disk_path() -> &'static str {
+    if std::path::Path::new("/etc/alpine-release").exists() { "/var/lib/densevm/disk-probe.bin" } else { "/dev/vda" }
+}
+
+fn services() -> std::io::Result<String> {
+    let mut names = std::collections::HashSet::new();
+    for entry in fs::read_dir("/proc")?.flatten() {
+        if let Ok(name) = fs::read_to_string(entry.path().join("comm")) { names.insert(name.trim().to_owned()); }
+    }
+    let init = fs::read_to_string("/proc/1/comm")?;
+    Ok(format!("SERVICES init={} syslogd={} crond={} getty={}", init.trim() == "init", names.contains("syslogd"), names.contains("crond"), names.contains("getty")))
 }
 
 fn reboot_guest() -> ! {
@@ -134,9 +147,9 @@ fn random_ram_pages(region: &mut [u8], pages: usize, value: u8) -> std::io::Resu
 }
 
 fn main() {
-    mount_fs("devtmpfs", "/dev", "devtmpfs");
-    mount_fs("sysfs", "/sys", "sysfs");
-    mount_fs("proc", "/proc", "proc");
+    if !std::path::Path::new("/dev/null").exists() { mount_fs("devtmpfs", "/dev", "devtmpfs"); }
+    if !std::path::Path::new("/sys/class").exists() { mount_fs("sysfs", "/sys", "sysfs"); }
+    if !std::path::Path::new("/proc/self").exists() { mount_fs("proc", "/proc", "proc"); }
     for module in ["failover", "net_failover", "virtio_net"] {
         load_module(module);
     }
@@ -165,6 +178,8 @@ fn main() {
         let fields: Vec<_> = line.split_whitespace().collect();
         let result = match fields.as_slice() {
             ["ping"] => "PONG".to_string(),
+            ["sync"] => { unsafe { syscall(162); } "SYNCED".to_string() },
+            ["services-read"] => match services() { Ok(value) => value, Err(e) => format!("ERROR services: {e}") },
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {

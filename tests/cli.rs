@@ -11,7 +11,8 @@ fn parses_probe_with_count_and_output() {
             ksm: false,
             divergence_pages: 8192,
             park_idle: false,
-            divergence_all: false
+            divergence_all: false,
+            guest_dir: None
         }
     );
     assert_eq!(
@@ -30,7 +31,8 @@ fn parses_probe_with_count_and_output() {
             ksm: false,
             divergence_pages: 2048,
             park_idle: false,
-            divergence_all: false
+            divergence_all: false,
+            guest_dir: None
         }
     );
 }
@@ -58,6 +60,22 @@ fn parses_all_clone_divergence() {
             ..
         }
     ));
+}
+
+#[test]
+fn accepts_an_explicit_prepared_distribution_guest() {
+    let result = parse_args([
+        "densevm",
+        "probe",
+        "--out",
+        "/tmp/run",
+        "--guest",
+        "/tmp/alpine",
+    ])
+    .unwrap();
+    assert!(
+        matches!(result, Command::Probe { guest_dir:Some(path), .. } if path == PathBuf::from("/tmp/alpine"))
+    );
 }
 
 #[test]

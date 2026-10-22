@@ -1,0 +1,7 @@
+::sysinit:/bin/mount -t proc proc /proc
+::sysinit:/bin/mount -t sysfs sysfs /sys
+::sysinit:/sbin/syslogd
+::sysinit:/usr/sbin/crond
+ttyS1::respawn:/sbin/getty -L 115200 ttyS1 vt100
+::respawn:/sbin/densevm-agent
+::shutdown:/bin/sync

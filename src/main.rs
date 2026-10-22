@@ -22,13 +22,15 @@ fn main() {
             divergence_pages,
             park_idle,
             divergence_all,
-        } => densevm::probe::run_experiment(
+            guest_dir,
+        } => densevm::probe::run_guest_experiment(
             &out,
             count,
             ksm,
             divergence_pages,
             park_idle,
             divergence_all,
+            guest_dir.as_deref(),
         ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
