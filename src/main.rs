@@ -9,6 +9,7 @@ fn main() {
         }
     };
     let result = match command {
+        Command::Doctor => print_json(densevm::capabilities::host_report()),
         Command::Probe {
             out,
             count,

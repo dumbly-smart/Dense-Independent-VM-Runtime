@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
+    Doctor,
     Probe {
         out: PathBuf,
         count: u32,
@@ -116,6 +117,7 @@ where
     let mut args = args.into_iter().map(Into::into);
     let _program = args.next().ok_or("program name is required")?;
     match args.next().as_deref() {
+        Some("doctor") if args.next().is_none() => Ok(Command::Doctor),
         Some("probe") => {
             parse_probe(&mut args)
         }

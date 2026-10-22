@@ -24,6 +24,7 @@ disk. KSM stays in its existing state; the reference run had it disabled.
 
 ```sh
 cargo test
+cargo run -- doctor
 cargo test --test probe -- --ignored --nocapture
 # Or run outside the test harness, specifying a NEW directory:
 cargo run -- probe --out /tmp/densevm-my-run

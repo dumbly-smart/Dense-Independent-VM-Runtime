@@ -50,7 +50,12 @@ pub fn ksm_status() -> Result<Value, String> {
             fs::read_to_string(root.join(name)).map_err(|e| format!("read KSM {name}: {e}"))?;
         result.insert(
             name.to_string(),
-            json!(value.trim().parse::<u64>().unwrap_or(0)),
+            json!(
+                value
+                    .trim()
+                    .parse::<u64>()
+                    .map_err(|e| format!("parse KSM {name}: {e}"))?
+            ),
         );
     }
     Ok(Value::Object(result))

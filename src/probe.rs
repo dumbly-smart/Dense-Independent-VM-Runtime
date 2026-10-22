@@ -208,7 +208,7 @@ fn launch(
     let mut cmd = Command::new("qemu-system-x86_64");
     cmd.args([
         "-machine",
-        "pc-q35-11.1,accel=kvm",
+        &format!("{},accel=kvm", crate::capabilities::MACHINE),
         "-cpu",
         "host",
         "-m",
@@ -528,6 +528,8 @@ fn run_two_clone(
     park_idle: bool,
 ) -> Result<(), String> {
     let ksm_counters_before = crate::inspect::ksm_status().ok();
+    let host = crate::capabilities::host_report();
+    crate::capabilities::require_template_support(&host)?;
     let ksmd_cpu_ticks_before = ksmd_cpu_ticks();
     let meminfo = fs::read_to_string("/proc/meminfo").map_err(|e| e.to_string())?;
     let available_kib: u64 = meminfo
@@ -614,6 +616,9 @@ fn run_two_clone(
         return Err("template guest initial values differ".into());
     }
     let mut template_qmp = template.qmp()?;
+    if template_qmp.execute("query-kvm", None)?["enabled"] != true {
+        return Err("template is not executing with KVM".into());
+    }
     let template_command = template.command.clone();
     let template_vmgenid = template_qmp.execute("query-vm-generation-id", None)?["guid"]
         .as_str()
@@ -927,6 +932,7 @@ fn run_two_clone(
         .and_then(|(before, after)| after.checked_sub(before));
     let result = json!({
         "experiment":"two-clone-cow-probe",
+        "host":host,
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
         "kernel_version":output(Command::new("uname").arg("-r"))?.trim(),
         "guest_ram_mib":RAM_MIB,
@@ -989,6 +995,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
     if count == 0 || count > 32 {
         return Err("baseline count must be between 1 and 32".to_string());
     }
+    let host = crate::capabilities::host_report();
     let available_kib: u64 = fs::read_to_string("/proc/meminfo")
         .map_err(|e| e.to_string())?
         .lines()
@@ -1047,7 +1054,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
         guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
-    let result = json!({"experiment":"baseline","count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","vms":guests});
+    let result = json!({"experiment":"baseline","host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","vms":guests});
     fs::write(
         out.join("baseline.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,
