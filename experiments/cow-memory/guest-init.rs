@@ -125,6 +125,14 @@ fn write_ram_pages(region: &mut [u8], pages: usize, value: u8) -> Result<(), &'s
     Ok(())
 }
 
+fn random_ram_pages(region: &mut [u8], pages: usize, value: u8) -> std::io::Result<()> {
+    let bytes = pages.checked_mul(4096).filter(|bytes| *bytes <= region.len())
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "RAM divergence exceeds region"))?;
+    File::open("/dev/urandom")?.read_exact(&mut region[..bytes])?;
+    if bytes > 0 { region[0] = value; }
+    Ok(())
+}
+
 fn main() {
     mount_fs("devtmpfs", "/dev", "devtmpfs");
     mount_fs("sysfs", "/sys", "sysfs");
@@ -181,6 +189,13 @@ fn main() {
                     _ => "ERROR invalid RAM write arguments".to_string(),
                 }
             }
+            ["ram-random-pages", pages, value] => match (pages.parse::<usize>(), value.parse::<u8>()) {
+                (Ok(pages), Ok(value)) => match random_ram_pages(&mut region, pages, value) {
+                    Ok(()) => format!("RAM-WROTE-PAGES {pages} {value}"),
+                    Err(error) => format!("ERROR {error}"),
+                },
+                _ => "ERROR invalid RAM write arguments".to_string(),
+            },
             ["disk-read"] => match disk_byte() {
                 Ok(value) => format!("DISK {value}"),
                 Err(error) => format!("ERROR disk read: {error}"),

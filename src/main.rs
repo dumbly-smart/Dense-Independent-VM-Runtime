@@ -10,18 +10,21 @@ fn main() {
     };
     let result = match command {
         Command::Doctor => print_json(densevm::capabilities::host_report()),
+        Command::Stats { result } => densevm::report::from_path(&result).and_then(print_json),
         Command::Probe {
             out,
             count,
             ksm,
             divergence_pages,
             park_idle,
-        } => densevm::probe::run_with_options_and_divergence_and_parking(
+            divergence_all,
+        } => densevm::probe::run_experiment(
             &out,
             count,
             ksm,
             divergence_pages,
             park_idle,
+            divergence_all,
         ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),

@@ -3,12 +3,16 @@ use std::path::PathBuf;
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
     Doctor,
+    Stats {
+        result: PathBuf,
+    },
     Probe {
         out: PathBuf,
         count: u32,
         ksm: bool,
         divergence_pages: u32,
         park_idle: bool,
+        divergence_all: bool,
     },
     BenchmarkBaseline {
         out: PathBuf,
@@ -63,6 +67,7 @@ where
     let mut count = 2;
     let mut ksm = false;
     let mut park_idle = false;
+    let mut divergence_all = false;
     let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -77,6 +82,7 @@ where
             }
             "--ksm" => ksm = true,
             "--park-idle" => park_idle = true,
+            "--divergence-all" => divergence_all = true,
             "--divergence-mib" => {
                 let divergence_mib = value(args, "--divergence-mib")?
                     .parse::<u32>()
@@ -106,6 +112,7 @@ where
         ksm,
         divergence_pages,
         park_idle,
+        divergence_all,
     })
 }
 
@@ -118,6 +125,11 @@ where
     let _program = args.next().ok_or("program name is required")?;
     match args.next().as_deref() {
         Some("doctor") if args.next().is_none() => Ok(Command::Doctor),
+        Some("stats") => {
+            let result = PathBuf::from(args.next().ok_or("result JSON path is required")?);
+            if args.next().is_some() { return Err("usage: densevm stats RESULT_JSON".into()); }
+            Ok(Command::Stats { result })
+        },
         Some("probe") => {
             parse_probe(&mut args)
         }

@@ -6,3 +6,4 @@ pub mod ksm;
 pub mod metrics;
 pub mod probe;
 pub mod qmp;
+pub mod report;

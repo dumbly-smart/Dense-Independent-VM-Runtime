@@ -337,6 +337,18 @@ fn measure_mapping(pid: u32, path: &Path) -> Result<MemoryTotals, String> {
     parse_smaps_for_path(&text, path.to_str().ok_or("non-UTF8 RAM path")?)
 }
 
+fn snapshot(pids: &[u32], ram: &Path) -> Result<Value, String> {
+    let mut clones = Vec::new();
+    for pid in pids {
+        clones.push(
+            json!({"pid":pid,"memory":measure(*pid)?,"ram_mapping":measure_mapping(*pid, ram)?}),
+        );
+    }
+    Ok(
+        json!({"clones":clones,"template_file_resident_bytes":resident_file_bytes(ram)?,"sampling":"sequential procfs reads while all clones are alive"}),
+    )
+}
+
 fn allocated_bytes(path: &Path) -> Result<u64, String> {
     use std::os::unix::fs::MetadataExt;
     fs::metadata(path)
@@ -502,6 +514,17 @@ pub fn run_with_options_and_divergence_and_parking(
     divergence_pages: u32,
     park_idle: bool,
 ) -> Result<(), String> {
+    run_experiment(out, count, ksm, divergence_pages, park_idle, false)
+}
+
+pub fn run_experiment(
+    out: &Path,
+    count: u32,
+    ksm: bool,
+    divergence_pages: u32,
+    park_idle: bool,
+    divergence_all: bool,
+) -> Result<(), String> {
     if !(2..=32).contains(&count) {
         return Err(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
@@ -517,7 +540,7 @@ pub fn run_with_options_and_divergence_and_parking(
             "RAM divergence must be at most {TEST_REGION_PAGES} pages"
         ));
     }
-    run_two_clone(out, count, divergence_pages, park_idle)
+    run_two_clone(out, count, divergence_pages, park_idle, divergence_all)
 }
 
 fn run_two_clone(
@@ -525,6 +548,7 @@ fn run_two_clone(
     count: u32,
     divergence_pages: u32,
     park_idle: bool,
+    divergence_all: bool,
 ) -> Result<(), String> {
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
@@ -836,8 +860,9 @@ fn run_two_clone(
         allocated_bytes(&overlays[0])?,
         allocated_bytes(&overlays[1])?,
     ];
+    let snapshot_before = snapshot(&clone_pids, &ram)?;
     aserial.command(
-        &format!("ram-write-pages {divergence_pages} 165"),
+        &format!("ram-random-pages {divergence_pages} 165"),
         &format!("RAM-WROTE-PAGES {divergence_pages} 165"),
     )?;
     let a_expected_ram = if divergence_pages == 0 { 90 } else { 165 };
@@ -849,6 +874,39 @@ fn run_two_clone(
     let after_ram_mapping_a = measure_mapping(a.pid(), &ram)?;
     let after_ram_mapping_b = measure_mapping(b.pid(), &ram)?;
     let memory_file_resident_bytes = resident_file_bytes(&ram)?;
+    let mut divergence_all_verified = true;
+    if divergence_all {
+        bserial.command(
+            &format!("ram-random-pages {divergence_pages} 166"),
+            "RAM-WROTE-PAGES ",
+        )?;
+        for (_, _, serial, index, _, _, _) in &mut extra_clones {
+            serial.command(
+                &format!("ram-random-pages {divergence_pages} {}", 167 + *index),
+                "RAM-WROTE-PAGES ",
+            )?;
+        }
+        divergence_all_verified &=
+            expect_value(&mut aserial, "ram-read", &format!("RAM {a_expected_ram}"))?;
+        divergence_all_verified &= expect_value(
+            &mut bserial,
+            "ram-read",
+            if divergence_pages == 0 {
+                "RAM 90"
+            } else {
+                "RAM 166"
+            },
+        )?;
+        for (_, _, serial, index, _, _, _) in &mut extra_clones {
+            let value = if divergence_pages == 0 {
+                100 + *index
+            } else {
+                167 + *index
+            };
+            divergence_all_verified &= expect_value(serial, "ram-read", &format!("RAM {value}"))?;
+        }
+    }
+    let snapshot_after = snapshot(&clone_pids, &ram)?;
     aserial.command("disk-write 165", "DISK-WROTE 165")?;
     let disk_isolation = expect_value(&mut aserial, "disk-read", "DISK 165")?
         && expect_value(&mut bserial, "disk-read", "DISK 0")?;
@@ -951,6 +1009,10 @@ fn run_two_clone(
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
         "kernel_version":output(Command::new("uname").arg("-r"))?.trim(),
         "guest_ram_mib":RAM_MIB,
+        "divergence_region_bytes":u64::from(TEST_REGION_MIB)*1024*1024,
+        "divergence_scope":if divergence_all { "all clones" } else { "clone A only" },
+        "divergence_all_verified":divergence_all_verified,
+        "snapshots":{"before_divergence":snapshot_before,"after_divergence":snapshot_after},
         "ram_divergence_pages":divergence_pages,
         "ram_divergence_bytes":u64::from(divergence_pages) * 4096,
         "effective_ram_divergence_percent":(u64::from(divergence_pages) * 100 + u64::from(TEST_REGION_PAGES) / 2) / u64::from(TEST_REGION_PAGES),
@@ -983,7 +1045,8 @@ fn run_two_clone(
         && full_disk_isolation
         && b_survives_guest_reboot
         && b_survives_a_kill
-        && parking_verified)
+        && parking_verified
+        && divergence_all_verified)
     {
         return Err("one or more isolation checks failed; see result.json".into());
     }

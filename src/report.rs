@@ -1,0 +1,70 @@
+use serde_json::{Value, json};
+use std::path::Path;
+
+fn number(value: &Value, field: &str) -> Result<u64, String> {
+    value[field]
+        .as_u64()
+        .ok_or_else(|| format!("missing or invalid measurement {field}"))
+}
+
+fn sum_memory(vms: &[Value], field: &str) -> Result<u64, String> {
+    vms.iter().try_fold(0u64, |sum, vm| {
+        sum.checked_add(number(&vm["memory"], field)?)
+            .ok_or_else(|| "memory total overflow".to_string())
+    })
+}
+
+fn snapshot_summary(snapshot: &Value, count: u64) -> Result<Value, String> {
+    let clones = snapshot["clones"]
+        .as_array()
+        .filter(|vms| vms.len() as u64 == count)
+        .ok_or("snapshot clone count mismatch")?;
+    let pss = sum_memory(clones, "pss_kib")?;
+    let cache = number(snapshot, "template_file_resident_bytes")? / 1024;
+    Ok(json!({
+        "process_pss_kib":pss,
+        "process_rss_kib":sum_memory(clones, "rss_kib")?,
+        "process_private_kib":sum_memory(clones, "private_clean_kib")? + sum_memory(clones, "private_dirty_kib")?,
+        "template_file_resident_kib":cache,
+        "process_pss_plus_full_template_cache_kib":pss.checked_add(cache).ok_or("memory total overflow")?,
+        "cache_accounting":"PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+    }))
+}
+
+pub fn summarize(result: &Value) -> Result<Value, String> {
+    let count = number(&result["clones"], "count")?;
+    if count == 0 || count > 32 || number(&result["baseline"], "count")? != count {
+        return Err("baseline and clone counts must match and be between 1 and 32".into());
+    }
+    let baseline = result["baseline"]["vms"]
+        .as_array()
+        .filter(|vms| vms.len() as u64 == count)
+        .ok_or("baseline VM count mismatch")?;
+    let baseline_pss = sum_memory(baseline, "pss_kib")?;
+    let before = snapshot_summary(&result["snapshots"]["before_divergence"], count)?;
+    let after = snapshot_summary(&result["snapshots"]["after_divergence"], count)?;
+    let configured = number(result, "guest_ram_mib")?
+        .checked_mul(count)
+        .and_then(|v| v.checked_mul(1024))
+        .ok_or("configured RAM total overflow")?;
+    Ok(json!({
+        "clone_count":count,
+        "configured_guest_ram_kib":configured,
+        "baseline_process_pss_kib":baseline_pss,
+        "before_divergence":before,
+        "after_divergence":after,
+        "divergence_percent":result["effective_ram_divergence_percent"],
+        "divergence_region_bytes":result["divergence_region_bytes"],
+        "divergence_scope":result["divergence_scope"],
+        "disk_storage":result["disk_storage"],
+        "host":result["host"],
+        "kernel_memory_overhead":"UNKNOWN; KVM metadata and host page tables excluded",
+        "baseline_cache_accounting":"baseline process PSS excludes unmapped disk/kernel/initramfs file cache",
+    }))
+}
+
+pub fn from_path(path: &Path) -> Result<Value, String> {
+    let bytes = std::fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let result: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    summarize(&result)
+}
