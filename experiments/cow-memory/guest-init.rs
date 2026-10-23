@@ -101,6 +101,57 @@ fn udp_probe(value: &str) -> std::io::Result<String> {
     Ok(format!("UDP {}", String::from_utf8_lossy(&data[..count])))
 }
 
+fn udp_bench(value: &str, packet_count: &str) -> std::io::Result<String> {
+    const PACKET_BYTES: usize = 1024;
+    let ip = range_ip(value)?;
+    let packets: usize = packet_count.parse().map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid packet count"))?;
+    if !(1..=128).contains(&packets) {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "packet count must be 1..128"));
+    }
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
+    socket.set_read_timeout(Some(Duration::from_secs(3)))?;
+    let mut payload = [b'd'; PACKET_BYTES];
+    let start = Instant::now();
+    for sequence in 0..packets {
+        payload[..4].copy_from_slice(&(sequence as u32).to_le_bytes());
+        socket.send_to(&payload, (ip, 7777))?;
+    }
+    let mut received = 0usize;
+    let mut response = [0u8; 256];
+    let mut remote_identity = None;
+    while received < packets {
+        let (length, peer) = match socket.recv_from(&mut response) {
+            Ok(reply) => reply,
+            Err(error)
+                if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) =>
+            {
+                break;
+            }
+            Err(error) => return Err(error),
+        };
+        let value = String::from_utf8_lossy(&response[..length]).to_string();
+        if peer.ip() != std::net::IpAddr::V4(ip)
+            || value.len() != 32
+            || !value.bytes().all(|byte| byte.is_ascii_hexdigit())
+            || remote_identity.as_ref().is_some_and(|expected| expected != &value)
+        {
+            return Err(std::io::Error::other("unexpected UDP benchmark responder"));
+        }
+        remote_identity = Some(value);
+        received += 1;
+    }
+    let elapsed_us = start.elapsed().as_micros().max(1);
+    let offered_bytes = packets * PACKET_BYTES;
+    let delivered_bytes = received * PACKET_BYTES;
+    let packets_per_second = received as f64 * 1_000_000.0 / elapsed_us as f64;
+    let payload_mbps = delivered_bytes as f64 * 8.0 / elapsed_us as f64;
+    let loss_percent = (packets - received) as f64 * 100.0 / packets as f64;
+    if remote_identity.is_none() {
+        return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "no UDP benchmark response"));
+    }
+    Ok(format!("UDP-BENCH sent_packets={packets} received_packets={received} offered_bytes={offered_bytes} delivered_bytes={delivered_bytes} elapsed_us={elapsed_us} packets_per_second={packets_per_second:.1} delivered_mbps={payload_mbps:.3} loss_percent={loss_percent:.2} remote_identity={}", remote_identity.unwrap_or_default()))
+}
+
 fn process_count() -> std::io::Result<usize> {
     Ok(fs::read_dir("/proc")?.flatten().filter(|entry| {
         fs::read(entry.path().join("cmdline")).is_ok_and(|cmd| cmd == b"/bin/sleep\x00137\x00")
@@ -225,6 +276,7 @@ fn main() {
             ["network-set", _] if !prepared => "ERROR identity preparation required before networking".to_string(),
             ["network-set", value] => match network_set(value) { Ok(value) => value, Err(e) => format!("ERROR network: {e}") },
             ["udp-probe", value] => match udp_probe(value) { Ok(value) => value, Err(e) => format!("ERROR UDP: {e}") },
+            ["udp-bench", value, packets] => match udp_bench(value, packets) { Ok(value) => value, Err(e) => format!("ERROR UDP benchmark: {e}") },
             ["process-start"] => match std::process::Command::new("/bin/sleep").arg("137").spawn() {
                 Ok(child) => { processes.push(child); "PROCESS-STARTED".to_string() },
                 Err(e) => format!("ERROR process: {e}"),

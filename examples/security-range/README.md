@@ -16,6 +16,10 @@ the multicast group. It is not isolation against hostile host users.
 
 After identity preparation, every guest receives an address in 10.77.0.0/24
 and an in-guest UDP identity responder. The client contacts all five targets.
+It also sends a 64-packet, 1 KiB UDP burst to T1 and records replies, loss,
+elapsed time, request rate, payload goodput, and target identity. This is a short
+guest-to-guest diagnostic over the local QEMU multicast backend, not host NIC
+line rate.
 The experiment writes private RAM/filesystem state, starts a process only in
 T1, attempts its reboot, and kills T1's QEMU process. It verifies sibling RAM,
 filesystem data, identity, liveness, and continued UDP reachability of T2.

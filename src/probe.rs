@@ -1089,6 +1089,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
     let mut range_before_verified = !range;
+    let mut range_network_benchmark = None;
     if range {
         aserial.command("network-set 10.77.0.10", "NETWORK ")?;
         bserial.command("network-set 10.77.0.11", "NETWORK ")?;
@@ -1102,6 +1103,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             range_before_verified &=
                 reply == format!("UDP {}", clone_identities[index as usize].machine_id);
         }
+        let benchmark = attacker.command("udp-bench 10.77.0.10 64", "UDP-BENCH ")?;
+        range_before_verified &= benchmark.contains(&clone_identities[0].machine_id);
+        range_network_benchmark = Some(benchmark);
     }
     let clone_elapsed_ms = clone_start.elapsed().as_millis();
     let process_isolation = if guest.disk.is_some() {
@@ -1397,7 +1401,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         ticks_per_second
     ));
     result["active_cpu_workload"] = json!({"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"sample_interval_ms":clone_active_cpu_sample_interval_ms,"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","ticks_per_second":ticks_per_second});
-    result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified});
+    result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified,"network_benchmark":range_network_benchmark});
     result["process_isolation"] = json!(process_isolation);
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
     result["a_guest_reboot_observed"] = json!(a_reboot_observed);
