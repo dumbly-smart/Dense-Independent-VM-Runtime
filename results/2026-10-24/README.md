@@ -47,3 +47,7 @@ This indicates both modes consume about one host core per busy guest. DenseVM do
 | Templated clone 1 | 207 µs | 146 µs | 1,089 µs |
 
 The p95 spread and tiny 16-write sample make these initial observations only; they do not establish a disk performance advantage. The test measures guest-visible file write+sync latency over qcow2, including host cache and scheduling effects.
+
+## Combined six-guest run
+
+[`security-range-6-combined.json`](security-range-6-combined.json) runs the range and all three workload measurements together. The six-VM baseline summed 1,230,793 KiB PSS and became ready in 4,601 ms. The six templated clones summed 276,596 KiB PSS before 32 MiB-per-clone test divergence and 473,537 KiB after. Their RAM-file mapping PSS rose from 62,169 to 259,101 KiB. This process-PSS comparison excludes KVM metadata and host page tables. The run also recorded one-second active CPU samples near 99–101% of one core per VM, 16-write ext4 sync samples per guest, and a 64 KiB UDP request burst with 0% observed loss in 1,330 µs (394.2 Mbps request payload). All range connectivity and isolation checks passed, including sibling survival after T1 reboot and QEMU termination. `KSM run` remained 0.
