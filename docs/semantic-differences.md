@@ -55,6 +55,7 @@ Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
 | Guest network throughput | workload-dependent | PARTIAL | A 64 KiB UDP request burst completed with 0% observed loss in 1,241 µs. This is a short guest-to-guest sample on a local multicast backend, not host NIC line rate. |
 | Guest disk write+sync latency | workload-dependent | PARTIAL | A two-VM Alpine run recorded 16 × 4 KiB ext4 writes with `fdatasync`; p95 values varied from 735 to 3,102 µs across four guests. The small sample is not a performance conclusion. |
 | Independent wall clock/timers | YES | UNKNOWN | Time and timer divergence after restore have not been tested. |
+| Explicit idle parking | optional | PARTIAL | Six paused QEMU processes accumulated zero CPU ticks over one second and resumed in 6 ms total; guest RTC/timer catch-up is UNKNOWN, so parking changes time semantics. |
 | Kernel and KVM memory overhead included in result | applicable | UNKNOWN | Process PSS and template file cache residency are measured; kernel metadata is not isolated. |
 
 The host's KSM `run` value was `0` in the reference experiment. This result is
