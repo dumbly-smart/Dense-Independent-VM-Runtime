@@ -5,7 +5,7 @@ use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::os::fd::AsRawFd;
 use std::os::raw::{c_char, c_int, c_long, c_ulong, c_void};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 unsafe extern "C" {
     fn mount(source: *const c_char, target: *const c_char, kind: *const c_char, flags: c_ulong, data: *const c_void) -> c_int;
@@ -230,6 +230,20 @@ fn main() {
                 Err(e) => format!("ERROR process: {e}"),
             },
             ["process-count"] => match process_count() { Ok(n) => format!("PROCESS-COUNT {n}"), Err(e) => format!("ERROR process: {e}") },
+            ["cpu-burn", millis] => match millis.parse::<u64>() {
+                Ok(millis) if (1..=10_000).contains(&millis) => {
+                    let deadline = Instant::now() + Duration::from_millis(millis);
+                    let mut value = 0x9e3779b97f4a7c15u64;
+                    let mut iterations = 0u64;
+                    while Instant::now() < deadline {
+                        value = value.rotate_left(7).wrapping_mul(0x517cc1b727220a95);
+                        iterations = iterations.wrapping_add(1);
+                        std::hint::black_box(value);
+                    }
+                    format!("CPU-BURN {iterations}")
+                }
+                _ => "ERROR cpu-burn duration must be 1..10000 ms".to_string(),
+            },
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {

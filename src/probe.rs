@@ -15,6 +15,7 @@ const RAM_MIB: u64 = 256;
 const RAM_BYTES: u64 = RAM_MIB * 1024 * 1024;
 const TEST_REGION_MIB: u32 = 32;
 const TEST_REGION_PAGES: u32 = TEST_REGION_MIB * 256;
+const ACTIVE_CPU_BURN_MS: u64 = 1500;
 
 struct Vm {
     child: Child,
@@ -317,6 +318,14 @@ mod login_tests {
         writer.join().unwrap();
         assert_eq!(result.unwrap(), true);
     }
+
+    #[test]
+    fn converts_scheduler_ticks_to_single_core_cpu_percent() {
+        assert_eq!(cpu_ticks_as_percent_of_one_core(100, 1000, 100), 100.0);
+        assert_eq!(cpu_ticks_as_percent_of_one_core(50, 1000, 100), 50.0);
+        assert_eq!(cpu_ticks_as_percent_of_one_core(100, 0, 100), 0.0);
+        assert_eq!(cpu_ticks_as_percent_of_one_core(100, 1000, 0), 0.0);
+    }
 }
 
 fn launch(
@@ -487,6 +496,30 @@ fn sample_cpu_ticks(pids: &[u32]) -> Result<(u128, Vec<u64>), String> {
         .map(|(before, after)| after.saturating_sub(before))
         .collect();
     Ok((elapsed_ms, deltas))
+}
+
+fn sample_active_cpu_ticks(
+    pids: &[u32],
+    serials: &mut [&mut Serial],
+) -> Result<(u128, Vec<u64>), String> {
+    if pids.len() != serials.len() {
+        return Err("active CPU sample must include one serial endpoint per VM".into());
+    }
+    for serial in serials.iter_mut() {
+        serial.send(&format!("cpu-burn {ACTIVE_CPU_BURN_MS}"))?;
+    }
+    let sample = sample_cpu_ticks(pids)?;
+    for serial in serials.iter_mut() {
+        serial.expect("CPU-BURN ", Duration::from_secs(5))?;
+    }
+    Ok(sample)
+}
+
+fn cpu_ticks_as_percent_of_one_core(ticks: u64, interval_ms: u128, ticks_per_second: u64) -> f64 {
+    if interval_ms == 0 || ticks_per_second == 0 {
+        return 0.0;
+    }
+    ticks as f64 * 100_000.0 / (interval_ms as f64 * ticks_per_second as f64)
 }
 
 fn measure_mapping(pid: u32, path: &Path) -> Result<MemoryTotals, String> {
@@ -796,6 +829,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     create_base(&base, &guest)?;
 
     let mut baseline_vms = Vec::new();
+    let mut baseline_serials = Vec::new();
     let baseline_start = Instant::now();
     for index in 0..count {
         let name = format!("baseline-{index:03}");
@@ -820,16 +854,23 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
         prepare_identity(&mut serial, &baseline_identity)?;
+        baseline_serials.push(serial);
         baseline_vms.push(vm);
     }
     let baseline_elapsed_ms = baseline_start.elapsed().as_millis();
     let baseline_pids: Vec<_> = baseline_vms.iter().map(Vm::pid).collect();
     let (baseline_cpu_sample_interval_ms, baseline_cpu_ticks) = sample_cpu_ticks(&baseline_pids)?;
+    let mut baseline_serial_refs: Vec<_> = baseline_serials.iter_mut().collect();
+    let (baseline_active_cpu_sample_interval_ms, baseline_active_cpu_ticks) =
+        sample_active_cpu_ticks(&baseline_pids, &mut baseline_serial_refs)?;
+    let ticks_per_second = host["clock_ticks_per_second"].as_u64().unwrap_or(100);
     let mut baseline_measurements = Vec::new();
     for (index, vm) in baseline_vms.iter().enumerate() {
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
-        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":baseline_cpu_ticks[index],"disk_allocated_bytes":allocated_bytes(&disk)?}));
+        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":baseline_cpu_ticks[index],"active_cpu_ticks":baseline_active_cpu_ticks[index],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(baseline_active_cpu_ticks[index], baseline_active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
+    drop(baseline_serial_refs);
+    drop(baseline_serials);
     drop(baseline_vms);
 
     if range {
@@ -1086,6 +1127,13 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut clone_pids = vec![a.pid(), b.pid()];
     clone_pids.extend(extra_clones.iter().map(|(vm, _, _, _, _, _, _)| vm.pid()));
     let (clone_cpu_sample_interval_ms, clone_idle_cpu_ticks) = sample_cpu_ticks(&clone_pids)?;
+    let mut clone_serial_refs: Vec<_> = vec![&mut aserial, &mut bserial];
+    for (_, _, serial, _, _, _, _) in &mut extra_clones {
+        clone_serial_refs.push(serial);
+    }
+    let (clone_active_cpu_sample_interval_ms, clone_active_cpu_ticks) =
+        sample_active_cpu_ticks(&clone_pids, &mut clone_serial_refs)?;
+    drop(clone_serial_refs);
     for (_, _, serial, index, _, _, _) in &mut extra_clones {
         let ram_value = 100 + *index as u8;
         let disk_value = 10 + *index as u8;
@@ -1280,7 +1328,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                     "qemu_command": vm.command,
                     "memory": measure(vm.pid())?,
                     "ram_mapping": measure_mapping(vm.pid(), &ram)?,
-                "idle_cpu_ticks": clone_idle_cpu_ticks[*index as usize],
+                    "idle_cpu_ticks": clone_idle_cpu_ticks[*index as usize],
+                    "active_cpu_ticks": clone_active_cpu_ticks[*index as usize],
+                    "active_cpu_percent_one_core": cpu_ticks_as_percent_of_one_core(clone_active_cpu_ticks[*index as usize], clone_active_cpu_sample_interval_ms, ticks_per_second),
                     "overlay_allocated_bytes": allocated_bytes(&overlays[*index as usize])?,
                     "identity_guest": identity_guest,
                     "mac_guest": mac_guest,
@@ -1324,7 +1374,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "host_mem_required_kib":required_available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "ksm_telemetry":{"scope":"host-global counters; other KSM workloads may affect deltas","counters_before":ksm_counters_before,"counters_after":ksm_counters_after,"ksmd_cpu_ticks_before":ksmd_cpu_ticks_before,"ksmd_cpu_ticks_after":ksmd_cpu_ticks_after,"ksmd_cpu_ticks_delta":ksmd_cpu_ticks_delta},
-        "baseline":{"count":count,"vms":baseline_measurements,"time_to_count_ready_ms":baseline_elapsed_ms,"idle_cpu_sample_interval_ms":baseline_cpu_sample_interval_ms},
+        "baseline":{"count":count,"vms":baseline_measurements,"time_to_count_ready_ms":baseline_elapsed_ms,"idle_cpu_sample_interval_ms":baseline_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":baseline_active_cpu_sample_interval_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
         "disk_storage":{"base_allocated_bytes":allocated_bytes(&base)?,"total_clone_overlay_allocated_bytes":total_overlay_allocated_bytes},
         "clones":{"count":count,"idle_cpu_sample_interval_ms":clone_cpu_sample_interval_ms,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"idle_cpu_ticks":clone_idle_cpu_ticks[0],"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
@@ -1333,6 +1383,20 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                   "time_to_count_resumed_ms":clone_elapsed_ms},
         "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details
     });
+    result["clones"]["active_cpu_sample_interval_ms"] = json!(clone_active_cpu_sample_interval_ms);
+    result["clones"]["a"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[0]);
+    result["clones"]["a"]["active_cpu_percent_one_core"] = json!(cpu_ticks_as_percent_of_one_core(
+        clone_active_cpu_ticks[0],
+        clone_active_cpu_sample_interval_ms,
+        ticks_per_second
+    ));
+    result["clones"]["b"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[1]);
+    result["clones"]["b"]["active_cpu_percent_one_core"] = json!(cpu_ticks_as_percent_of_one_core(
+        clone_active_cpu_ticks[1],
+        clone_active_cpu_sample_interval_ms,
+        ticks_per_second
+    ));
+    result["active_cpu_workload"] = json!({"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"sample_interval_ms":clone_active_cpu_sample_interval_ms,"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","ticks_per_second":ticks_per_second});
     result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified});
     result["process_isolation"] = json!(process_isolation);
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
@@ -1419,6 +1483,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
     )?;
     let start = Instant::now();
     let mut vms = Vec::new();
+    let mut serials = Vec::new();
     for index in 0..count {
         let name = format!("baseline-{index:03}");
         let disk = out.join(format!("{name}.qcow2"));
@@ -1440,18 +1505,23 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
+        serials.push(serial);
         vms.push(vm);
     }
     let elapsed = start.elapsed().as_millis();
     let pids: Vec<_> = vms.iter().map(Vm::pid).collect();
     let (idle_cpu_sample_interval_ms, idle_cpu_ticks) = sample_cpu_ticks(&pids)?;
+    let mut serial_refs: Vec<_> = serials.iter_mut().collect();
+    let (active_cpu_sample_interval_ms, active_cpu_ticks) =
+        sample_active_cpu_ticks(&pids, &mut serial_refs)?;
+    let ticks_per_second = host["clock_ticks_per_second"].as_u64().unwrap_or(100);
     let mut guests = Vec::new();
     for index in 0..count {
         let vm = &vms[index as usize];
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
-        guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"disk_allocated_bytes":allocated_bytes(&disk)?}));
+        guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"active_cpu_ticks":active_cpu_ticks[index as usize],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(active_cpu_ticks[index as usize], active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
-    let result = json!({"experiment":"baseline","host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","vms":guests});
+    let result = json!({"experiment":"baseline","host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","vms":guests});
     fs::write(
         out.join("baseline.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,
