@@ -8,17 +8,19 @@ or DHCP client in this image. Existing application PRNG caches, vmgenid's
 implicit guest response, arbitrary service identity caches, and independent
 timer behavior still require separate tests. See `examples/alpine/README.md`.
 
-Update, 2026-10-22: the current synthetic guest receives a fresh host-kernel
+Update, 2026-10-24: the current synthetic guest receives a fresh host-kernel
 entropy payload per clone, credits it with Linux `RNDADDENTROPY`, and forces
 CRNG reseeding with `RNDRESEEDCRNG` before identity preparation and NIC hotplug.
-The three-clone run on QEMU 11.1.2 / Linux 7.2.11 completed this protocol.
+The six-guest run on QEMU 11.1.2 / Linux 7.2.11 completed this protocol.
 Machine IDs and locally administered unicast MACs are random per run and checked
 for collisions within the clone batch. The kernel hostname is updated too.
 Entropy payloads are excluded from result metadata; control sockets reside in
 a mode-0700 output directory. This proves the explicit synthetic-kernel reseed
 path, not reseeding of every existing userspace PRNG or application secret.
-SSH host keys, distribution service caches, and DHCP identity still need their
-own guest integration. The historical table below describes the original run.
+The range assigns unique static IPs; it does not exercise DHCP. SSH host keys,
+distribution service caches, and DHCP identity still need their own guest
+integration. Historical table rows below are updated where the range provided
+new evidence; otherwise they describe the original synthetic two-clone run.
 
 KSM is opt-in and host-global. DenseVM changes only `run`, restores its own
 change with readback verification, preserves concurrent changes to tuning
@@ -35,18 +37,21 @@ Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
 
 | Property | Conventional VM | DenseVM probe | Evidence or limit |
 | --- | --- | --- | --- |
-| Separate QEMU process | YES | YES | Two distinct PIDs; killing A left B responsive. |
-| Guest RAM writes isolated | YES | YES | A wrote 32 MiB; B retained the original value. |
-| Shared unchanged RAM | optional KSM | YES | `/proc/<pid>/smaps` showed about 22 MiB shared in each RAM-file mapping before divergence. |
-| Disk mutations isolated | YES | YES | A and B wrote different bytes to their own overlays and read them back independently. |
+| Separate QEMU process | YES | YES | Separate QEMU PIDs; killing target T1 left the client and targets T2–T5 responsive in the six-guest run. |
+| Guest RAM writes isolated | YES | YES | Six-guest run checked private writes across all clones; each dirtied a 32 MiB test region while siblings retained their own values. |
+| Shared unchanged RAM | optional KSM | YES | Six clone RAM mappings had 59,435 KiB summed PSS before divergence and 256,193 KiB after. Mapping PSS is not total host RAM. |
+| Disk mutations isolated | YES | YES | The six-guest run checked separate overlay writes and filled a bounded test-file region without sibling changes. |
 | Shared disk backing | optional | YES | `qemu-img info --backing-chain` resolved both overlays to one qcow2 base. |
 | Independent vCPU/register state | YES | UNKNOWN | Separate KVM/QEMU instances restore VMState, but no register-level adversarial test yet. |
 | Independent virtual device state | YES | PARTIAL | Separate QMP, serial, block and hotplugged NIC observed; timer/interrupt behavior untested. |
 | Unique MAC visible inside guest | YES | YES | Guest sysfs returned distinct MACs after NIC hotplug. Launch-time MAC changes alone failed because migration restored the template MAC. |
 | Unique vmgenid in QEMU | optional | YES | QMP returned three distinct GUIDs for template, A, and B. Guest reaction to generation change is UNKNOWN. |
-| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Every restored probe clone receives and reads a unique synthetic machine-id/hostname; SSH keys and ordinary distribution identity rotation remain untested. |
-| Independent entropy/RNG state | expected | PARTIAL | Probe records a deterministic per-clone seed token only; it is not cryptographic entropy and distro RNG reseeding remains untested. |
-| Independent DHCP identity/IP | expected | UNKNOWN | Network access is restricted; no DHCP client runs in the probe. |
+| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Synthetic guest machine-id/hostname are unique. SSH keys are absent from the Alpine fixture; ordinary distribution key rotation remains untested. |
+| Independent entropy/RNG state | expected | PARTIAL | Synthetic guest receives fresh kernel entropy and forces CRNG reseed before identity/network setup. Existing userspace PRNG state and application secrets remain untested. |
+| Independent DHCP identity/IP | expected | PARTIAL | Range guests receive unique static IPs and pass client-to-target UDP checks. DHCP identity and lease behavior remain untested. |
+| Separate guest process state | YES | YES | Range starts a process only in T1; every sibling reports zero matching processes. |
+| Guest reboot isolation | YES | YES | Rebooting target A exits its QEMU process under `-no-reboot`; B remains responsive. |
+| Shared virtual Ethernet segment | optional | YES | Six separate virtio NICs use a QEMU socket multicast backend bound to host loopback; targets respond before and after T1 is killed. This is a shared range network, not host-user isolation. |
 | Independent wall clock/timers | YES | UNKNOWN | Time and timer divergence after restore have not been tested. |
 | Kernel and KVM memory overhead included in result | applicable | UNKNOWN | Process PSS and template file cache residency are measured; kernel metadata is not isolated. |
 
