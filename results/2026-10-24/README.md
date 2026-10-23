@@ -22,6 +22,8 @@ The initial clone process PSS was about 22.5% of the six-process conventional ba
 
 The run verified RAM and disk isolation, whole-test-disk isolation, unique guest/MAC/vmgenid identities, isolated process state, per-clone parking and resume, guest reboot of target A, survival of its sibling, and client connectivity to all five targets both before and after killing target T1's QEMU process. `KSM run` remained 0; this run measures template COW without KSM.
 
+[`security-range-6-network.json`](security-range-6-network.json) is a follow-up with the same six-guest topology and a bounded UDP request burst. It sent 64 one-kilobyte datagrams from the client to T1, received all 64 identity-verified replies, and measured 1,241 microseconds end to end (about 51,571 requests/s and 422.5 Mbps of request payload). The socket multicast backend is local to this host and the sample is short, unpaced guest-to-guest traffic. Treat it as a diagnostic of this path, not as host NIC line rate or a general network benchmark.
+
 ## Active CPU sample
 
 [`active-cpu-2.json`](active-cpu-2.json) records a separate matched two-VM synthetic-guest run. Each guest executes `cpu-burn 1500`; QEMU process CPU ticks are sampled during the same one-second window.
