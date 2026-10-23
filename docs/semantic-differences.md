@@ -39,7 +39,7 @@ Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
 | --- | --- | --- | --- |
 | Separate QEMU process | YES | YES | Separate QEMU PIDs; killing target T1 left the client and targets T2–T5 responsive in the six-guest run. |
 | Guest RAM writes isolated | YES | YES | Six-guest run checked private writes across all clones; each dirtied a 32 MiB test region while siblings retained their own values. |
-| Shared unchanged RAM | optional KSM | YES | Six clone RAM mappings had 59,435 KiB summed PSS before divergence and 256,193 KiB after. Mapping PSS is not total host RAM. |
+| Shared unchanged RAM | optional KSM | YES | Eight-clone Alpine run: RAM mapping PSS was 71,475 KiB before and 333,852 KiB after each clone dirtied its 32 MiB test region. Mapping PSS is not total host RAM; the test region is one eighth of configured guest RAM. |
 | Disk mutations isolated | YES | YES | The six-guest run checked separate overlay writes and filled a bounded test-file region without sibling changes. |
 | Shared disk backing | optional | YES | `qemu-img info --backing-chain` resolved both overlays to one qcow2 base. |
 | Independent vCPU/register state | YES | UNKNOWN | Separate KVM/QEMU instances restore VMState, but no register-level adversarial test yet. |
