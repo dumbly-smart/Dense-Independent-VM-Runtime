@@ -1,13 +1,16 @@
 # Milestone 1 acceptance record
 
-## Supported distribution profile, 2026-10-22
+## Supported distribution profile, 2026-10-24
 
 `examples/alpine/prepare.sh` now builds a hash-verified Alpine 3.24.2 ext4
 root image. A two-clone run on QEMU 11.1.2 / Linux 7.2.11 verified a checkpoint
 with BusyBox init, syslogd, crond, getty, and an observed serial login prompt.
 Both independent QEMU clones resumed, reseeded their kernel RNGs, received
 unique machine IDs/hostnames/MACs before NIC hotplug, and passed RAM and
-filesystem-file isolation plus process-kill and explicit parking checks.
+filesystem-file isolation plus process-kill and explicit parking checks. A
+six-guest range run then verified five-target UDP reachability, per-guest
+process separation, reboot and QEMU-kill isolation, and continued network
+access to surviving targets. Eight clones passed the same isolation checks.
 The prepared image has no SSH server or DHCP client, so it duplicates neither
 SSH host keys nor a DHCP client identity. Arbitrary distribution services and
 application secrets remain outside this demonstrated profile.
@@ -16,6 +19,14 @@ The original synthetic reference record is retained below. The eight-clone
 0/5/10/25/50/100% buffer-divergence sweep is saved under
 `results/2026-10-22/divergence/`; the percentage is of each 32 MiB test buffer,
 not of all guest RAM. Host kernel/KVM memory overhead remains unmeasured.
+
+Current raw results are in `results/2026-10-24/`. The combined six-guest run
+measured baseline process PSS of 1,230,793 KiB and clone PSS of 276,596 KiB
+before the test-region writes, rising to 473,537 KiB afterward. The eight-clone
+zero- and full-test-region runs measured clone PSS rising from 348,210 to
+349,429 KiB at 0% and from 352,801 to 615,175 KiB at 100% of the 32 MiB
+region. Each run reports process PSS, not complete physical memory; KVM
+metadata and host page tables are not included.
 
 ## Historical synthetic reference
 
@@ -53,9 +64,10 @@ to control how much of A's test region is dirtied. The percentage mode maps to
 whole guest pages and records the selected page count and rounded percentage
 in `result.json`.
 
-The probe now also assigns and reads distinct synthetic machine-id, hostname,
-and seed-token values in A and B. The seed token is deliberately deterministic
-and is not cryptographic entropy. This closes the mechanism gate while leaving
-SSH keys, DHCP identity, ordinary distribution services/login, guest reaction
-to vmgenid, timer behavior, and kernel page-table accounting explicitly
-unverified in `docs/semantic-differences.md`.
+This historical synthetic run assigned distinct machine-id, hostname, and
+seed-token values in A and B. Its seed token was deterministic and was not
+cryptographic entropy. The current guest path uses fresh host-kernel entropy
+and forces guest CRNG reseeding before identity/network preparation. The
+supported Alpine profile has no SSH server or DHCP client; SSH key rotation,
+DHCP behavior, guest reaction to vmgenid, timer behavior, and kernel page-table
+accounting remain unverified in `docs/semantic-differences.md`.
