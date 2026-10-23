@@ -53,6 +53,31 @@ fn fill_disk(value: u8) -> std::io::Result<()> {
     file.sync_all()
 }
 
+fn disk_bench(iterations: &str) -> std::io::Result<String> {
+    let iterations: usize = iterations.parse().map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid disk benchmark iteration count"))?;
+    if !(1..=64).contains(&iterations) {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "disk benchmark iterations must be 1..64"));
+    }
+    if disk_path() == "/dev/vda" {
+        return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "disk benchmark requires a filesystem-backed guest"));
+    }
+    let path = std::path::Path::new(disk_path()).with_file_name("disk-bench.bin");
+    let mut file = OpenOptions::new().create(true).truncate(true).write(true).open(path)?;
+    let block = [0x5au8; 4096];
+    let mut latencies = Vec::with_capacity(iterations);
+    for _ in 0..iterations {
+        let start = Instant::now();
+        file.write_all(&block)?;
+        file.sync_data()?;
+        latencies.push(start.elapsed().as_micros());
+    }
+    latencies.sort_unstable();
+    let mean_us = latencies.iter().sum::<u128>() / iterations as u128;
+    let p50_us = latencies[iterations / 2];
+    let p95_us = latencies[((iterations * 95).div_ceil(100)).saturating_sub(1).min(iterations - 1)];
+    Ok(format!("DISK-BENCH iterations={iterations} block_bytes=4096 mean_us={mean_us} p50_us={p50_us} p95_us={p95_us}"))
+}
+
 fn disk_path() -> &'static str {
     if std::path::Path::new("/etc/alpine-release").exists() { "/var/lib/densevm/disk-probe.bin" } else { "/dev/vda" }
 }
@@ -344,6 +369,10 @@ fn main() {
                     Err(error) => format!("ERROR disk fill: {error}"),
                 },
                 Err(_) => "ERROR invalid byte".to_string(),
+            },
+            ["disk-bench", iterations] => match disk_bench(iterations) {
+                Ok(value) => value,
+                Err(error) => format!("ERROR disk benchmark: {error}"),
             },
             ["reboot"] => {
                 writeln!(serial_out, "DENSEVM REBOOTING").unwrap();

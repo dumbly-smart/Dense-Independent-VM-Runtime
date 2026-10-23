@@ -326,6 +326,19 @@ mod login_tests {
         assert_eq!(cpu_ticks_as_percent_of_one_core(100, 0, 100), 0.0);
         assert_eq!(cpu_ticks_as_percent_of_one_core(100, 1000, 0), 0.0);
     }
+
+    #[test]
+    fn parses_disk_io_benchmark_fields_as_numbers() {
+        let result = parse_disk_benchmark(
+            "DISK-BENCH iterations=16 block_bytes=4096 mean_us=120 p50_us=100 p95_us=301",
+        )
+        .unwrap();
+        assert_eq!(result["iterations"], 16);
+        assert_eq!(result["block_bytes"], 4096);
+        assert_eq!(result["mean_us"], 120);
+        assert_eq!(result["p95_us"], 301);
+        assert!(parse_disk_benchmark("DISK-BENCH iterations=bad").is_err());
+    }
 }
 
 fn launch(
@@ -513,6 +526,46 @@ fn sample_active_cpu_ticks(
         serial.expect("CPU-BURN ", Duration::from_secs(5))?;
     }
     Ok(sample)
+}
+
+fn parse_disk_benchmark(line: &str) -> Result<Value, String> {
+    if !line.starts_with("DISK-BENCH ") {
+        return Err(format!("invalid disk benchmark response {line:?}"));
+    }
+    let mut fields = std::collections::HashMap::new();
+    for field in line.split_whitespace().skip(1) {
+        let (key, value) = field
+            .split_once('=')
+            .ok_or_else(|| format!("invalid disk benchmark field {field:?}"))?;
+        fields.insert(key, value);
+    }
+    let parse = |key: &str| -> Result<u64, String> {
+        fields
+            .get(key)
+            .ok_or_else(|| format!("missing disk benchmark field {key}"))?
+            .parse::<u64>()
+            .map_err(|error| format!("invalid disk benchmark field {key}: {error}"))
+    };
+    Ok(json!({
+        "iterations":parse("iterations")?,
+        "block_bytes":parse("block_bytes")?,
+        "mean_us":parse("mean_us")?,
+        "p50_us":parse("p50_us")?,
+        "p95_us":parse("p95_us")?,
+    }))
+}
+
+fn run_disk_benchmark(serials: &mut [&mut Serial]) -> Result<Vec<Value>, String> {
+    for serial in serials.iter_mut() {
+        serial.send("disk-bench 16")?;
+    }
+    serials
+        .iter_mut()
+        .map(|serial| {
+            let result = serial.expect("DISK-BENCH ", Duration::from_secs(15))?;
+            parse_disk_benchmark(&result)
+        })
+        .collect()
 }
 
 fn cpu_ticks_as_percent_of_one_core(ticks: u64, interval_ms: u128, ticks_per_second: u64) -> f64 {
@@ -863,11 +916,16 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut baseline_serial_refs: Vec<_> = baseline_serials.iter_mut().collect();
     let (baseline_active_cpu_sample_interval_ms, baseline_active_cpu_ticks) =
         sample_active_cpu_ticks(&baseline_pids, &mut baseline_serial_refs)?;
+    let baseline_disk_benchmark = if guest.disk.is_some() {
+        run_disk_benchmark(&mut baseline_serial_refs)?
+    } else {
+        vec![Value::Null; count as usize]
+    };
     let ticks_per_second = host["clock_ticks_per_second"].as_u64().unwrap_or(100);
     let mut baseline_measurements = Vec::new();
     for (index, vm) in baseline_vms.iter().enumerate() {
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
-        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":baseline_cpu_ticks[index],"active_cpu_ticks":baseline_active_cpu_ticks[index],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(baseline_active_cpu_ticks[index], baseline_active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?}));
+        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":baseline_cpu_ticks[index],"active_cpu_ticks":baseline_active_cpu_ticks[index],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(baseline_active_cpu_ticks[index], baseline_active_cpu_sample_interval_ms, ticks_per_second),"disk_benchmark":if guest.disk.is_some(){json!(baseline_disk_benchmark[index])}else{Value::Null},"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
     drop(baseline_serial_refs);
     drop(baseline_serials);
@@ -1138,6 +1196,15 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let (clone_active_cpu_sample_interval_ms, clone_active_cpu_ticks) =
         sample_active_cpu_ticks(&clone_pids, &mut clone_serial_refs)?;
     drop(clone_serial_refs);
+    let clone_disk_benchmark = if guest.disk.is_some() {
+        let mut disk_serial_refs: Vec<_> = vec![&mut aserial, &mut bserial];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            disk_serial_refs.push(serial);
+        }
+        run_disk_benchmark(&mut disk_serial_refs)?
+    } else {
+        vec![Value::Null; count as usize]
+    };
     for (_, _, serial, index, _, _, _) in &mut extra_clones {
         let ram_value = 100 + *index as u8;
         let disk_value = 10 + *index as u8;
@@ -1335,6 +1402,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                     "idle_cpu_ticks": clone_idle_cpu_ticks[*index as usize],
                     "active_cpu_ticks": clone_active_cpu_ticks[*index as usize],
                     "active_cpu_percent_one_core": cpu_ticks_as_percent_of_one_core(clone_active_cpu_ticks[*index as usize], clone_active_cpu_sample_interval_ms, ticks_per_second),
+                    "disk_benchmark": if guest.disk.is_some(){json!(clone_disk_benchmark[*index as usize])}else{Value::Null},
                     "overlay_allocated_bytes": allocated_bytes(&overlays[*index as usize])?,
                     "identity_guest": identity_guest,
                     "mac_guest": mac_guest,
@@ -1400,7 +1468,22 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         clone_active_cpu_sample_interval_ms,
         ticks_per_second
     ));
+    result["clones"]["a"]["disk_benchmark"] = if guest.disk.is_some() {
+        json!(clone_disk_benchmark[0])
+    } else {
+        Value::Null
+    };
+    result["clones"]["b"]["disk_benchmark"] = if guest.disk.is_some() {
+        json!(clone_disk_benchmark[1])
+    } else {
+        Value::Null
+    };
     result["active_cpu_workload"] = json!({"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"sample_interval_ms":clone_active_cpu_sample_interval_ms,"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","ticks_per_second":ticks_per_second});
+    result["disk_io_benchmark"] = if guest.disk.is_some() {
+        json!({"guest_command":"disk-bench 16","scope":"per-guest ext4 file; each 4 KiB write followed by fdatasync; latencies measured inside guest"})
+    } else {
+        Value::Null
+    };
     result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified,"network_benchmark":range_network_benchmark});
     result["process_isolation"] = json!(process_isolation);
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
