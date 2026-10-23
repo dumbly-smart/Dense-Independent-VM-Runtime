@@ -21,3 +21,14 @@ The full machine-readable measurement is in [`security-range-6.json`](security-r
 The initial clone process PSS was about 22.5% of the six-process conventional baseline PSS for this fixture and measurement point. After the private RAM writes it was about 38.7%. These are process-PSS comparisons, not complete host physical-memory totals: QEMU PSS omits KVM metadata, host page tables, and other kernel allocations. The 32 MiB divergence region is not the full 256 MiB guest RAM.
 
 The run verified RAM and disk isolation, whole-test-disk isolation, unique guest/MAC/vmgenid identities, isolated process state, per-clone parking and resume, guest reboot of target A, survival of its sibling, and client connectivity to all five targets both before and after killing target T1's QEMU process. `KSM run` remained 0; this run measures template COW without KSM.
+
+## Active CPU sample
+
+[`active-cpu-2.json`](active-cpu-2.json) records a separate matched two-VM synthetic-guest run. Each guest executes `cpu-burn 1500`; QEMU process CPU ticks are sampled during the same one-second window.
+
+| Mode | Idle ticks per guest | Active CPU (% of one host core) | Summed process PSS |
+| --- | ---: | ---: | ---: |
+| Conventional baseline | 2, 3 | 101%, 102% | 421,471 KiB |
+| Templated clones | 2, 2 | 102%, 102% | 109,078 KiB |
+
+This indicates both modes consume about one host core per busy guest. DenseVM does not deduplicate guest instructions. The PSS comparison is specific to this synthetic guest and omits kernel memory overhead.
