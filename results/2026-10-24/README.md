@@ -51,3 +51,7 @@ The p95 spread and tiny 16-write sample make these initial observations only; th
 ## Combined six-guest run
 
 [`security-range-6-combined.json`](security-range-6-combined.json) runs the range and all three workload measurements together. The six-VM baseline summed 1,230,793 KiB PSS and became ready in 4,601 ms. The six templated clones summed 276,596 KiB PSS before 32 MiB-per-clone test divergence and 473,537 KiB after. Their RAM-file mapping PSS rose from 62,169 to 259,101 KiB. This process-PSS comparison excludes KVM metadata and host page tables. The run also recorded one-second active CPU samples near 99–101% of one core per VM, 16-write ext4 sync samples per guest, and a 64 KiB UDP request burst with 0% observed loss in 1,330 µs (394.2 Mbps request payload). All range connectivity and isolation checks passed, including sibling survival after T1 reboot and QEMU termination. `KSM run` remained 0.
+
+## Eight-clone range, 0% test-region divergence
+
+[`security-range-8-zero.json`](security-range-8-zero.json) records eight 256 MiB Alpine guests. The eight-VM baseline summed 1,623,396 KiB process PSS; templated clones summed 348,210 KiB before test writes and 349,429 KiB after. The explicit 32 MiB divergence region remained unchanged in all eight clones (`ram_divergence_bytes=0`); other normal guest activity still caused about 1.2 MiB additional RAM-mapping PSS. The clones all passed RAM/disk/identity/process/reboot/parking and network reachability checks. As in the other runs, process PSS excludes KVM metadata and host page tables.
