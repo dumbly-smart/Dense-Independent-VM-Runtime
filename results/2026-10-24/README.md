@@ -34,3 +34,16 @@ The run verified RAM and disk isolation, whole-test-disk isolation, unique guest
 | Templated clones | 2, 2 | 102%, 102% | 109,078 KiB |
 
 This indicates both modes consume about one host core per busy guest. DenseVM does not deduplicate guest instructions. The PSS comparison is specific to this synthetic guest and omits kernel memory overhead.
+
+## Initial disk sync latency sample
+
+[`disk-io-2.json`](disk-io-2.json) records a matched two-VM Alpine ext4 probe. Each guest writes 16 × 4 KiB to its own test file and calls `fdatasync` after each write. The values are per guest:
+
+| Mode | Mean write+sync latency | p50 | p95 |
+| --- | ---: | ---: | ---: |
+| Conventional baseline 0 | 366 µs | 192 µs | 2,255 µs |
+| Conventional baseline 1 | 444 µs | 217 µs | 3,102 µs |
+| Templated clone 0 | 154 µs | 102 µs | 735 µs |
+| Templated clone 1 | 207 µs | 146 µs | 1,089 µs |
+
+The p95 spread and tiny 16-write sample make these initial observations only; they do not establish a disk performance advantage. The test measures guest-visible file write+sync latency over qcow2, including host cache and scheduling effects.

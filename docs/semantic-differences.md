@@ -53,6 +53,7 @@ Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
 | Guest reboot isolation | YES | YES | Rebooting target A exits its QEMU process under `-no-reboot`; B remains responsive. |
 | Shared virtual Ethernet segment | optional | YES | Six separate virtio NICs use a QEMU socket multicast backend bound to host loopback; targets respond before and after T1 is killed. This is a shared range network, not host-user isolation. |
 | Guest network throughput | workload-dependent | PARTIAL | A 64 KiB UDP request burst completed with 0% observed loss in 1,241 µs. This is a short guest-to-guest sample on a local multicast backend, not host NIC line rate. |
+| Guest disk write+sync latency | workload-dependent | PARTIAL | A two-VM Alpine run recorded 16 × 4 KiB ext4 writes with `fdatasync`; p95 values varied from 735 to 3,102 µs across four guests. The small sample is not a performance conclusion. |
 | Independent wall clock/timers | YES | UNKNOWN | Time and timer divergence after restore have not been tested. |
 | Kernel and KVM memory overhead included in result | applicable | UNKNOWN | Process PSS and template file cache residency are measured; kernel metadata is not isolated. |
 
