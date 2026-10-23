@@ -1298,11 +1298,13 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             extra_qmps.push(qmp);
         }
         let (parked_cpu_sample_interval_ms, parked_cpu_ticks) = sample_cpu_ticks(&clone_pids)?;
+        let resume_started = Instant::now();
         resumed_statuses.push(resume_and_verify(&mut aq)?);
         resumed_statuses.push(resume_and_verify(&mut bq)?);
         for qmp in &mut extra_qmps {
             resumed_statuses.push(resume_and_verify(qmp)?);
         }
+        let resume_qmp_elapsed_ms = resume_started.elapsed().as_millis();
         let mut guests_responsive_after_resume = expect_value(&mut aserial, "ping", "PONG")?
             && expect_value(&mut bserial, "ping", "PONG")?;
         for (_, _, serial, _, _, _, _) in &mut extra_clones {
@@ -1317,8 +1319,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             "resumed_statuses":resumed_statuses,
             "cpu_sample_interval_ms":parked_cpu_sample_interval_ms,
             "qemu_process_cpu_ticks":parked_cpu_ticks,
+            "resume_qmp_elapsed_ms":resume_qmp_elapsed_ms,
             "guests_responsive_after_resume":guests_responsive_after_resume,
-            "wall_clock_semantics":"guest timers stop while paused; explicit QMP cont resumes execution"
+            "guest_clock_semantics":"not measured; QMP stop pauses guest execution, but timer and RTC catch-up behavior is unknown"
         });
     }
     // `-no-reboot` turns a guest reboot into QEMU shutdown. The guest may reset
