@@ -66,6 +66,47 @@ fn services() -> std::io::Result<String> {
     Ok(format!("SERVICES init={} syslogd={} crond={} getty={}", init.trim() == "init", names.contains("syslogd"), names.contains("crond"), names.contains("getty")))
 }
 
+fn range_ip(value: &str) -> std::io::Result<std::net::Ipv4Addr> {
+    let ip: std::net::Ipv4Addr = value.parse().map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid IPv4 address"))?;
+    let octets = ip.octets();
+    if octets[..3] != [10, 77, 0] || !(10..=41).contains(&octets[3]) {
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "address outside bounded range subnet"));
+    }
+    Ok(ip)
+}
+
+fn network_set(value: &str) -> std::io::Result<String> {
+    let ip = range_ip(value)?;
+    for args in [vec!["ip".to_owned(), "addr".to_owned(), "add".to_owned(), format!("{ip}/24"), "dev".to_owned(), "eth0".to_owned()], vec!["ip".to_owned(), "link".to_owned(), "set".to_owned(), "eth0".to_owned(), "up".to_owned()]] {
+        let output = std::process::Command::new("/bin/busybox").args(args).output()?;
+        if !output.status.success() { return Err(std::io::Error::other(String::from_utf8_lossy(&output.stderr).to_string())); }
+    }
+    let socket = std::net::UdpSocket::bind((ip, 7777))?;
+    let identity = fs::read_to_string("/etc/machine-id")?.trim().as_bytes().to_vec();
+    thread::spawn(move || {
+        let mut data = [0u8; 256];
+        while let Ok((_, peer)) = socket.recv_from(&mut data) { let _ = socket.send_to(&identity, peer); }
+    });
+    Ok(format!("NETWORK {ip}"))
+}
+
+fn udp_probe(value: &str) -> std::io::Result<String> {
+    let ip = range_ip(value)?;
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
+    socket.set_read_timeout(Some(Duration::from_secs(3)))?;
+    socket.send_to(b"densevm", (ip, 7777))?;
+    let mut data = [0u8; 256];
+    let (count, peer) = socket.recv_from(&mut data)?;
+    if peer.ip() != std::net::IpAddr::V4(ip) { return Err(std::io::Error::other("unexpected UDP responder")); }
+    Ok(format!("UDP {}", String::from_utf8_lossy(&data[..count])))
+}
+
+fn process_count() -> std::io::Result<usize> {
+    Ok(fs::read_dir("/proc")?.flatten().filter(|entry| {
+        fs::read(entry.path().join("cmdline")).is_ok_and(|cmd| cmd == b"/bin/sleep\x00137\x00")
+    }).count())
+}
+
 fn reboot_guest() -> ! {
     let result = unsafe { syscall(169, 0xfee1dead_u32, 672274793_u32, 0x01234567_u32, 0_u32) };
     panic!("reboot syscall failed: {result}");
@@ -169,6 +210,7 @@ fn main() {
     }
     writeln!(serial_out, "DENSEVM READY").unwrap();
     let mut prepared = false;
+    let mut processes = Vec::new();
     loop {
         let mut line = String::new();
         if reader.read_line(&mut line).unwrap_or(0) == 0 {
@@ -180,6 +222,14 @@ fn main() {
             ["ping"] => "PONG".to_string(),
             ["sync"] => { unsafe { syscall(162); } "SYNCED".to_string() },
             ["services-read"] => match services() { Ok(value) => value, Err(e) => format!("ERROR services: {e}") },
+            ["network-set", _] if !prepared => "ERROR identity preparation required before networking".to_string(),
+            ["network-set", value] => match network_set(value) { Ok(value) => value, Err(e) => format!("ERROR network: {e}") },
+            ["udp-probe", value] => match udp_probe(value) { Ok(value) => value, Err(e) => format!("ERROR UDP: {e}") },
+            ["process-start"] => match std::process::Command::new("/bin/sleep").arg("137").spawn() {
+                Ok(child) => { processes.push(child); "PROCESS-STARTED".to_string() },
+                Err(e) => format!("ERROR process: {e}"),
+            },
+            ["process-count"] => match process_count() { Ok(n) => format!("PROCESS-COUNT {n}"), Err(e) => format!("ERROR process: {e}") },
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {
@@ -229,7 +279,11 @@ fn main() {
                 },
                 Err(_) => "ERROR invalid byte".to_string(),
             },
-            ["reboot"] => reboot_guest(),
+            ["reboot"] => {
+                writeln!(serial_out, "DENSEVM REBOOTING").unwrap();
+                serial_out.flush().unwrap();
+                reboot_guest()
+            }
             ["entropy-add", value] => match reseed(value) {
                 Ok(()) => { prepared = true; "RNG-RESEEDED".to_string() },
                 Err(error) => format!("ERROR reseed: {error}"),

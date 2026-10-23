@@ -107,10 +107,14 @@ impl Serial {
         }
     }
     fn command(&mut self, command: &str, wanted: &str) -> Result<String, String> {
+        self.send(command)?;
+        self.expect(wanted, Duration::from_secs(12))
+    }
+    fn send(&mut self, command: &str) -> Result<(), String> {
         crate::interrupt::check()?;
         writeln!(self.writer, "{command}").map_err(|e| format!("serial write: {e}"))?;
         self.writer.flush().map_err(|e| e.to_string())?;
-        self.expect(wanted, Duration::from_secs(12))
+        Ok(())
     }
 }
 
@@ -200,6 +204,8 @@ struct GuestArtifacts {
     initramfs: PathBuf,
     disk: Option<PathBuf>,
     metadata: Value,
+    netdev: Option<String>,
+    merge: bool,
 }
 
 fn prepare_guest(out: &Path, guest_dir: Option<&Path>) -> Result<GuestArtifacts, String> {
@@ -228,6 +234,8 @@ fn prepare_guest(out: &Path, guest_dir: Option<&Path>) -> Result<GuestArtifacts,
             initramfs: directory.join("initramfs.cpio"),
             disk: Some(directory.join("disk.qcow2")),
             metadata,
+            netdev: None,
+            merge: false,
         })
     } else {
         Ok(GuestArtifacts {
@@ -235,6 +243,8 @@ fn prepare_guest(out: &Path, guest_dir: Option<&Path>) -> Result<GuestArtifacts,
             initramfs: build_initramfs(out)?,
             disk: None,
             metadata: json!({"kind":"synthetic-initramfs"}),
+            netdev: None,
+            merge: false,
         })
     }
 }
@@ -324,7 +334,11 @@ fn launch(
     let mut cmd = Command::new("qemu-system-x86_64");
     cmd.args([
         "-machine",
-        &format!("{},accel=kvm", crate::capabilities::MACHINE),
+        &format!(
+            "{},accel=kvm,mem-merge={}",
+            crate::capabilities::MACHINE,
+            if guest.merge { "on" } else { "off" }
+        ),
         "-cpu",
         "host",
         "-m",
@@ -344,6 +358,7 @@ fn launch(
                 path.display()
             )
         };
+        let opts = format!("{opts},merge={}", if guest.merge { "on" } else { "off" });
         cmd.args(["-object", &opts, "-machine", "memory-backend=ram"]);
     }
     cmd.arg("-kernel")
@@ -364,12 +379,13 @@ fn launch(
         "if=none,id=disk,file={},format=qcow2",
         disk.display()
     ));
-    cmd.args([
-        "-device",
-        "virtio-blk-pci,drive=disk,id=blk0",
-        "-netdev",
-        "user,id=net0,restrict=on",
-    ]);
+    cmd.args(["-device", "virtio-blk-pci,drive=disk,id=blk0", "-netdev"]);
+    cmd.arg(
+        guest
+            .netdev
+            .as_deref()
+            .unwrap_or("user,id=net0,restrict=on"),
+    );
     cmd.args(["-device", "pcie-root-port,id=rp1,slot=2,chassis=1"]);
     if let Some(mac) = mac_at_boot {
         cmd.arg("-device").arg(format!(
@@ -475,6 +491,7 @@ fn sample_cpu_ticks(pids: &[u32]) -> Result<(u128, Vec<u64>), String> {
 
 fn measure_mapping(pid: u32, path: &Path) -> Result<MemoryTotals, String> {
     let text = fs::read_to_string(format!("/proc/{pid}/smaps")).map_err(|e| e.to_string())?;
+    crate::metrics::verify_private_ram_mapping(&text, path.to_str().ok_or("non-UTF8 RAM path")?)?;
     parse_smaps_for_path(&text, path.to_str().ok_or("non-UTF8 RAM path")?)
 }
 
@@ -666,26 +683,38 @@ pub fn run_experiment(
     park_idle: bool,
     divergence_all: bool,
 ) -> Result<(), String> {
-    run_guest_experiment(
+    run_options(
         out,
-        count,
-        ksm,
-        divergence_pages,
-        park_idle,
-        divergence_all,
-        None,
+        ProbeOptions {
+            count,
+            ksm,
+            divergence_pages,
+            park_idle,
+            divergence_all,
+            guest_dir: None,
+            range: false,
+        },
     )
 }
 
-pub fn run_guest_experiment(
-    out: &Path,
-    count: u32,
-    ksm: bool,
-    divergence_pages: u32,
-    park_idle: bool,
-    divergence_all: bool,
-    guest_dir: Option<&Path>,
-) -> Result<(), String> {
+#[derive(Clone, Copy)]
+pub struct ProbeOptions<'a> {
+    pub count: u32,
+    pub ksm: bool,
+    pub divergence_pages: u32,
+    pub park_idle: bool,
+    pub divergence_all: bool,
+    pub guest_dir: Option<&'a Path>,
+    pub range: bool,
+}
+
+pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
+    let ProbeOptions {
+        count,
+        ksm,
+        divergence_pages,
+        ..
+    } = options;
     if !(2..=32).contains(&count) {
         return Err(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
@@ -696,33 +725,31 @@ pub fn run_guest_experiment(
             "RAM divergence must be at most {TEST_REGION_PAGES} pages"
         ));
     }
+    if options.range && (options.guest_dir.is_none() || count < 3) {
+        return Err("--range requires a prepared Alpine guest and at least 3 clones".into());
+    }
     let mut ksm_guard = if ksm {
         Some(crate::ksm::KsmGuard::enable()?)
     } else {
         None
     };
-    let result = run_two_clone(
-        out,
-        count,
-        divergence_pages,
-        park_idle,
-        divergence_all,
-        guest_dir,
-    );
+    let result = run_two_clone(out, options);
     if let Some(guard) = &mut ksm_guard {
         guard.restore()?;
     }
     result
 }
 
-fn run_two_clone(
-    out: &Path,
-    count: u32,
-    divergence_pages: u32,
-    park_idle: bool,
-    divergence_all: bool,
-    guest_dir: Option<&Path>,
-) -> Result<(), String> {
+fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
+    let ProbeOptions {
+        count,
+        ksm,
+        divergence_pages,
+        park_idle,
+        divergence_all,
+        guest_dir,
+        range,
+    } = options;
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
     crate::capabilities::require_template_support(&host)?;
@@ -763,7 +790,8 @@ fn run_two_clone(
         .create(out)
         .map_err(|e| format!("create new output directory: {e}"))?;
     let out = out.canonicalize().map_err(|e| e.to_string())?;
-    let guest = prepare_guest(&out, guest_dir)?;
+    let mut guest = prepare_guest(&out, guest_dir)?;
+    guest.merge = ksm;
     let base = out.join("base.qcow2");
     create_base(&base, &guest)?;
 
@@ -778,7 +806,8 @@ fn run_two_clone(
                 .arg(&base)
                 .arg(&disk),
         )?;
-        let mac = CloneIdentity::generate()?.mac;
+        let baseline_identity = CloneIdentity::generate()?;
+        let mac = &baseline_identity.mac;
         let vm = launch(
             &out,
             &name,
@@ -790,6 +819,7 @@ fn run_two_clone(
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
+        prepare_identity(&mut serial, &baseline_identity)?;
         baseline_vms.push(vm);
     }
     let baseline_elapsed_ms = baseline_start.elapsed().as_millis();
@@ -801,6 +831,16 @@ fn run_two_clone(
         baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":baseline_cpu_ticks[index],"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
     drop(baseline_vms);
+
+    if range {
+        let port = 30000
+            + u32::from_str_radix(&clone_identities[0].machine_id[..4], 16)
+                .map_err(|e| e.to_string())?
+                % 30000;
+        guest.netdev = Some(format!(
+            "socket,id=net0,mcast=230.0.0.1:{port},localaddr=127.0.0.1"
+        ));
+    }
 
     let ram = out.join("memory.img");
     File::create(&ram)
@@ -889,6 +929,7 @@ fn run_two_clone(
     fs::set_permissions(&base, fs::Permissions::from_mode(0o444)).map_err(|e| e.to_string())?;
     let ram_hash_before = sha256(&ram)?;
 
+    let clone_start = Instant::now();
     let mut overlays = Vec::new();
     for index in 0..count {
         let name = format!("clone-{index:03}");
@@ -903,7 +944,6 @@ fn run_two_clone(
         verify_backing(&overlay, &base)?;
         overlays.push(overlay);
     }
-    let clone_start = Instant::now();
     let mut a = launch(
         &out,
         "clone-000",
@@ -978,7 +1018,6 @@ fn run_two_clone(
             vmgenid,
         ));
     }
-    let clone_elapsed_ms = clone_start.elapsed().as_millis();
     let mut aserial = a.serial()?;
     let mut bserial = b.serial()?;
     aserial.command("ping", "PONG")?;
@@ -1008,6 +1047,29 @@ fn run_two_clone(
     }
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
+    let mut range_before_verified = !range;
+    if range {
+        aserial.command("network-set 10.77.0.10", "NETWORK ")?;
+        bserial.command("network-set 10.77.0.11", "NETWORK ")?;
+        for (_, _, serial, index, _, _, _) in &mut extra_clones {
+            serial.command(&format!("network-set 10.77.0.{}", *index + 10), "NETWORK ")?;
+        }
+        let attacker = &mut extra_clones.last_mut().ok_or("missing attacker")?.2;
+        range_before_verified = true;
+        for index in 0..count - 1 {
+            let reply = attacker.command(&format!("udp-probe 10.77.0.{}", index + 10), "UDP ")?;
+            range_before_verified &=
+                reply == format!("UDP {}", clone_identities[index as usize].machine_id);
+        }
+    }
+    let clone_elapsed_ms = clone_start.elapsed().as_millis();
+    let process_isolation = if guest.disk.is_some() {
+        aserial.command("process-start", "PROCESS-STARTED")?;
+        expect_value(&mut aserial, "process-count", "PROCESS-COUNT 1")?
+            && expect_value(&mut bserial, "process-count", "PROCESS-COUNT 0")?
+    } else {
+        true
+    };
     let mut extra_guest_isolation = true;
     for (_, _, serial, index, _, _, _) in &mut extra_clones {
         let ram_value = 100 + *index as u8;
@@ -1140,8 +1202,35 @@ fn run_two_clone(
             "wall_clock_semantics":"guest timers stop while paused; explicit QMP cont resumes execution"
         });
     }
-    aserial.command("reboot", "").ok();
-    thread::sleep(Duration::from_millis(500));
+    // `-no-reboot` turns a guest reboot into QEMU shutdown. The guest may reset
+    // its UART before the acknowledgement drains, so observe the process/QMP
+    // state instead of waiting for a serial reply that can be lost on reset.
+    aserial.send("reboot")?;
+    let reboot_deadline = Instant::now() + Duration::from_secs(5);
+    let mut a_reboot_process_status = None;
+    let mut a_reboot_qmp_status = None;
+    while Instant::now() < reboot_deadline {
+        a_reboot_process_status = a.child.try_wait().map_err(|e| e.to_string())?;
+        if a_reboot_process_status.is_some() {
+            a_reboot_qmp_status = None;
+            break;
+        }
+        a_reboot_qmp_status = aq
+            .execute("query-status", None)
+            .ok()
+            .and_then(|status| status["status"].as_str().map(str::to_owned));
+        if a_reboot_qmp_status
+            .as_deref()
+            .is_some_and(|status| status != "running")
+        {
+            break;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    let a_reboot_observed = a_reboot_process_status.is_some()
+        || a_reboot_qmp_status
+            .as_deref()
+            .is_some_and(|status| status != "running");
     let b_survives_guest_reboot = expect_value(&mut bserial, "ping", "PONG")?;
     let overlay_after = [
         allocated_bytes(&overlays[0])?,
@@ -1154,6 +1243,33 @@ fn run_two_clone(
     a.child.kill().map_err(|e| e.to_string())?;
     a.child.wait().map_err(|e| e.to_string())?;
     let b_survives_a_kill = expect_value(&mut bserial, "ping", "PONG")?;
+    let mut range_after_verified = !range;
+    if range {
+        let attacker = &mut extra_clones.last_mut().ok_or("missing attacker")?.2;
+        range_after_verified = attacker.command("udp-probe 10.77.0.11", "UDP ")?
+            == format!("UDP {}", clone_identities[1].machine_id);
+    }
+    let mut surviving_clones_verified = expect_value(&mut bserial, "disk-read", "DISK 66")?;
+    surviving_clones_verified &= expect_value(
+        &mut bserial,
+        "ram-read",
+        if divergence_all && divergence_pages > 0 {
+            "RAM 166"
+        } else {
+            "RAM 90"
+        },
+    )?;
+    for (_, _, serial, index, identity, _, _) in &mut extra_clones {
+        let expected_ram = if divergence_all && divergence_pages > 0 {
+            167 + *index
+        } else {
+            100 + *index
+        };
+        surviving_clones_verified &= expect_value(serial, "ping", "PONG")?
+            && serial.command("identity-read", "IDENTITY ")? == *identity
+            && serial.command("disk-read", "DISK ")? == format!("DISK {}", 10 + *index)
+            && serial.command("ram-read", "RAM ")? == format!("RAM {expected_ram}");
+    }
     let extra_measurements = extra_clones
         .iter()
         .map(
@@ -1189,7 +1305,7 @@ fn run_two_clone(
     let ksmd_cpu_ticks_delta = ksmd_cpu_ticks_before
         .zip(ksmd_cpu_ticks_after)
         .and_then(|(before, after)| after.checked_sub(before));
-    let result = json!({
+    let mut result = json!({
         "experiment":"two-clone-cow-probe",
         "host":host,
         "guest":guest.metadata,
@@ -1217,6 +1333,12 @@ fn run_two_clone(
                   "time_to_count_resumed_ms":clone_elapsed_ms},
         "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details
     });
+    result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified});
+    result["process_isolation"] = json!(process_isolation);
+    result["surviving_clones_verified"] = json!(surviving_clones_verified);
+    result["a_guest_reboot_observed"] = json!(a_reboot_observed);
+    result["a_reboot_process_exited"] = json!(a_reboot_process_status.is_some());
+    result["a_reboot_qmp_status"] = json!(a_reboot_qmp_status);
     fs::write(
         out.join("result.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,
@@ -1234,7 +1356,12 @@ fn run_two_clone(
         && b_survives_guest_reboot
         && b_survives_a_kill
         && parking_verified
-        && divergence_all_verified)
+        && divergence_all_verified
+        && process_isolation
+        && surviving_clones_verified
+        && a_reboot_observed
+        && range_before_verified
+        && range_after_verified)
     {
         return Err("one or more isolation checks failed; see result.json".into());
     }
