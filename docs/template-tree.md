@@ -52,11 +52,14 @@ directory. It checks input template hashes before and after the run, verifies
 the qcow2 backing chain, samples the exact child-RAM VMA from each QEMU
 process's `smaps`, and fails unless the descendants initially map resident
 shared pages and A's RAM write increases A's private dirty pages. A successful
-run also writes `generation.json` (schema version 1) with hashes for the child
-RAM/state/disk artifacts, the parent result and base disk, the QEMU version,
-the source QEMU device command, and the qcow2 backing path. `result.json`
-records the manifest hash. The parent path is absolute, so the manifest is
-provenance for this experiment and is not yet a relocatable template package.
+run also writes `generation.json` (schema version 2) with hashes for the child
+RAM/state/disk artifacts and the parent result, RAM, machine-state, and base
+disk, plus the QEMU version, source QEMU device command, and qcow2 backing
+path. The generation ID is a SHA-256 content address over the child RAM,
+machine-state, and disk hashes. `result.json` records the manifest hash. The
+parent path is absolute, so the manifest is provenance for this experiment
+and is not yet a relocatable template package. Run 3 preserves the prior v1
+manifest; run 4 demonstrates the v2 content-addressed schema.
 
 ## Measurements
 
@@ -94,11 +97,14 @@ Raw evidence: [`two-generation-run1.json`](../results/template-tree/2026-10-25/t
 and [`two-generation-run3.json`](../results/template-tree/2026-10-25/two-generation-run3.json).
 The third run's hashed generation manifest is also saved as
 [`two-generation-run3-generation.json`](../results/template-tree/2026-10-25/two-generation-run3-generation.json).
+The v2 content-addressed fourth run is recorded in
+[`two-generation-run4.json`](../results/template-tree/2026-10-25/two-generation-run4.json)
+and [`two-generation-run4-generation.json`](../results/template-tree/2026-10-25/two-generation-run4-generation.json).
 
 ## Scope and remaining work
 
 This verifies one parent-to-child materialization and two independent
-descendants for the tested synthetic guest and QEMU machine. The v1 generation
+descendants for the tested synthetic guest and QEMU machine. The v2 generation
 manifest is experimental provenance, not a persistent Template Manager. It
 does not provide artifact relocation, garbage collection, crash-safe
 publication, migration compatibility checks across QEMU versions, network

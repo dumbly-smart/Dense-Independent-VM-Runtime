@@ -1,0 +1,278 @@
+{
+  "experiment": "two-generation-template-tree-cow",
+  "status": "verified",
+  "host": {
+    "kernel": "7.2.11-arch1-1",
+    "page_size_bytes": 4096
+  },
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "template_source": "/home/xtrmn8/dvm-resources/cgroup-probe-run4",
+  "template_result_sha256": "d6aa19fd0d01accad5269e66e61db309e8989ec4179cc1f91f58e8824a0608db",
+  "guest": {
+    "kind": "synthetic-initramfs"
+  },
+  "source_template_qemu_command": [
+    "qemu-system-x86_64",
+    "-machine",
+    "pc-q35-11.1,accel=kvm,mem-merge=off",
+    "-cpu",
+    "host",
+    "-m",
+    "256M",
+    "-smp",
+    "1",
+    "-object",
+    "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/cgroup-probe-run4/memory.img,size=256M,share=on,readonly=off,merge=off",
+    "-machine",
+    "memory-backend=ram",
+    "-kernel",
+    "/boot/vmlinuz-linux",
+    "-initrd",
+    "/home/xtrmn8/dvm-resources/cgroup-probe-run4/initramfs.cpio",
+    "-append",
+    "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+    "-display",
+    "none",
+    "-monitor",
+    "none",
+    "-nodefaults",
+    "-no-reboot",
+    "-drive",
+    "if=none,id=disk,file=/home/xtrmn8/dvm-resources/cgroup-probe-run4/base.qcow2,format=qcow2",
+    "-device",
+    "virtio-blk-pci,drive=disk,id=blk0",
+    "-netdev",
+    "user,id=net0,restrict=on",
+    "-device",
+    "pcie-root-port,id=rp1,slot=2,chassis=1",
+    "-device",
+    "vmgenid,guid=auto",
+    "-chardev",
+    "socket,id=serial,path=/home/xtrmn8/dvm-resources/cgroup-probe-run4/template.serial.sock,server=on,wait=off",
+    "-serial",
+    "chardev:serial",
+    "-qmp",
+    "unix:/home/xtrmn8/dvm-resources/cgroup-probe-run4/template.qmp.sock,server=on,wait=off"
+  ],
+  "source_clone_qemu_command": [
+    "qemu-system-x86_64",
+    "-machine",
+    "pc-q35-11.1,accel=kvm,mem-merge=off",
+    "-cpu",
+    "host",
+    "-m",
+    "256M",
+    "-smp",
+    "1",
+    "-object",
+    "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/cgroup-probe-run4/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+    "-machine",
+    "memory-backend=ram",
+    "-kernel",
+    "/boot/vmlinuz-linux",
+    "-initrd",
+    "/home/xtrmn8/dvm-resources/cgroup-probe-run4/initramfs.cpio",
+    "-append",
+    "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+    "-display",
+    "none",
+    "-monitor",
+    "none",
+    "-nodefaults",
+    "-no-reboot",
+    "-drive",
+    "if=none,id=disk,file=/home/xtrmn8/dvm-resources/cgroup-probe-run4/clone-000.qcow2,format=qcow2",
+    "-device",
+    "virtio-blk-pci,drive=disk,id=blk0",
+    "-netdev",
+    "user,id=net0,restrict=on",
+    "-device",
+    "pcie-root-port,id=rp1,slot=2,chassis=1",
+    "-device",
+    "vmgenid,guid=auto",
+    "-chardev",
+    "socket,id=serial,path=/home/xtrmn8/dvm-resources/cgroup-probe-run4/clone-000.serial.sock,server=on,wait=off",
+    "-serial",
+    "chardev:serial",
+    "-qmp",
+    "unix:/home/xtrmn8/dvm-resources/cgroup-probe-run4/clone-000.qmp.sock,server=on,wait=off",
+    "-incoming",
+    "defer"
+  ],
+  "memory_size_bytes": 268435456,
+  "parent_ram": "RAM 73",
+  "parent_disk": "DISK 73",
+  "parent_identity": {
+    "identity": "IDENTITY 65b21535b2c2533c8ee01e9e0612352f densevm-65b21535b2c2 RNG-RESEEDED",
+    "ssh_identity": "SSH-IDENTITY ABSENT",
+    "vmgenid_reaction": "VMGENID-REACTION UNKNOWN template baseline unavailable"
+  },
+  "descendant_identities": [
+    {
+      "identity": "IDENTITY b38b5aba8277d93445a7b1d840b71683 densevm-b38b5aba8277 RNG-RESEEDED",
+      "ssh_identity": "SSH-IDENTITY ABSENT",
+      "vmgenid_reaction": "VMGENID-REACTION UNKNOWN template baseline unavailable"
+    },
+    {
+      "identity": "IDENTITY ddca052390a5a996117e1dba7041fb4d densevm-ddca052390a5 RNG-RESEEDED",
+      "ssh_identity": "SSH-IDENTITY ABSENT",
+      "vmgenid_reaction": "VMGENID-REACTION UNKNOWN template baseline unavailable"
+    }
+  ],
+  "identity_unique_across_generations": true,
+  "parent_full_migration": {
+    "status": "completed",
+    "setup-time": 2,
+    "downtime": 4,
+    "total-time": 1004,
+    "ram": {
+      "total": 268967936,
+      "postcopy-requests": 0,
+      "dirty-sync-count": 2,
+      "multifd-bytes": 0,
+      "pages-per-second": 270010,
+      "downtime-bytes": 136565630,
+      "page-size": 4096,
+      "remaining": 0,
+      "postcopy-bytes": 0,
+      "mbps": 1091.4034011976048,
+      "transferred": 136698276,
+      "dirty-sync-missed-zero-copy": 0,
+      "precopy-bytes": 0,
+      "duplicate": 32461,
+      "dirty-pages-rate": 0,
+      "normal-bytes": 136007680,
+      "normal": 33205
+    }
+  },
+  "child_full_restore": {
+    "start": {},
+    "result": {
+      "status": "completed"
+    }
+  },
+  "child_machine_state_snapshot": {
+    "status": "completed",
+    "setup-time": 2,
+    "downtime": 2,
+    "total-time": 5,
+    "ram": {
+      "total": 532480,
+      "postcopy-requests": 0,
+      "dirty-sync-count": 2,
+      "multifd-bytes": 0,
+      "pages-per-second": 0,
+      "downtime-bytes": 177340,
+      "page-size": 4096,
+      "remaining": 0,
+      "postcopy-bytes": 0,
+      "mbps": 827.192,
+      "transferred": 310197,
+      "dirty-sync-missed-zero-copy": 0,
+      "precopy-bytes": 0,
+      "duplicate": 87,
+      "dirty-pages-rate": 0,
+      "normal-bytes": 176128,
+      "normal": 43
+    }
+  },
+  "descendant_restores": [
+    {
+      "start": {},
+      "result": {
+        "status": "completed"
+      }
+    },
+    {
+      "start": {},
+      "result": {
+        "status": "completed"
+      }
+    }
+  ],
+  "qcow2_checks": {
+    "parent": {
+      "backing_chain": [
+        "/home/xtrmn8/dvm-resources/tree-spike-20261025-run13/parent.qcow2",
+        "/home/xtrmn8/dvm-resources/cgroup-probe-run4/base.qcow2"
+      ],
+      "check_output": "No errors were found on the image.\n1/1024 = 0.10% allocated, 0.00% fragmented, 0.00% compressed clusters\nImage end offset: 393216"
+    },
+    "descendant_0": {
+      "backing_chain": [
+        "/home/xtrmn8/dvm-resources/tree-spike-20261025-run13/descendant-0.qcow2",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261025-run13/parent.qcow2",
+        "/home/xtrmn8/dvm-resources/cgroup-probe-run4/base.qcow2"
+      ],
+      "check_output": "No errors were found on the image.\n1/1024 = 0.10% allocated, 0.00% fragmented, 0.00% compressed clusters\nImage end offset: 393216"
+    },
+    "descendant_1": {
+      "backing_chain": [
+        "/home/xtrmn8/dvm-resources/tree-spike-20261025-run13/descendant-1.qcow2",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261025-run13/parent.qcow2",
+        "/home/xtrmn8/dvm-resources/cgroup-probe-run4/base.qcow2"
+      ],
+      "check_output": "No errors were found on the image.\nImage end offset: 262144"
+    }
+  },
+  "descendant_a_after_private_write": {
+    "ram": "RAM 91",
+    "disk": "DISK 91"
+  },
+  "descendant_b_after_a_write": {
+    "ram": "RAM 73",
+    "disk": "DISK 73"
+  },
+  "descendant_ram_mapping_before_divergence": [
+    {
+      "pss_kib": 11470,
+      "shared_clean_kib": 0,
+      "shared_dirty_kib": 15908,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 3516
+    },
+    {
+      "pss_kib": 8906,
+      "shared_clean_kib": 0,
+      "shared_dirty_kib": 15908,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 952
+    }
+  ],
+  "descendant_ram_mapping_after_divergence": [
+    {
+      "pss_kib": 45472,
+      "shared_clean_kib": 0,
+      "shared_dirty_kib": 17208,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 36868
+    },
+    {
+      "pss_kib": 9924,
+      "shared_clean_kib": 0,
+      "shared_dirty_kib": 17208,
+      "private_clean_kib": 0,
+      "private_dirty_kib": 1320
+    }
+  ],
+  "child_ram_sha256": "0c4d395999b43ec54049febd1994acfdee81667ead923e8af6085be535600aca",
+  "parent_ram_sha256_after": "f5b826fa9d71ac02f03d4efb66ef5c3dd91689df60e61aa5166b9383c0fb6dff",
+  "parent_disk_sha256_after": "1b7af784841125887e688254229e282829e17245d0e47fe7280da9b68a30d9e1",
+  "input_hashes_before": {
+    "/home/xtrmn8/dvm-resources/cgroup-probe-run4/memory.img": "f5b826fa9d71ac02f03d4efb66ef5c3dd91689df60e61aa5166b9383c0fb6dff",
+    "/home/xtrmn8/dvm-resources/cgroup-probe-run4/base.qcow2": "1b7af784841125887e688254229e282829e17245d0e47fe7280da9b68a30d9e1",
+    "/home/xtrmn8/dvm-resources/cgroup-probe-run4/machine-state": "125d7a9e28e1a033d210cfa35c825ceb01ecb40ce2c7561167aa2b9b909590fd"
+  },
+  "input_hashes_unchanged": true,
+  "allocated_bytes": {
+    "child-memory.img": 159383552,
+    "parent.qcow2": 331776,
+    "descendant-0.qcow2": 331776,
+    "descendant-1.qcow2": 200704
+  },
+  "generation_manifest": {
+    "path": "generation.json",
+    "sha256": "a5956e867983b3ff03126c8d05b67bf79920f6a83c5a62e9b5bf56e40062c970",
+    "generation_id": "sha256:62de27cea795994f9be5eb26468f3297dc1d1ef3ac8ae8b9d66c3263ed7b448d"
+  }
+}
