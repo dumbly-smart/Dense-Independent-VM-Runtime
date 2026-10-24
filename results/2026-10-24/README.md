@@ -178,3 +178,10 @@ QEMU documents its default RTC clock as host time
 ([QEMU invocation documentation](https://www.qemu.org/docs/master/system/invocation.html)).
 This probe does not establish whether another QEMU clock mode or hardware
 timer configuration behaves the same.
+
+[`rtc-alarm-pause-2-diagnostics.json`](rtc-alarm-pause-2-diagnostics.json) is
+a third run with an added guest-side timeout diagnostic. The RTC read after
+resume was `07:59:00`, later than the still-programmed `07:58:38` alarm, yet no
+interrupt event arrived. This shows the guest-visible RTC time passed the
+alarm during the trial; it does not establish whether QEMU failed to set the
+RTC status bit or whether an interrupt was lost before Linux observed it.
