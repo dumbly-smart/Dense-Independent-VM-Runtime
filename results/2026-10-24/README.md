@@ -60,6 +60,8 @@ The p95 spread and tiny 16-write sample make these initial observations only; th
 
 [`parking-6.json`](parking-6.json) records an explicit six-clone park/resume sample. All six QMP stop states and resume states were verified, the six QEMU processes accumulated zero scheduler ticks over the one-second parked sample, QMP resume commands completed in 6 ms total, and every guest responded after resume. Guest RTC and timer catch-up behavior is still unknown; this experiment makes no claim of continuous-time semantic equivalence.
 
+[`parking-clock-2.json`](parking-clock-2.json) records guest wall-clock and `/proc/uptime` samples immediately before and after a one-second parked interval. Across two synthetic guests, wall time advanced 8–9 ms and uptime advanced 10 ms while host time advanced about one second. This is a measured pause-time difference for this QEMU/kernel configuration. It does not test periodic timer delivery or hardware RTC behavior.
+
 ## Guest OOM isolation
 
 [`guest-oom-2.json`](guest-oom-2.json) records a two-clone synthetic KVM probe on QEMU 11.1.2 / Linux 7.2.11. Each guest is configured with 256 MiB. Inside clone A, eight workers each faulted in a 64 MiB anonymous mapping (`MAP_NORESERVE`); the guest kernel's `/proc/vmstat` `oom_kill` count increased by 6 and six worker processes were killed. Both clone guests remained responsive after pressure. The probe only reports success when a worker was killed and the guest counter increased. This exercises guest OOM isolation, not host OOM handling or the behavior of a production distribution's memory manager.
