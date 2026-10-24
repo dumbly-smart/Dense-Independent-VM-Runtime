@@ -107,6 +107,23 @@ impl Serial {
             }
         }
     }
+    fn observe_raw(&mut self, wanted: &str, timeout: Duration) -> Result<bool, String> {
+        let deadline = Instant::now() + timeout;
+        while Instant::now() < deadline {
+            crate::interrupt::check()?;
+            let mut line = String::new();
+            match self.reader.read_line(&mut line) {
+                Ok(0) => thread::sleep(Duration::from_millis(20)),
+                Ok(_) if line.contains(wanted) => return Ok(true),
+                Ok(_) => {}
+                Err(error)
+                    if error.kind() == std::io::ErrorKind::WouldBlock
+                        || error.kind() == std::io::ErrorKind::TimedOut => {}
+                Err(error) => return Err(format!("serial read: {error}")),
+            }
+        }
+        Ok(false)
+    }
     fn command(&mut self, command: &str, wanted: &str) -> Result<String, String> {
         self.send(command)?;
         self.expect(wanted, Duration::from_secs(12))
@@ -1574,6 +1591,30 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             && serial.command("disk-read", "DISK ")? == format!("DISK {}", 10 + *index)
             && serial.command("ram-read", "RAM ")? == format!("RAM {expected_ram}");
     }
+    let guest_crash_requested = !extra_clones.is_empty();
+    let (guest_crash_observed, guest_crash_survivors_verified, guest_crash_qemu_alive) =
+        if let Some((crash_vm, _, crash_serial, _, _, _, _)) = extra_clones.first_mut() {
+            crash_serial.send("kernel-crash")?;
+            let crash_observed =
+                crash_serial.observe_raw("Kernel panic", Duration::from_secs(8))?;
+            let qemu_alive = crash_vm
+                .child
+                .try_wait()
+                .map_err(|error| error.to_string())?
+                .is_none()
+                && crash_vm.qmp()?.execute("query-status", None).is_ok();
+            let mut survivors = expect_value(&mut bserial, "ping", "PONG")?;
+            for (_, _, serial, _, _, _, _) in extra_clones.iter_mut().skip(1) {
+                survivors &= expect_value(serial, "ping", "PONG")?;
+            }
+            (crash_observed, survivors, qemu_alive)
+        } else {
+            (false, false, false)
+        };
+    let guest_crash_isolation_verified = guest_crash_requested
+        && guest_crash_observed
+        && guest_crash_survivors_verified
+        && guest_crash_qemu_alive;
     let extra_measurements = extra_clones
         .iter()
         .map(
@@ -1612,6 +1653,14 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let ksmd_cpu_ticks_delta = ksmd_cpu_ticks_before
         .zip(ksmd_cpu_ticks_after)
         .and_then(|(before, after)| after.checked_sub(before));
+    let guest_crash_result = json!({
+        "requested":guest_crash_requested,
+        "crash_observed":guest_crash_observed,
+        "other_clones_survived":guest_crash_survivors_verified,
+        "crashed_clone_qemu_alive":guest_crash_qemu_alive,
+        "isolation_verified":guest_crash_isolation_verified,
+        "status":if guest_crash_requested {"performed"} else {"not run; requires at least three clones"}
+    });
     let mut result = json!({
         "experiment":"two-clone-cow-probe",
         "host":host,
@@ -1638,7 +1687,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                   "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"idle_cpu_ticks":clone_idle_cpu_ticks[1],"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
                   "time_to_count_resumed_ms":clone_elapsed_ms},
-        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details
+        "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details,
+        "guest_crash":guest_crash_result
     });
     result["clones"]["active_cpu_sample_interval_ms"] = json!(clone_active_cpu_sample_interval_ms);
     result["clones"]["a"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[0]);
@@ -1704,6 +1754,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && divergence_all_verified
         && process_isolation
         && guest_oom_isolation_verified
+        && (!guest_crash_requested || guest_crash_isolation_verified)
         && surviving_clones_verified
         && a_reboot_observed
         && range_before_verified

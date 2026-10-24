@@ -441,6 +441,17 @@ fn main() {
                 Ok(value) => value,
                 Err(error) => format!("ERROR memory pressure: {error}"),
             },
+            ["kernel-crash"] => {
+                if let Err(error) = fs::write("/proc/sys/kernel/sysrq", "1") {
+                    format!("ERROR enable SysRq: {error}")
+                } else {
+                    writeln!(serial_out, "DENSEVM KERNEL-CRASH-ARMED").unwrap();
+                    match fs::write("/proc/sysrq-trigger", "c") {
+                        Ok(()) => "ERROR SysRq crash trigger returned".to_string(),
+                        Err(error) => format!("ERROR trigger kernel crash: {error}"),
+                    }
+                }
+            }
             ["cpu-burn", millis] => match millis.parse::<u64>() {
                 Ok(millis) if (1..=10_000).contains(&millis) => {
                     let deadline = Instant::now() + Duration::from_millis(millis);
