@@ -530,8 +530,16 @@ mod login_tests {
             absent[1].clone()
         ]));
         assert_eq!(
-            guest_identity_value("IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT"),
+            guest_identity_value(
+                "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN"
+            ),
             Some("IDENTITY a densevm-a RNG-RESEEDED")
+        );
+        assert_eq!(
+            dhcp_identity_value(
+                "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN"
+            ),
+            Some("DHCP-IDENTITY UNKNOWN")
         );
     }
 }
@@ -1833,6 +1841,11 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "unique":ssh_host_keys_unique,
         "identity_responses":all_ssh_identity_guests
     });
+    result["dhcp_identity"] = json!({
+        "status":"UNKNOWN",
+        "guest_responses":all_ssh_identity_guests.iter().filter_map(|reply| dhcp_identity_value(reply)).collect::<Vec<_>>(),
+        "reason":"the tested guest does not run a DHCP client; unique MAC and static IP values do not prove DHCP client identity"
+    });
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
     result["a_guest_reboot_observed"] = json!(a_reboot_observed);
     result["a_reboot_process_exited"] = json!(a_reboot_process_status.is_some());
@@ -1880,7 +1893,10 @@ fn prepare_identity(serial: &mut Serial, identity: &CloneIdentity) -> Result<Str
     )?;
     let guest_identity = serial.command("identity-read", "IDENTITY ")?;
     let ssh_identity = serial.command("ssh-identity-read", "SSH-IDENTITY ")?;
-    Ok(format!("{guest_identity} | {ssh_identity}"))
+    let dhcp_identity = serial.command("dhcp-identity-read", "DHCP-IDENTITY ")?;
+    Ok(format!(
+        "{guest_identity} | {ssh_identity} | {dhcp_identity}"
+    ))
 }
 
 fn identity_matches(reply: &str, identity: &str) -> bool {
@@ -1902,7 +1918,11 @@ fn guest_identity_value(reply: &str) -> Option<&str> {
 }
 
 fn ssh_identity_value(reply: &str) -> Option<&str> {
-    reply.split_once(" | ")?.1.strip_prefix("SSH-IDENTITY ")
+    reply.split(" | ").nth(1)?.strip_prefix("SSH-IDENTITY ")
+}
+
+fn dhcp_identity_value(reply: &str) -> Option<&str> {
+    reply.split(" | ").nth(2)
 }
 
 fn ssh_identities_are_unique(replies: &[String]) -> bool {

@@ -625,6 +625,9 @@ fn main() {
                 Ok(value) => value,
                 Err(error) => format!("ERROR SSH identity read: {error}"),
             },
+            ["dhcp-identity-read"] => {
+                "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest".to_string()
+            }
             ["mac-read"] => {
                 let mut address = None;
                 for _ in 0..50 {
