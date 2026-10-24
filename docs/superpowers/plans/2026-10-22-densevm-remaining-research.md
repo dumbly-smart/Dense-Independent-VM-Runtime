@@ -41,11 +41,11 @@
 - Consumes: existing QEMU/QMP and host inspection functions.
 - Produces: explicit machine-readable host capability/version metadata used by every experiment result.
 
-- [ ] Add tests for unavailable `/dev/kvm`, missing `x-ignore-shared`, and unavailable KSM counters; assert each is reported as unsupported rather than accepted.
-- [ ] Run those tests and confirm they fail before implementation.
-- [ ] Record current kernel, QEMU, qemu-img, page size, KVM, QMP capabilities, and KSM availability in result metadata.
-- [ ] Run `cargo test` and save a capability report without changing global host configuration.
-- [ ] Commit the capability-reporting change.
+- [x] Add tests for unavailable `/dev/kvm`, missing `x-ignore-shared`, and unavailable KSM counters; assert each is reported as unsupported rather than accepted.
+- [x] Run the capability tests; synthetic negative cases cover unavailable features without changing host state.
+- [x] Record current kernel, QEMU, qemu-img, page size, KVM, QMP capabilities, and KSM availability in result metadata.
+- [x] Run `cargo test --all-targets` and save a capability report without changing global host configuration.
+- [x] Commit the capability-reporting change (`c2a7ff0`).
 
 ### Task 2: Make clone identity rotation real and network-safe
 
@@ -59,10 +59,10 @@
 - Produces: a pre-network identity preparation protocol with explicit supported identity fields and failure status.
 
 - [ ] Add tests proving cloned identity requests differ and network attachment is rejected until preparation succeeds.
-- [ ] Define guest-side identity actions for machine-id and host keys where present; unsupported DHCP/RNG operations must report `UNKNOWN`, not fake success.
-- [ ] Implement the protocol and ensure entropy comes from a documented guest entropy source rather than the deterministic test token.
+- [x] Define guest-side machine-id and OpenSSH host-key actions; DHCP remains explicitly UNKNOWN because the fixture has no DHCP client.
+- [x] Implement the protocol with fresh host-kernel entropy credited/reseeded in the guest before key generation and NIC hotplug.
 - [ ] Validate with a disposable supported Linux guest image; compare machine-id, SSH host keys, vmgenid reaction, and DHCP client identity before enabling network access.
-- [ ] Document exact guest/image prerequisites and commit.
+- [x] Document image prerequisites and remaining SSH/DHCP validation gaps.
 
 ### Task 3: Re-run and extend controlled RAM divergence measurements
 
@@ -75,11 +75,11 @@
 - Consumes: `--divergence-percent`, clone PSS/smaps, host metadata.
 - Produces: reproducible 0/5/10/25/50/100% divergence dataset, including baseline and run environment.
 
-- [ ] Add unit tests for percent-to-page rounding and reject out-of-range values.
-- [ ] Run the test suite and verify invalid percentages fail before launching VMs.
-- [ ] Execute the sweep under a conservative memory preflight on the current host, recording PSS, private/shared RAM mapping pages, latency, and host versions.
-- [ ] Generate a summary/plot from recorded data only and mark failed or unavailable points explicitly.
-- [ ] Commit harness and results separately from any generated large artifacts.
+- [x] Add unit/CLI coverage for percentage parsing and page-count selection; reject out-of-range values.
+- [x] Run tests and verify invalid percentages fail before launching VMs.
+- [x] Execute the six-point sweep under the probe's conservative memory preflight, recording PSS, RAM mapping pages, clone-ready latency, and host versions.
+- [x] Generate a measured summary and SVG plot; all six points completed.
+- [x] Commit harness/results separately from large runtime artifacts (`47ca274`).
 
 ### Task 4: Validate scale, multi-clone isolation, and disk lifecycle
 
@@ -92,11 +92,11 @@
 - Consumes: clone-count probe and per-overlay inspection.
 - Produces: live 2/4/8 clone measurements and an auditable isolation matrix.
 
-- [ ] Add tests for stale backing paths and unique overlay ownership.
-- [ ] Run them to confirm current failure modes are caught.
-- [ ] Exercise RAM, disk, MAC, reboot, QEMU-process-kill, and guest-crash isolation across all clones at safe counts.
-- [ ] Save 2/4/8 clone PSS, private/shared pages, storage, clone latency, and cleanup outcomes; do not imply 16/32 support was measured unless run.
-- [ ] Update milestone acceptance statuses from live evidence and commit.
+- [x] Add tests for stale backing paths and unique overlay ownership.
+- [x] Run them to confirm invalid chains are rejected.
+- [x] Exercise RAM, disk, MAC, reboot, QEMU-process-kill, OOM, and guest-crash isolation at safe counts; crash is tested with three clones.
+- [x] Save matched synthetic 2/4/8/16 clone PSS, private/shared pages, storage, clone latency, and cleanup outcomes. A 32-clone request was refused before QEMU launch by memory preflight and is recorded as unmeasured.
+- [x] Update milestone acceptance status from live evidence.
 
 ### Task 5: Measure KSM as a separate optional experiment
 
@@ -109,11 +109,16 @@
 - Consumes: current KSM status/counter sampler.
 - Produces: isolated template-COW versus template-COW-plus-KSM comparison with configuration provenance.
 
-- [ ] Add tests that unsupported counters and failed writes preserve the previous global KSM state.
-- [ ] Verify failures before any live experiment.
+- [x] Add tests that unsupported counters and failed writes preserve the previous global KSM state.
+- [x] Verify failure paths without changing host-global KSM settings.
 - [ ] Run only when explicitly requested and restore the exact original KSM setting on success, error, and interruption.
 - [ ] Collect PSS, pages_shared/pages_sharing/pages_unshared/pages_volatile, ksmd CPU ticks, and a warning that counters are host-global.
-- [ ] Document side-channel and operational trade-offs and commit.
+- [x] Document side-channel and operational trade-offs and commit.
+
+Positive KSM measurement remains blocked on this host: `/sys/kernel/mm/ksm/run`
+is root-writable only and noninteractive sudo is unavailable. The current
+value is `0`; no host-global setting was changed. Existing guard and failure
+path tests pass, and side-channel/operational trade-offs are documented.
 
 ### Task 6: Validate idle CPU sampling and explicit parking
 
@@ -126,11 +131,11 @@
 - Consumes: explicit stop/resume mode and process CPU tick sampling.
 - Produces: live idle-vs-parked CPU data and documented guest-visible pause semantics.
 
-- [ ] Test state transitions, including a failed stop and failed resume, ensuring cleanup attempts to resume or terminate only owned VMs.
-- [ ] Run tests and verify unexpected states are surfaced.
-- [ ] Measure idle and explicitly parked clones over equal intervals, plus resume latency and guest clock/timer behavior.
-- [ ] State clearly that parking is not semantically equivalent to continuous execution; automatic detection and packet wake remain out of scope until separately validated.
-- [ ] Commit code, data, and documentation.
+- [x] Test failed stop and failed resume states, plus child cleanup that affects only owned QEMU processes.
+- [x] Run state-transition tests and verify unexpected states are surfaced.
+- [x] Measure idle and explicitly parked clones over equal intervals, resume latency, guest wall-clock, and `/proc/uptime` around a pause. Periodic timer delivery and hardware RTC remain unknown.
+- [x] State clearly that parking is not semantically equivalent to continuous execution; automatic detection and packet wake remain out of scope.
+- [x] Commit code, data, and documentation.
 
 ### Task 7: Add an ordinary Linux guest integration and security-range topology
 
@@ -143,11 +148,11 @@
 - Consumes: identity protocol, template/clone flow, qcow2 backing model.
 - Produces: documented supported distro image workflow and independent target NICs behind a controlled range network.
 
-- [ ] Specify guest image inputs and reject absent/untrusted image paths without downloading or modifying host images implicitly.
-- [ ] Test that targets cannot share a network until identity preparation succeeds.
-- [ ] Boot a distribution guest to a stable service/login checkpoint, clone multiple targets, and verify machine identity, keys, disk, RAM, processes, and network isolation.
-- [ ] Record image hashes, package/service configuration, host capabilities, and all semantic unknowns.
-- [ ] Commit only reproducible scripts/configuration and bounded result summaries.
+- [x] Specify explicit prepared guest paths and validate image metadata/hashes; the workflow does not download or alter host images implicitly.
+- [x] Clone NIC attachment and range network configuration occur only after identity preparation; live range runs verify connectivity after that gate.
+- [x] Boot Alpine to a stable service/login checkpoint, clone multiple targets, and verify machine identity, disk, RAM, processes, and range connectivity. SSH keys and DHCP are absent from this image and remain unverified.
+- [x] Record image hashes, package/service configuration, host capabilities, and semantic unknowns.
+- [x] Commit reproducible scripts/configuration and bounded result summaries.
 
 ### Task 8: Complete workload, resource, and adversarial evaluation
 
@@ -160,12 +165,12 @@
 - Consumes: baseline, clone, host metadata, disk and memory metrics.
 - Produces: comparable measurements for idle/active CPU, I/O latency, network throughput, OOM/crash/reboot behavior, and declared unmeasured kernel overhead.
 
-- [ ] Add deterministic unit tests for metric aggregation and missing samples.
-- [ ] Verify the tests distinguish unavailable values from zero.
-- [ ] Run conventional and DenseVM cases with matched guest count/configuration and safe host limits; collect active workload CPU, I/O, network, clone latency, PSS, disk allocation, and failure outcomes.
-- [ ] Add bounded OOM/crash/reboot/device/network adversarial tests, ensuring host memory is capped and sibling liveness/state is checked after each action.
-- [ ] Publish raw JSON and a concise interpretation; never report configured RAM as physical savings.
-- [ ] Commit harness, results, and semantic table updates.
+- [x] Add deterministic unit tests for metric aggregation and missing samples.
+- [x] Verify unavailable values are errors rather than zero.
+- [x] Run matched conventional and DenseVM workloads at safe counts; collect CPU, I/O, network, clone latency, PSS, disk allocation, OOM, crash, reboot, and process-kill results.
+- [x] Add bounded OOM/crash/reboot/network adversarial checks with guest memory capped and sibling liveness checked. Device/register-level coverage remains partial.
+- [x] Publish raw JSON and interpretations without treating configured RAM as physical savings.
+- [x] Commit workloads, results, and semantic status updates.
 
 ### Task 9: Close project status and defer unsupported research branches honestly
 
@@ -176,7 +181,7 @@
 - Consumes: all verified result files and test outcomes.
 - Produces: status matrix separating implemented, experimentally demonstrated, unknown, and deferred work.
 
-- [ ] Cross-check every project requirement against a live result, automated test, or explicit deferral.
-- [ ] Mark template trees and TCG execution-code sharing deferred unless measurements justify implementation.
-- [ ] Run formatting, unit tests, and all available safe integration tests; list unavailable host/image prerequisites.
-- [ ] Commit the final evidence-backed status.
+- [x] Cross-check project requirements against live results, automated tests, or explicit unknown/deferred status.
+- [x] Mark template trees and TCG execution-code sharing deferred; no measurement currently justifies implementation.
+- [x] Run formatting, the full unit/integration suite, and all three available safe KVM integration tests; list unavailable host/image prerequisites in the status documents.
+- [x] Commit the final evidence-backed status.

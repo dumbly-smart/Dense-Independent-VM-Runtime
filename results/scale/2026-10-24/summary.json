@@ -76,5 +76,23 @@
     "qemu_version": "QEMU emulator version 11.1.2",
     "kernel_version": "7.2.11-arch1-1",
     "memory_overhead": "UNKNOWN: process PSS excludes KVM metadata and host page tables"
+  },
+  {
+    "clone_count": 16,
+    "configured_guest_ram_kib": 4194304,
+    "divergence_percent_of_32mib_region": 0,
+    "baseline_process_pss_kib": 3240424,
+    "clone_process_pss_before_kib": 751092,
+    "clone_ram_mapping_pss_before_kib": 206670,
+    "clone_process_pss_after_kib": 751111,
+    "clone_ram_mapping_pss_after_kib": 206686,
+    "template_resident_kib": 260332,
+    "conservative_pss_plus_full_template_cache_kib": 1011443,
+    "clone_ready_ms": 4558,
+    "overlay_allocated_bytes": 72351744,
+    "isolation_checks_passed": true,
+    "qemu_version": "QEMU emulator version 11.1.2",
+    "kernel_version": "7.2.11-arch1-1",
+    "memory_overhead": "UNKNOWN: process PSS excludes KVM metadata and host page tables"
   }
 ]

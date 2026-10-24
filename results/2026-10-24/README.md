@@ -1,5 +1,9 @@
 # Six-guest range run
 
+## Host capability snapshot
+
+[`host-capabilities.json`](host-capabilities.json) is a read-only `densevm doctor` report collected 2026-10-24. It records QEMU/qemu-img 11.1.2, Linux 7.2.11-arch1-1, 4096-byte pages, accessible `/dev/kvm`, the required `x-ignore-shared` migration capability, and KSM counters with `run=0`. The report does not change host configuration.
+
 Run on 2026-10-24 with QEMU 11.1.2 and Linux 7.2.11, using the locally prepared Alpine 3.24.2 ext4 fixture. Reproduce with:
 
 ```sh
@@ -63,6 +67,8 @@ The p95 spread and tiny 16-write sample make these initial observations only; th
 [`parking-clock-2.json`](parking-clock-2.json) records guest wall-clock and `/proc/uptime` samples immediately before and after a one-second parked interval. Across two synthetic guests, wall time advanced 8–9 ms and uptime advanced 10 ms while host time advanced about one second. This is a measured pause-time difference for this QEMU/kernel configuration. It does not test periodic timer delivery or hardware RTC behavior.
 
 [`ssh-identity-2.json`](ssh-identity-2.json) records the updated identity protocol on the synthetic guest. Machine IDs and hostnames differed across baseline and clones; all reported `SSH-IDENTITY ABSENT`, as expected for an image without OpenSSH. The probe now rotates inherited OpenSSH host keys after RNG reseeding and checks their public-key fingerprints for duplicates when such keys exist. This run does not demonstrate regeneration because the fixture contains no SSH keys.
+
+[`ssh-dhcp-identity-2.json`](ssh-dhcp-identity-2.json) records the guest protocol's explicit `DHCP-IDENTITY UNKNOWN` response. The test profile uses unique static IPs and does not run a DHCP client; MAC uniqueness is not treated as proof of DHCP identity uniqueness.
 
 ## Guest OOM isolation
 

@@ -1,0 +1,9 @@
+{
+  "clone_count_requested": 32,
+  "host_mem_available_kib": 6814724,
+  "host_mem_required_kib": 8912896,
+  "qemu_processes_launched": false,
+  "reason": "preflight refused the run because available host memory was below the required safe budget",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "kernel_version": "7.2.11-arch1-1"
+}

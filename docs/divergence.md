@@ -43,6 +43,8 @@ accounted here.
 
 Pass `--park-idle` to stop every restored guest through QMP, sample QEMU
 process CPU ticks while paused, explicitly resume each guest, and check that
-the guests answer again. This is an experiment: guest timers stop while
-paused, so it changes timing semantics. The control is explicit; there is no
-automatic idle detector or packet-triggered wakeup.
+the guests answer again. A measured one-second pause advanced guest wall time
+and `/proc/uptime` by only 8–10 ms on QEMU 11.1.2 / Linux 7.2.11; periodic
+timer interrupt delivery and hardware RTC behavior remain unmeasured. Parking
+changes timing semantics. The control is explicit; there is no automatic idle
+detector or packet-triggered wakeup.

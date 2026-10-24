@@ -26,6 +26,12 @@ Local references: `system/vm-templating.html`, `system/images.html`,
 The live executable also confirmed `memory-backend-file` properties and QMP
 `query-migrate-capabilities` includes `x-ignore-shared` and `mapped-ram`.
 
+Environment refresh, 2026-10-24: the active host is QEMU/qemu-img 11.1.2 on
+Linux 7.2.11-arch1-1, 4096-byte pages, `/dev/kvm` accessible, and KSM `run=0`.
+The read-only `densevm doctor` output is saved at
+`results/2026-10-24/host-capabilities.json`. The original 2026-09-22 record
+above remains as historical provenance.
+
 ## State model
 
 * One QEMU process per VM. Each process owns vCPU, APIC, timer, virtio,
@@ -106,13 +112,14 @@ not share translated instruction work.
 
 The optional `mapped-ram` migration capability is distinct from the private
 RAM mapping and is not required for the first proof. `x-ignore-shared` is
-experimental in QEMU 11.1.1; failure here changes the design rather than
+experimental in QEMU 11.1.2; failure here changes the design rather than
 justifying a fabricated resume claim.
 
 ## Follow-on gates
 
-Before claiming Milestone 1, repeat the same protocol with an ordinary Linux
-distribution at a stable service/login state, implement identity rotation and
-adversarial tests, establish a conventional baseline, and save reproducible
-results. Only then scale to eight clones and controlled divergence. KSM,
-parking, template trees and TCG sharing remain later experiments.
+The basic two-clone mechanism and Alpine service/login checkpoint have been
+demonstrated. Remaining gates are real OpenSSH key regeneration, DHCP behavior,
+more device/register/timer adversarial coverage, positive KSM measurements,
+and complete kernel-memory accounting. KSM measurements are blocked by the
+current user's permissions for host-global sysfs. Template trees and TCG
+sharing remain deferred; explicit parking is measured but changes guest time.

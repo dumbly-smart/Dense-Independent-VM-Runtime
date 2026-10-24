@@ -15,10 +15,13 @@ The prepared image has no SSH server or DHCP client, so it duplicates neither
 SSH host keys nor a DHCP client identity. Arbitrary distribution services and
 application secrets remain outside this demonstrated profile.
 
-The original synthetic reference record is retained below. The eight-clone
-0/5/10/25/50/100% buffer-divergence sweep is saved under
-`results/2026-10-22/divergence/`; the percentage is of each 32 MiB test buffer,
-not of all guest RAM. Host kernel/KVM memory overhead remains unmeasured.
+The original synthetic reference record is retained below. The current
+eight-clone 0/5/10/25/50/100% buffer-divergence sweep is saved under
+`results/divergence/2026-10-24/`; the percentage is of each 32 MiB test buffer,
+not of all guest RAM. Matched 2/4/8/16 zero-divergence synthetic scale results
+are under `results/scale/2026-10-24/`. Host kernel/KVM memory overhead remains
+unmeasured. A 32-clone request was safely refused by memory preflight before
+QEMU launch, so no 32-clone measurement is claimed.
 
 Current raw results are in `results/2026-10-24/`. The combined six-guest run
 measured baseline process PSS of 1,230,793 KiB and clone PSS of 276,596 KiB
@@ -27,6 +30,16 @@ zero- and full-test-region runs measured clone PSS rising from 348,210 to
 349,429 KiB at 0% and from 352,801 to 615,175 KiB at 100% of the 32 MiB
 region. Each run reports process PSS, not complete physical memory; KVM
 metadata and host page tables are not included.
+
+Additional current-host evidence includes guest OOM isolation
+(`results/2026-10-24/guest-oom-2.json`), a three-clone guest-kernel panic
+isolation probe (`results/isolation/2026-10-24/`), matched synthetic
+2/4/8/16-clone scale data, and the controlled six-point divergence sweep. The guest
+clock advanced only 8–10 ms across an approximately one-second QMP pause;
+periodic timer delivery remains unmeasured. OpenSSH host-key regeneration is
+implemented for images that contain such keys, but no current guest fixture
+includes OpenSSH. DHCP identity and total kernel memory remain unverified.
+See `docs/semantic-differences.md` for the status table.
 
 ## Historical synthetic reference
 

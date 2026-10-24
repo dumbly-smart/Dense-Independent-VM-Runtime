@@ -36,3 +36,18 @@ size, then compare a process-local cache against a prototype immutable decoded
 block cache. Any implementation must test self-modifying code, page aliasing,
 interrupts, exceptions, CPU mode changes, and cache invalidation before making
 semantic claims.
+
+## Decision, 2026-10-24
+
+| Research question | Finding |
+| --- | --- |
+| What can depend only on guest code? | Guest instruction bytes and some decode metadata can be content-addressed; process-local helper addresses and memory access paths cannot be reused directly. |
+| What depends on CPU state? | Guest mode, privilege, flags, MMU/TLB context, exception paths, and enabled CPU features affect translation. |
+| What depends on guest physical addresses? | Translation keys, page permissions, aliases, and code invalidation are address-space specific. |
+| What invalidates a block? | Guest code writes, mapping or permission changes, CPU-mode changes, debug/plugin state, and explicit TCG flushes. |
+| Can a translated block be shared safely? | Not as a raw cross-process `TranslationBlock`. An immutable decoded-code cache might be reused after each process validates its own context and emits local host code. |
+| Main correctness hazards? | Self-modifying code, page aliasing, races with invalidation, address assumptions, exceptions, interrupts, CPU feature mismatch, and host-code ABI/build mismatch. |
+| Likely resource savings? | Unknown and likely modest for divergent or short-lived guests; translation CPU time and cache size must be measured before an implementation is justified. |
+
+The TCG track remains analysis-only and deferred. The current runtime uses KVM;
+it does not deduplicate guest instruction execution.

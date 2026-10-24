@@ -14,7 +14,7 @@ normal distribution userspace and a serial login prompt. See [design](docs/desig
 
 ## Reproduce the two-clone experiment
 
-On the inspected Arch Linux host (QEMU 11.1.1, kernel 7.2.6), install or make
+On the inspected Arch Linux host (QEMU 11.1.2, kernel 7.2.11), install or make
 available `qemu-system-x86_64`, `qemu-img`, `rustc`, `cargo`, `cpio`,
 `modinfo`, `fincore`, and `sha256sum`. The host kernel and its matching
 `virtio_net`, `net_failover`, and `failover` modules must be present, as must
@@ -59,7 +59,7 @@ QEMU process is killed. Results include whole-process RSS/PSS/private/shared
 metrics, the exact RAM-file mapping, disk allocation, and template file cache
 residency.
 
-This prototype is pinned to mechanisms confirmed on QEMU 11.1.1.
+This prototype currently targets mechanisms verified on QEMU 11.1.2.
 `x-ignore-shared` is experimental. Do not treat this probe as evidence that
 arbitrary distributions, devices, or QEMU versions can be cloned safely.
 
@@ -68,6 +68,20 @@ The 15-item acceptance record is in [docs/milestone1.md](docs/milestone1.md).
 The baseline command supports counts from 1 through 32 and writes
 `baseline.json`. The template restore probe supports 2 through 32 clones;
 the first two receive detailed RAM, disk, reboot, and process-kill isolation
-checks, while additional clones contribute restore and memory-map measurements.
+checks. With at least three clones, the first additional clone also receives a
+guest-kernel crash-isolation check; all additional clones contribute identity,
+memory-map, and liveness checks.
 `--divergence-mib` controls how much of A's 32 MiB test region is dirtied;
 `--divergence-percent` supports exact page-count sweeps from 0% to 100%.
+
+## Current research status
+
+| Status | Evidence |
+| --- | --- |
+| Demonstrated | Separate QEMU/KVM guests resume from one frozen state, share unchanged RAM pages, COW private RAM writes, and use private qcow2 overlays. Live 2/4/8/16 synthetic-clone scale measurements and a six-point 8-clone divergence sweep are saved under `results/`. |
+| Isolation tested | Guest RAM and disk writes, unique MAC/machine-id/hostname/vmgenid, guest OOM, guest kernel panic, guest reboot, QEMU process termination, process state, and a six-guest Alpine range. |
+| Partial | OpenSSH keys are regenerated and fingerprint-checked when present, but the supported fixture has no SSH server. DHCP identity, guest response to vmgenid, periodic timers/RTC, register-level checks, and kernel/KVM memory overhead remain unverified. QMP parking nearly stops guest clock progress. |
+| Host blocked | Positive KSM measurements require write access to host-global `/sys/kernel/mm/ksm/run`; this user cannot change it. Current KSM state is `run=0`; no positive KSM result is claimed. |
+| Deferred | TCG translated-code sharing and hierarchical template trees. KVM guests still execute their own instructions. |
+
+The current read-only capability snapshot is [`results/2026-10-24/host-capabilities.json`](results/2026-10-24/host-capabilities.json). The test suite runs with `cargo test --all-targets`; opt-in KVM integration tests can be run with `cargo test --test probe -- --ignored --nocapture` on a host with adequate memory and QEMU/KVM.
