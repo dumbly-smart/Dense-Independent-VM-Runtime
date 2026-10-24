@@ -185,3 +185,11 @@ resume was `07:59:00`, later than the still-programmed `07:58:38` alarm, yet no
 interrupt event arrived. This shows the guest-visible RTC time passed the
 alarm during the trial; it does not establish whether QEMU failed to set the
 RTC status bit or whether an interrupt was lost before Linux observed it.
+
+[`rtc-alarm-pause-2-driver.json`](rtc-alarm-pause-2-driver.json) is a fourth
+run that also reads `/proc/driver/rtc` before disabling the alarm. At timeout,
+Linux reported `alarm_IRQ: yes` and `alrm_pending: no`; the guest RTC was
+22 seconds past the programmed alarm. The alarm remained enabled, but the
+driver reported no pending event. This narrows the observation to the guest
+RTC/interrupt path without proving which QEMU device callback or IRQ step
+failed.
