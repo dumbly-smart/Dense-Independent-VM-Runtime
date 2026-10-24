@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 sys.path.insert(0, str(Path(__file__).parent))
-from probe import build_child_generation_manifest, parse_ram_mapping
+from probe import build_child_generation_manifest, parse_ram_mapping, validate_generation_manifest
 
 
 class RamMappingTests(unittest.TestCase):
@@ -105,6 +105,14 @@ class GenerationManifestTests(unittest.TestCase):
             self.assertEqual(manifest["disk"]["backing_path"], str((source / "base.qcow2").resolve()))
             self.assertEqual(manifest["disk"]["sha256"], sha256(b"parent disk").hexdigest())
             self.assertEqual(manifest["qemu_command"], ["-machine", "q35", "-device", "virtio-net-pci"])
+            validation = validate_generation_manifest(output / "generation.json")
+            self.assertEqual(validation["status"], "verified")
+            self.assertEqual(validation["generation_id"], manifest["generation_id"])
+            self.assertEqual(validation["checked_artifacts"], 7)
+
+            (output / "child-memory.img").write_bytes(b"modified ram")
+            with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
+                validate_generation_manifest(output / "generation.json")
 
 
 if __name__ == "__main__":

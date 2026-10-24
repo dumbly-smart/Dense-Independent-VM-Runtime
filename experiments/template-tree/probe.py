@@ -336,6 +336,84 @@ def build_child_generation_manifest(
     return manifest
 
 
+def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
+    manifest_path = manifest_path.resolve()
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"cannot read generation manifest {manifest_path}: {error}") from error
+    if not isinstance(manifest, dict) or manifest.get("schema_version") not in (1, 2):
+        raise ValueError("unsupported generation manifest schema")
+
+    parent = manifest.get("parent")
+    if not isinstance(parent, dict) or not isinstance(parent.get("template_dir"), str):
+        raise ValueError("generation manifest has no parent template path")
+    parent_dir = Path(parent["template_dir"])
+    if not parent_dir.is_absolute():
+        raise ValueError("parent template path must be absolute")
+
+    def checked_hash(path: Path, expected: Any, label: str) -> None:
+        if not isinstance(expected, str) or len(expected) != 64:
+            raise ValueError(f"generation manifest has invalid {label} hash")
+        if not path.is_file():
+            raise RuntimeError(f"generation artifact is missing: {path}")
+        actual = sha256(path)
+        if actual != expected:
+            raise RuntimeError(f"generation artifact hash mismatch: {label}: {path}")
+
+    def local_artifact(section: str) -> tuple[Path, dict[str, Any]]:
+        value = manifest.get(section)
+        if not isinstance(value, dict) or not isinstance(value.get("path"), str):
+            raise ValueError(f"generation manifest has invalid {section} artifact")
+        relative = Path(value["path"])
+        if relative.is_absolute() or relative.name != value["path"] or value["path"] in (".", ".."):
+            raise ValueError(f"generation artifact path must be a local filename: {value['path']!r}")
+        return manifest_path.parent / relative, value
+
+    checked = 0
+    parent_artifacts = {
+        "result.json": "result_sha256",
+        "memory.img": "ram_sha256",
+        "machine-state": "machine_state_sha256",
+        "base.qcow2": "base_disk_sha256",
+    }
+    for filename, key in parent_artifacts.items():
+        expected = parent.get(key)
+        if expected is None and manifest["schema_version"] == 1 and key in ("ram_sha256", "machine_state_sha256"):
+            continue
+        checked_hash(parent_dir / filename, expected, f"parent.{key}")
+        checked += 1
+
+    ram_path, ram = local_artifact("ram")
+    state_path, state = local_artifact("machine_state")
+    disk_path, disk = local_artifact("disk")
+    for path, value, label in (
+        (ram_path, ram, "ram"),
+        (state_path, state, "machine_state"),
+        (disk_path, disk, "disk"),
+    ):
+        checked_hash(path, value.get("sha256"), label)
+        checked += 1
+
+    backing_path = disk.get("backing_path")
+    if not isinstance(backing_path, str) or Path(backing_path).resolve() != (parent_dir / "base.qcow2").resolve():
+        raise ValueError("disk backing path does not match the recorded parent base image")
+    if disk.get("backing_sha256") != parent.get("base_disk_sha256"):
+        raise ValueError("disk backing hash does not match the parent base image hash")
+
+    if manifest["schema_version"] == 2:
+        artifact_hashes = [ram["sha256"], state["sha256"], disk["sha256"]]
+        expected_id = hashlib.sha256(json.dumps(artifact_hashes, separators=(",", ":")).encode()).hexdigest()
+        if manifest.get("generation_id") != f"sha256:{expected_id}":
+            raise RuntimeError("generation ID does not match child artifact hashes")
+    return {
+        "status": "verified",
+        "generation_id": manifest.get("generation_id"),
+        "schema_version": manifest["schema_version"],
+        "checked_artifacts": checked,
+    }
+
+
 def parse_ram_mapping(text: str, memory_path: str) -> dict[str, int]:
     records: list[dict[str, int]] = []
     fields: dict[str, int] | None = None
@@ -579,9 +657,21 @@ def run(template_dir: Path, out: Path) -> dict[str, Any]:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--template-dir", type=Path, required=True, help="completed DenseVM probe output directory")
-    parser.add_argument("--out", type=Path, required=True, help="new experiment output directory")
+    parser.add_argument("--template-dir", type=Path, help="completed DenseVM probe output directory")
+    parser.add_argument("--out", type=Path, help="new experiment output directory")
+    parser.add_argument("--validate-manifest", type=Path, help="verify a saved generation manifest and its artifacts")
     args = parser.parse_args(argv[1:])
+    if args.validate_manifest is not None:
+        if args.template_dir is not None or args.out is not None:
+            parser.error("--validate-manifest cannot be combined with --template-dir or --out")
+        try:
+            print(json.dumps(validate_generation_manifest(args.validate_manifest), indent=2))
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"template-tree validation error: {error}", file=sys.stderr)
+            return 1
+        return 0
+    if args.template_dir is None or args.out is None:
+        parser.error("--template-dir and --out are required unless --validate-manifest is used")
     try:
         result = run(args.template_dir, args.out)
     except (OSError, ValueError, RuntimeError, TimeoutError, StopIteration) as error:
