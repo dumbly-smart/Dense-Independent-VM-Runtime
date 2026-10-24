@@ -95,6 +95,13 @@ state remain unmeasured. See
 [`docs/vcpu-register-state.md`](../../docs/vcpu-register-state.md) for the
 method and limits.
 
+[`vcpu-register-state-lapic-2.json`](vcpu-register-state-lapic-2.json) is a
+second live run using the extended capture. Both guests reported their
+distinct GS bases, and QEMU returned `info lapic` state for each paused clone.
+The two LAPIC text dumps were identical; this is not a test of independent
+APIC mutation or pending-interrupt isolation. RAM and disk isolation and
+sibling survival passed. APIC independence remains unverified.
+
 ## Alpine identity-validation profile
 
 [`identity-validation-2.json`](identity-validation-2.json) and
