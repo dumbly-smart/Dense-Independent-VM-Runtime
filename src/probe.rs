@@ -302,6 +302,42 @@ fn login_prompt(stream: &mut UnixStream) -> Result<bool, String> {
 #[cfg(test)]
 mod login_tests {
     use super::*;
+    use std::os::unix::net::UnixListener;
+    use std::time::SystemTime;
+
+    fn scripted_qmp(script: Vec<(&'static str, Value)>) -> (Qmp, thread::JoinHandle<()>, PathBuf) {
+        let stamp = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "densevm-qmp-test-{}-{stamp}.sock",
+            std::process::id()
+        ));
+        let listener = UnixListener::bind(&path).unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.write_all(b"{\"QMP\":{\"version\":{}}}\n").unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            let handshake: Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(handshake["execute"], "qmp_capabilities");
+            let reply = json!({"return":{},"id":handshake["id"]});
+            stream.write_all(format!("{reply}\n").as_bytes()).unwrap();
+            for (command, mut reply) in script {
+                line.clear();
+                reader.read_line(&mut line).unwrap();
+                let request: Value = serde_json::from_str(&line).unwrap();
+                assert_eq!(request["execute"], command);
+                reply["id"] = request["id"].clone();
+                stream.write_all(format!("{reply}\n").as_bytes()).unwrap();
+            }
+        });
+        let qmp = Qmp::connect(&path, Duration::from_secs(2)).unwrap();
+        (qmp, server, path)
+    }
+
     #[test]
     fn accepts_a_prompt_split_across_many_serial_reads() {
         let (mut client, mut server) = UnixStream::pair().unwrap();
@@ -372,6 +408,56 @@ mod login_tests {
         assert!(verify_backing_chain(&chain, overlay, base).is_ok());
         assert!(
             verify_backing_chain(&chain, Path::new("/tmp/densevm/clone-001.qcow2"), base).is_err()
+        );
+    }
+
+    #[test]
+    fn parking_fails_immediately_when_stop_does_not_pause_the_guest() {
+        let (mut qmp, server, path) = scripted_qmp(vec![
+            ("stop", json!({"return":{}})),
+            ("query-status", json!({"return":{"status":"running"}})),
+        ]);
+        let error = stop_and_verify(&mut qmp).unwrap_err();
+        assert!(error.contains("running"));
+        server.join().unwrap();
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn resume_fails_immediately_when_the_guest_remains_paused() {
+        let (mut qmp, server, path) = scripted_qmp(vec![
+            ("cont", json!({"return":{}})),
+            ("query-status", json!({"return":{"status":"paused"}})),
+        ]);
+        let error = resume_and_verify(&mut qmp).unwrap_err();
+        assert!(error.contains("paused"));
+        server.join().unwrap();
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn dropping_one_vm_reaps_only_its_owned_process() {
+        let owned = Command::new("sleep").arg("30").spawn().unwrap();
+        let owned_pid = owned.id();
+        let mut sibling = Command::new("sleep").arg("30").spawn().unwrap();
+        let sibling_pid = sibling.id();
+        let vm = Vm {
+            child: owned,
+            qmp_path: PathBuf::new(),
+            serial_path: PathBuf::new(),
+            command: Vec::new(),
+            login_stream: None,
+        };
+
+        drop(vm);
+        let owned_reaped = !Path::new(&format!("/proc/{owned_pid}")).exists();
+        let sibling_survived = Path::new(&format!("/proc/{sibling_pid}")).exists();
+        sibling.kill().unwrap();
+        sibling.wait().unwrap();
+        assert!(owned_reaped, "dropping the VM did not reap its child");
+        assert!(
+            sibling_survived,
+            "dropping the VM affected an unrelated child"
         );
     }
 }
@@ -759,12 +845,26 @@ fn add_nic(qmp: &mut Qmp, mac: &str) -> Result<(), String> {
 
 fn stop_and_verify(qmp: &mut Qmp) -> Result<bool, String> {
     qmp.execute("stop", None)?;
-    Ok(qmp.execute("query-status", None)?["status"] == "paused")
+    let state = qmp.execute("query-status", None)?;
+    let status = state["status"]
+        .as_str()
+        .ok_or("QMP query-status omitted guest status after stop")?;
+    if status != "paused" {
+        return Err(format!("QMP stop left guest in unexpected state {status}"));
+    }
+    Ok(true)
 }
 
 fn resume_and_verify(qmp: &mut Qmp) -> Result<bool, String> {
     qmp.execute("cont", None)?;
-    Ok(qmp.execute("query-status", None)?["status"] == "running")
+    let state = qmp.execute("query-status", None)?;
+    let status = state["status"]
+        .as_str()
+        .ok_or("QMP query-status omitted guest status after resume")?;
+    if status != "running" {
+        return Err(format!("QMP cont left guest in unexpected state {status}"));
+    }
+    Ok(true)
 }
 
 fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool, String> {
