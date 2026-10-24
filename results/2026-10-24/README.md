@@ -80,6 +80,19 @@ The p95 spread and tiny 16-write sample make these initial observations only; th
 
 The final post-change Cargo integration reruns are saved as [`final-two-clone-cargo-2.json`](final-two-clone-cargo-2.json) and [`final-kernel-crash-cargo-3.json`](final-kernel-crash-cargo-3.json). Both used a disk-backed temporary directory with a short path (Unix domain sockets impose a path-length limit). The two-clone test passed RAM/disk isolation and sibling survival; the three-clone test observed the guest kernel crash, verified the crashed VM's QEMU/QMP process remained independently alive for inspection, and confirmed the sibling guests remained responsive. The opt-in owned-QEMU interruption cleanup test also passed.
 
+## vCPU general-purpose register snapshots
+
+[`vcpu-register-state-2.json`](vcpu-register-state-2.json) records an opt-in
+two-clone run. Each guest ran a different seeded CPU workload, announced that
+it was active, and was paused through QMP; DenseVM then read QEMU's `info
+registers` output before resuming both workloads. Fifteen of the 16 reported
+x86-64 general-purpose registers differed between the two snapshots, and each
+workload completed after resume. The run also passed RAM and disk isolation and
+confirmed clone B survived clone A's QEMU termination. This is a sampled GPR
+check; control registers, MSRs, APIC state, and interrupt state remain
+unmeasured. See [`docs/vcpu-register-state.md`](../../docs/vcpu-register-state.md)
+for the method and limits.
+
 ## Alpine identity-validation profile
 
 [`identity-validation-2.json`](identity-validation-2.json) and
