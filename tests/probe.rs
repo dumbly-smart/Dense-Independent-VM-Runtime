@@ -177,6 +177,49 @@ fn clones_report_independent_vcpu_register_snapshots() {
 }
 
 #[test]
+#[ignore = "requires local KVM and QEMU; compares running and QMP-paused RTC alarm delivery"]
+fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out =
+        std::env::temp_dir().join(format!("densevm-rtc-alarm-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--skip-guest-oom",
+            "--rtc-alarm",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["rtc_alarm"]["rtc_alarm_flag"], "RTC_AF (0x20)");
+    for clone in ["a", "b"] {
+        assert!(
+            result["rtc_alarm"]["control_running"][clone]["response"]
+                .as_str()
+                .is_some()
+        );
+        assert!(
+            result["rtc_alarm"]["paused"][clone]["response"]
+                .as_str()
+                .is_some()
+        );
+    }
+    if status.success() {
+        assert_eq!(result["rtc_alarm_verified"], true);
+    } else {
+        assert_eq!(result["rtc_alarm_verified"], false);
+    }
+}
+
+#[test]
 #[ignore = "requires local KVM and three-clone memory budget"]
 fn guest_kernel_crash_does_not_kill_sibling_clones() {
     let stamp = SystemTime::now()

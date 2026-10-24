@@ -73,6 +73,12 @@ fn sets_and_restores_the_current_userspace_gs_base() {
     assert_eq!(guest_init::user_gs_base().unwrap(), original);
 }
 
+#[test]
+fn rolls_rtc_alarm_time_forward_across_minute_and_day_boundaries() {
+    assert_eq!(guest_init::rtc_alarm_time_after(12, 34, 56, 5), (12, 35, 1));
+    assert_eq!(guest_init::rtc_alarm_time_after(23, 59, 58, 5), (0, 0, 3));
+}
+
 fn dhcp_frame(source_port: u16, destination_port: u16, client_id: Option<&[u8]>) -> Vec<u8> {
     let mut dhcp = vec![0u8; 240];
     dhcp[0] = 1;

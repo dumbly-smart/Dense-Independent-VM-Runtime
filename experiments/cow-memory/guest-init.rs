@@ -24,6 +24,20 @@ struct KernelItimerSpec {
     value: KernelTimeSpec,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RtcTime {
+    second: c_int,
+    minute: c_int,
+    hour: c_int,
+    month_day: c_int,
+    month: c_int,
+    year: c_int,
+    week_day: c_int,
+    year_day: c_int,
+    is_dst: c_int,
+}
+
 unsafe extern "C" {
     fn mount(
         source: *const c_char,
@@ -85,6 +99,16 @@ pub fn set_user_gs_base(base: u64) -> std::io::Result<()> {
     } else {
         Ok(())
     }
+}
+
+pub fn rtc_alarm_time_after(hour: i32, minute: i32, second: i32, delay: u32) -> (i32, i32, i32) {
+    let seconds_since_midnight = hour * 3600 + minute * 60 + second + delay as i32;
+    let seconds_since_midnight = seconds_since_midnight % (24 * 60 * 60);
+    (
+        seconds_since_midnight / 3600,
+        (seconds_since_midnight / 60) % 60,
+        seconds_since_midnight % 60,
+    )
 }
 
 fn mount_fs(source: &str, target: &str, kind: &str) {
@@ -476,6 +500,75 @@ fn rtc_epoch_read() -> String {
         },
         Err(error) => format!("RTC UNKNOWN {error}"),
     }
+}
+
+fn rtc_alarm_start(delay_seconds: u32) -> Result<(File, RtcTime), String> {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/rtc0")
+        .map_err(|error| format!("open /dev/rtc0: {error}"))?;
+    let mut alarm = RtcTime {
+        second: 0,
+        minute: 0,
+        hour: 0,
+        month_day: 0,
+        month: 0,
+        year: 0,
+        week_day: 0,
+        year_day: 0,
+        is_dst: 0,
+    };
+    let result = unsafe { ioctl(file.as_raw_fd(), 0x8024_7009, &mut alarm as *mut RtcTime) };
+    if result < 0 {
+        return Err(format!("RTC_RD_TIME: {}", std::io::Error::last_os_error()));
+    }
+    let (hour, minute, second) =
+        rtc_alarm_time_after(alarm.hour, alarm.minute, alarm.second, delay_seconds);
+    alarm.hour = hour;
+    alarm.minute = minute;
+    alarm.second = second;
+    let result = unsafe { ioctl(file.as_raw_fd(), 0x4024_7007, &alarm as *const RtcTime) };
+    if result < 0 {
+        return Err(format!("RTC_ALM_SET: {}", std::io::Error::last_os_error()));
+    }
+    let result = unsafe { ioctl(file.as_raw_fd(), 0x7001, 0) };
+    if result < 0 {
+        return Err(format!("RTC_AIE_ON: {}", std::io::Error::last_os_error()));
+    }
+    Ok((file, alarm))
+}
+
+fn rtc_alarm_disable(file: &File) -> std::io::Result<()> {
+    let result = unsafe { ioctl(file.as_raw_fd(), 0x7002, 0) };
+    if result < 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+fn rtc_alarm_wait(file: &mut File, timeout: Duration) -> std::io::Result<(u64, u8)> {
+    let mut descriptor = PollFd {
+        fd: file.as_raw_fd(),
+        events: 1,
+        revents: 0,
+    };
+    let timeout_ms = timeout.as_millis().min(c_int::MAX as u128) as c_int;
+    let result = unsafe { poll(&mut descriptor, 1, timeout_ms) };
+    if result == 0 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "RTC alarm did not arrive before timeout",
+        ));
+    }
+    if result < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let mut bytes = [0u8; std::mem::size_of::<u64>()];
+    file.read_exact(&mut bytes)?;
+    let event = u64::from_ne_bytes(bytes);
+    Ok((event >> 8, (event & 0xff) as u8))
 }
 
 fn memory_pressure_worker() -> ! {
@@ -1078,6 +1171,32 @@ fn main() {
             ["timer-read"] => guest_timer_expirations(),
             ["local-timer-interrupts-read"] => local_timer_interrupts_read(),
             ["rtc-read"] => rtc_epoch_read(),
+            ["rtc-alarm", delay] => match delay.parse::<u32>() {
+                Ok(delay) if (1..=60).contains(&delay) => match rtc_alarm_start(delay) {
+                    Ok((mut rtc, alarm)) => {
+                        writeln!(
+                            serial_out,
+                            "DENSEVM RTC-ALARM-ARMED {:02}:{:02}:{:02}",
+                            alarm.hour, alarm.minute, alarm.second
+                        )
+                        .unwrap();
+                        serial_out.flush().unwrap();
+                        let result = rtc_alarm_wait(&mut rtc, Duration::from_secs(20));
+                        let disable = rtc_alarm_disable(&rtc);
+                        match (result, disable) {
+                            (Ok((events, flags)), Ok(())) => {
+                                format!("RTC-ALARM-FIRED events={events} flags={flags}")
+                            }
+                            (Err(error), _) => format!("RTC-ALARM-MISSED {error}"),
+                            (Ok(_), Err(error)) => {
+                                format!("RTC-ALARM-FIRED disable_error={error}")
+                            }
+                        }
+                    }
+                    Err(error) => format!("RTC-ALARM-UNAVAILABLE {error}"),
+                },
+                _ => "RTC-ALARM-UNAVAILABLE delay must be 1..60 seconds".to_string(),
+            },
             ["sync"] => {
                 unsafe {
                     syscall(162);

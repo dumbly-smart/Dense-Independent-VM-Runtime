@@ -403,6 +403,16 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_rtc_alarm_interrupt_reply() {
+        assert_eq!(
+            parse_rtc_alarm_reply("RTC-ALARM-FIRED events=1 flags=160").unwrap(),
+            (1, 160)
+        );
+        assert!(parse_rtc_alarm_reply("RTC-ALARM-FIRED events=no flags=32").is_err());
+        assert!(parse_rtc_alarm_reply("RTC-ALARM-TIMEOUT").is_err());
+    }
+
+    #[test]
     fn qemu_register_snapshot_preserves_the_full_monitor_text() {
         let monitor_text = "CPU#0\nRAX=00000000000000aa CR0=0000000080010033\n";
         let (mut qmp, server, path) = scripted_qmp(vec![(
@@ -1241,6 +1251,56 @@ fn parse_qemu_segment_base(output: &str, segment: &str) -> Result<u64, String> {
     Err(format!("QEMU monitor output omitted the {segment} segment"))
 }
 
+fn parse_rtc_alarm_reply(reply: &str) -> Result<(u64, u8), String> {
+    let mut fields = reply.split_whitespace();
+    if fields.next() != Some("RTC-ALARM-FIRED") {
+        return Err(format!("guest RTC alarm did not fire: {reply}"));
+    }
+    let mut events = None;
+    let mut flags = None;
+    for field in fields {
+        if let Some(value) = field.strip_prefix("events=") {
+            events = Some(value.parse::<u64>().map_err(|error| error.to_string())?);
+        } else if let Some(value) = field.strip_prefix("flags=") {
+            flags = Some(value.parse::<u8>().map_err(|error| error.to_string())?);
+        }
+    }
+    Ok((
+        events.ok_or_else(|| format!("RTC alarm event count missing: {reply}"))?,
+        flags.ok_or_else(|| format!("RTC alarm flags missing: {reply}"))?,
+    ))
+}
+
+fn rtc_alarm_arm(serial: &mut Serial) -> String {
+    serial
+        .send("rtc-alarm 5")
+        .and_then(|()| serial.expect("RTC-ALARM-", Duration::from_secs(5)))
+        .unwrap_or_else(|error| format!("RTC-ALARM-UNAVAILABLE {error}"))
+}
+
+fn rtc_alarm_collect(serial: &mut Serial) -> String {
+    serial
+        .expect("RTC-ALARM-", Duration::from_secs(22))
+        .unwrap_or_else(|error| format!("RTC-ALARM-UNKNOWN {error}"))
+}
+
+fn rtc_alarm_observation(reply: &str) -> Value {
+    match parse_rtc_alarm_reply(reply) {
+        Ok((events, flags)) => json!({
+            "response":reply,
+            "interrupt_events":events,
+            "interrupt_flags":flags,
+            "alarm_flag_observed":flags & 0x20 != 0
+        }),
+        Err(_) => json!({
+            "response":reply,
+            "interrupt_events":Value::Null,
+            "interrupt_flags":Value::Null,
+            "alarm_flag_observed":false
+        }),
+    }
+}
+
 fn qemu_register_snapshot(
     qmp: &mut Qmp,
 ) -> Result<(std::collections::BTreeMap<String, u64>, String), String> {
@@ -1309,6 +1369,7 @@ pub fn run_experiment(
             range: false,
             skip_guest_oom: false,
             vcpu_register_state: false,
+            rtc_alarm: false,
         },
     )
 }
@@ -1324,6 +1385,7 @@ pub struct ProbeOptions<'a> {
     pub range: bool,
     pub skip_guest_oom: bool,
     pub vcpu_register_state: bool,
+    pub rtc_alarm: bool,
 }
 
 pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
@@ -1369,6 +1431,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         range,
         skip_guest_oom,
         vcpu_register_state: capture_vcpu_register_state,
+        rtc_alarm: capture_rtc_alarm,
     } = options;
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
@@ -1733,6 +1796,68 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         (
             None,
             json!({"status":"not-requested","how_to_enable":"densevm probe --vcpu-register-state"}),
+        )
+    };
+    let (rtc_alarm_verified, rtc_alarm) = if capture_rtc_alarm {
+        let a_control_armed = rtc_alarm_arm(&mut aserial);
+        let b_control_armed = rtc_alarm_arm(&mut bserial);
+        let (a_control_reply, b_control_reply) = if a_control_armed.starts_with("RTC-ALARM-ARMED")
+            && b_control_armed.starts_with("RTC-ALARM-ARMED")
+        {
+            thread::sleep(Duration::from_secs(7));
+            (
+                rtc_alarm_collect(&mut aserial),
+                rtc_alarm_collect(&mut bserial),
+            )
+        } else {
+            (a_control_armed.clone(), b_control_armed.clone())
+        };
+
+        let a_paused_armed = rtc_alarm_arm(&mut aserial);
+        let b_paused_armed = rtc_alarm_arm(&mut bserial);
+        let (a_paused_reply, b_paused_reply) = if a_paused_armed.starts_with("RTC-ALARM-ARMED")
+            && b_paused_armed.starts_with("RTC-ALARM-ARMED")
+        {
+            stop_and_verify(&mut aq)?;
+            stop_and_verify(&mut bq)?;
+            thread::sleep(Duration::from_secs(7));
+            resume_and_verify(&mut aq)?;
+            resume_and_verify(&mut bq)?;
+            (
+                rtc_alarm_collect(&mut aserial),
+                rtc_alarm_collect(&mut bserial),
+            )
+        } else {
+            (a_paused_armed.clone(), b_paused_armed.clone())
+        };
+        let a_control = rtc_alarm_observation(&a_control_reply);
+        let b_control = rtc_alarm_observation(&b_control_reply);
+        let a_paused = rtc_alarm_observation(&a_paused_reply);
+        let b_paused = rtc_alarm_observation(&b_paused_reply);
+        let verified = a_paused["alarm_flag_observed"] == true
+            && b_paused["alarm_flag_observed"] == true
+            && a_paused["interrupt_events"]
+                .as_u64()
+                .is_some_and(|events| events > 0)
+            && b_paused["interrupt_events"]
+                .as_u64()
+                .is_some_and(|events| events > 0);
+        (
+            Some(verified),
+            json!({
+                "status":if verified {"paused_delivery_verified"} else {"paused_delivery_failed_or_unavailable"},
+                "method":"compare an alarm while both guests run against a second alarm armed before a seven-second QMP pause",
+                "alarm_delay_seconds":5,
+                "pause_duration_seconds":7,
+                "rtc_alarm_flag":"RTC_AF (0x20)",
+                "control_running":{"a_armed":a_control_armed,"a":a_control,"b_armed":b_control_armed,"b":b_control},
+                "paused":{"a_armed":a_paused_armed,"a":a_paused,"b_armed":b_paused_armed,"b":b_paused}
+            }),
+        )
+    } else {
+        (
+            None,
+            json!({"status":"not-requested","how_to_enable":"densevm probe --rtc-alarm"}),
         )
     };
     let mut guest_identities = vec![a_identity_guest.clone(), b_identity_guest.clone()];
@@ -2257,7 +2382,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details,
         "guest_crash":guest_crash_result,
         "vcpu_register_state":vcpu_register_state,
-        "vcpu_register_state_verified":vcpu_register_state_verified
+        "vcpu_register_state_verified":vcpu_register_state_verified,
+        "rtc_alarm":rtc_alarm,
+        "rtc_alarm_verified":rtc_alarm_verified
     });
     result["clones"]["active_cpu_sample_interval_ms"] = json!(clone_active_cpu_sample_interval_ms);
     result["clones"]["a"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[0]);
@@ -2350,7 +2477,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && a_reboot_observed
         && range_before_verified
         && range_after_verified
-        && vcpu_register_state_verified != Some(false))
+        && vcpu_register_state_verified != Some(false)
+        && rtc_alarm_verified != Some(false))
     {
         return Err("one or more isolation checks failed; see result.json".into());
     }

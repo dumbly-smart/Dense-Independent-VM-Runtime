@@ -15,7 +15,8 @@ fn parses_probe_with_count_and_output() {
             guest_dir: None,
             range: false,
             skip_guest_oom: false,
-            vcpu_register_state: false
+            vcpu_register_state: false,
+            rtc_alarm: false
         }
     );
     assert_eq!(
@@ -38,7 +39,8 @@ fn parses_probe_with_count_and_output() {
             guest_dir: None,
             range: false,
             skip_guest_oom: false,
-            vcpu_register_state: false
+            vcpu_register_state: false,
+            rtc_alarm: false
         }
     );
 }
@@ -76,6 +78,18 @@ fn enables_vcpu_register_sampling_only_when_requested() {
         result,
         Ok(Command::Probe {
             vcpu_register_state: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn enables_rtc_alarm_sampling_only_when_requested() {
+    let result = parse_args(["densevm", "probe", "--out", "/tmp/run", "--rtc-alarm"]);
+    assert!(matches!(
+        result,
+        Ok(Command::Probe {
+            rtc_alarm: true,
             ..
         })
     ));

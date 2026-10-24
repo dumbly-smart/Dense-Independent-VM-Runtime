@@ -26,6 +26,7 @@ fn main() {
             range,
             skip_guest_oom,
             vcpu_register_state,
+            rtc_alarm,
         } => densevm::probe::run_options(
             &out,
             densevm::probe::ProbeOptions {
@@ -38,6 +39,7 @@ fn main() {
                 range,
                 skip_guest_oom,
                 vcpu_register_state,
+                rtc_alarm,
             },
         ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
