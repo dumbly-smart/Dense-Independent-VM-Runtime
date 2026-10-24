@@ -18,25 +18,25 @@
     },
     "count": 2,
     "idle_cpu_sample_interval_ms": 1000,
-    "time_to_count_ready_ms": 1590,
+    "time_to_count_ready_ms": 1673,
     "vms": [
       {
-        "active_cpu_percent_one_core": 102.0,
-        "active_cpu_ticks": 102,
+        "active_cpu_percent_one_core": 101.0,
+        "active_cpu_ticks": 101,
         "disk_allocated_bytes": 200704,
         "disk_benchmark": null,
-        "identity_guest": "IDENTITY a749de87cea41d2c3a3ed30811151315 densevm-a749de87cea4 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-        "idle_cpu_ticks": 2,
+        "identity_guest": "IDENTITY e7f7dbc4218fb4903937fa71a6a12a47 densevm-e7f7dbc4218f RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 3,
         "index": 0,
         "memory": {
-          "private_clean_kib": 296,
-          "private_dirty_kib": 203320,
-          "pss_kib": 212739,
-          "rss_kib": 226868,
-          "shared_clean_kib": 21228,
-          "shared_dirty_kib": 2024
+          "private_clean_kib": 520,
+          "private_dirty_kib": 201212,
+          "pss_kib": 210561,
+          "rss_kib": 224680,
+          "shared_clean_kib": 20920,
+          "shared_dirty_kib": 2028
         },
-        "pid": 345701,
+        "pid": 351143,
         "qemu_command": [
           "qemu-system-x86_64",
           "-machine",
@@ -50,7 +50,7 @@
           "-kernel",
           "/boot/vmlinuz-linux",
           "-initrd",
-          "/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/initramfs.cpio",
+          "/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/initramfs.cpio",
           "-append",
           "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
           "-display",
@@ -60,7 +60,7 @@
           "-nodefaults",
           "-no-reboot",
           "-drive",
-          "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/baseline-000.qcow2,format=qcow2",
+          "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/baseline-000.qcow2,format=qcow2",
           "-device",
           "virtio-blk-pci,drive=disk,id=blk0",
           "-netdev",
@@ -68,15 +68,15 @@
           "-device",
           "pcie-root-port,id=rp1,slot=2,chassis=1",
           "-device",
-          "virtio-net-pci,bus=rp1,netdev=net0,mac=ca:8f:4f:8d:08:73,id=nic0",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=0a:51:2a:9b:f5:83,id=nic0",
           "-device",
           "vmgenid,guid=auto",
           "-chardev",
-          "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/baseline-000.serial.sock,server=on,wait=off",
+          "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/baseline-000.serial.sock,server=on,wait=off",
           "-serial",
           "chardev:serial",
           "-qmp",
-          "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/baseline-000.qmp.sock,server=on,wait=off"
+          "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/baseline-000.qmp.sock,server=on,wait=off"
         ]
       },
       {
@@ -84,18 +84,18 @@
         "active_cpu_ticks": 102,
         "disk_allocated_bytes": 200704,
         "disk_benchmark": null,
-        "identity_guest": "IDENTITY 075ef1f28a87abe958834f746e8224b9 densevm-075ef1f28a87 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "identity_guest": "IDENTITY 5807d0919d93def586acf53c5b831564 densevm-5807d0919d93 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
         "idle_cpu_ticks": 3,
         "index": 1,
         "memory": {
-          "private_clean_kib": 316,
-          "private_dirty_kib": 201248,
-          "pss_kib": 210705,
-          "rss_kib": 224892,
-          "shared_clean_kib": 21304,
-          "shared_dirty_kib": 2024
+          "private_clean_kib": 520,
+          "private_dirty_kib": 202500,
+          "pss_kib": 211833,
+          "rss_kib": 225948,
+          "shared_clean_kib": 20900,
+          "shared_dirty_kib": 2028
         },
-        "pid": 345712,
+        "pid": 351154,
         "qemu_command": [
           "qemu-system-x86_64",
           "-machine",
@@ -109,7 +109,7 @@
           "-kernel",
           "/boot/vmlinuz-linux",
           "-initrd",
-          "/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/initramfs.cpio",
+          "/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/initramfs.cpio",
           "-append",
           "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
           "-display",
@@ -119,7 +119,7 @@
           "-nodefaults",
           "-no-reboot",
           "-drive",
-          "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/baseline-001.qcow2,format=qcow2",
+          "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/baseline-001.qcow2,format=qcow2",
           "-device",
           "virtio-blk-pci,drive=disk,id=blk0",
           "-netdev",
@@ -127,49 +127,49 @@
           "-device",
           "pcie-root-port,id=rp1,slot=2,chassis=1",
           "-device",
-          "virtio-net-pci,bus=rp1,netdev=net0,mac=ae:fa:a3:17:d6:4f,id=nic0",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=a2:18:4d:36:7d:07,id=nic0",
           "-device",
           "vmgenid,guid=auto",
           "-chardev",
-          "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/baseline-001.serial.sock,server=on,wait=off",
+          "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/baseline-001.serial.sock,server=on,wait=off",
           "-serial",
           "chardev:serial",
           "-qmp",
-          "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/baseline-001.qmp.sock,server=on,wait=off"
+          "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/baseline-001.qmp.sock,server=on,wait=off"
         ]
       }
     ]
   },
   "clones": {
     "a": {
-      "active_cpu_percent_one_core": 100.0,
-      "active_cpu_ticks": 100,
+      "active_cpu_percent_one_core": 102.0,
+      "active_cpu_ticks": 102,
       "after_ram_write_memory": {
-        "private_clean_kib": 552,
-        "private_dirty_kib": 35276,
-        "pss_kib": 57039,
-        "rss_kib": 83204,
-        "shared_clean_kib": 47376,
+        "private_clean_kib": 860,
+        "private_dirty_kib": 35256,
+        "pss_kib": 56628,
+        "rss_kib": 82232,
+        "shared_clean_kib": 46116,
         "shared_dirty_kib": 0
       },
       "after_ram_write_ram_mapping": {
-        "private_clean_kib": 68,
-        "private_dirty_kib": 2568,
-        "pss_kib": 15900,
-        "rss_kib": 29164,
-        "shared_clean_kib": 26528,
+        "private_clean_kib": 4,
+        "private_dirty_kib": 2536,
+        "pss_kib": 15618,
+        "rss_kib": 28696,
+        "shared_clean_kib": 26156,
         "shared_dirty_kib": 0
       },
       "disk_benchmark": null,
-      "identity_guest": "IDENTITY 6f30c5dda7b454c910ec24074e76d6bd densevm-6f30c5dda7b4 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "idle_cpu_ticks": 2,
-      "mac_guest": "MAC 2a:1e:81:45:f5:f5",
+      "identity_guest": "IDENTITY da93c241faba3d106db050e1ce310952 densevm-da93c241faba RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 3,
+      "mac_guest": "MAC 8a:2d:ef:a6:17:87",
       "memory": {
-        "private_clean_kib": 552,
-        "private_dirty_kib": 35276,
-        "pss_kib": 57039,
-        "rss_kib": 83204,
-        "shared_clean_kib": 47376,
+        "private_clean_kib": 860,
+        "private_dirty_kib": 35252,
+        "pss_kib": 56626,
+        "rss_kib": 82232,
+        "shared_clean_kib": 46120,
         "shared_dirty_kib": 0
       },
       "migration": {
@@ -178,7 +178,7 @@
       "overlay_after_full_write_allocated_bytes": 67379200,
       "overlay_final_allocated_bytes": 67379200,
       "overlay_initial_allocated_bytes": 200704,
-      "pid": 345750,
+      "pid": 351227,
       "qemu_command": [
         "qemu-system-x86_64",
         "-machine",
@@ -190,13 +190,13 @@
         "-smp",
         "1",
         "-object",
-        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
         "-machine",
         "memory-backend=ram",
         "-kernel",
         "/boot/vmlinuz-linux",
         "-initrd",
-        "/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/initramfs.cpio",
+        "/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/initramfs.cpio",
         "-append",
         "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
         "-display",
@@ -206,7 +206,7 @@
         "-nodefaults",
         "-no-reboot",
         "-drive",
-        "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/clone-000.qcow2,format=qcow2",
+        "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/clone-000.qcow2,format=qcow2",
         "-device",
         "virtio-blk-pci,drive=disk,id=blk0",
         "-netdev",
@@ -216,54 +216,54 @@
         "-device",
         "vmgenid,guid=auto",
         "-chardev",
-        "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/clone-000.serial.sock,server=on,wait=off",
+        "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/clone-000.serial.sock,server=on,wait=off",
         "-serial",
         "chardev:serial",
         "-qmp",
-        "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/clone-000.qmp.sock,server=on,wait=off",
+        "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/clone-000.qmp.sock,server=on,wait=off",
         "-incoming",
         "defer"
       ],
       "ram_mapping": {
-        "private_clean_kib": 68,
-        "private_dirty_kib": 2568,
-        "pss_kib": 15900,
-        "rss_kib": 29164,
-        "shared_clean_kib": 26528,
+        "private_clean_kib": 4,
+        "private_dirty_kib": 2532,
+        "pss_kib": 15616,
+        "rss_kib": 28696,
+        "shared_clean_kib": 26160,
         "shared_dirty_kib": 0
       },
-      "vmgenid": "e2d9b5b9-402c-4f0e-812e-44a598a8fd58"
+      "vmgenid": "71441f9b-c9d7-4559-a988-6d491768e505"
     },
     "active_cpu_sample_interval_ms": 1000,
     "b": {
-      "active_cpu_percent_one_core": 103.0,
-      "active_cpu_ticks": 103,
+      "active_cpu_percent_one_core": 102.0,
+      "active_cpu_ticks": 102,
       "after_a_ram_write_memory": {
-        "private_clean_kib": 572,
-        "private_dirty_kib": 35268,
-        "pss_kib": 57042,
-        "rss_kib": 83164,
-        "shared_clean_kib": 47324,
+        "private_clean_kib": 1300,
+        "private_dirty_kib": 35236,
+        "pss_kib": 57070,
+        "rss_kib": 82652,
+        "shared_clean_kib": 46116,
         "shared_dirty_kib": 0
       },
       "after_a_ram_write_ram_mapping": {
-        "private_clean_kib": 8,
-        "private_dirty_kib": 2560,
-        "pss_kib": 15832,
-        "rss_kib": 29096,
-        "shared_clean_kib": 26528,
+        "private_clean_kib": 332,
+        "private_dirty_kib": 2528,
+        "pss_kib": 15938,
+        "rss_kib": 29016,
+        "shared_clean_kib": 26156,
         "shared_dirty_kib": 0
       },
       "disk_benchmark": null,
-      "identity_guest": "IDENTITY 466631352a7c516de994aa98e1e742c0 densevm-466631352a7c RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "idle_cpu_ticks": 2,
-      "mac_guest": "MAC 06:ea:b2:b8:7b:c6",
+      "identity_guest": "IDENTITY 9095cea965904ac99e8b457601f58b5a densevm-9095cea96590 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 3,
+      "mac_guest": "MAC 0a:86:f5:73:27:b9",
       "memory": {
-        "private_clean_kib": 572,
-        "private_dirty_kib": 35268,
-        "pss_kib": 57042,
-        "rss_kib": 83164,
-        "shared_clean_kib": 47324,
+        "private_clean_kib": 1296,
+        "private_dirty_kib": 35236,
+        "pss_kib": 57068,
+        "rss_kib": 82652,
+        "shared_clean_kib": 46120,
         "shared_dirty_kib": 0
       },
       "migration": {
@@ -271,7 +271,7 @@
       },
       "overlay_final_allocated_bytes": 331776,
       "overlay_initial_allocated_bytes": 200704,
-      "pid": 345751,
+      "pid": 351228,
       "qemu_command": [
         "qemu-system-x86_64",
         "-machine",
@@ -283,13 +283,13 @@
         "-smp",
         "1",
         "-object",
-        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
         "-machine",
         "memory-backend=ram",
         "-kernel",
         "/boot/vmlinuz-linux",
         "-initrd",
-        "/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/initramfs.cpio",
+        "/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/initramfs.cpio",
         "-append",
         "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
         "-display",
@@ -299,7 +299,7 @@
         "-nodefaults",
         "-no-reboot",
         "-drive",
-        "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/clone-001.qcow2,format=qcow2",
+        "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/clone-001.qcow2,format=qcow2",
         "-device",
         "virtio-blk-pci,drive=disk,id=blk0",
         "-netdev",
@@ -309,28 +309,28 @@
         "-device",
         "vmgenid,guid=auto",
         "-chardev",
-        "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/clone-001.serial.sock,server=on,wait=off",
+        "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/clone-001.serial.sock,server=on,wait=off",
         "-serial",
         "chardev:serial",
         "-qmp",
-        "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/clone-001.qmp.sock,server=on,wait=off",
+        "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/clone-001.qmp.sock,server=on,wait=off",
         "-incoming",
         "defer"
       ],
       "ram_mapping": {
-        "private_clean_kib": 8,
-        "private_dirty_kib": 2560,
-        "pss_kib": 15832,
-        "rss_kib": 29096,
-        "shared_clean_kib": 26528,
+        "private_clean_kib": 328,
+        "private_dirty_kib": 2528,
+        "pss_kib": 15936,
+        "rss_kib": 29016,
+        "shared_clean_kib": 26160,
         "shared_dirty_kib": 0
       },
-      "vmgenid": "84503c15-abae-4f4b-9da1-4bde914e209d"
+      "vmgenid": "4d869743-539e-4c33-9a60-fab38e5a5f70"
     },
     "count": 2,
     "extra": [],
     "idle_cpu_sample_interval_ms": 1000,
-    "time_to_count_resumed_ms": 5359
+    "time_to_count_resumed_ms": 5365
   },
   "dhcp_identity": {
     "guest_responses": [
@@ -600,7 +600,7 @@
       }
     }
   },
-  "host_mem_available_kib_at_start": 4376448,
+  "host_mem_available_kib_at_start": 4252004,
   "host_mem_required_kib": 2097152,
   "identity_unique": true,
   "identity_validation_verified": true,
@@ -655,39 +655,39 @@
       "clones": [
         {
           "memory": {
-            "private_clean_kib": 552,
-            "private_dirty_kib": 35276,
-            "pss_kib": 57039,
-            "rss_kib": 83204,
-            "shared_clean_kib": 47376,
+            "private_clean_kib": 860,
+            "private_dirty_kib": 35256,
+            "pss_kib": 56628,
+            "rss_kib": 82232,
+            "shared_clean_kib": 46116,
             "shared_dirty_kib": 0
           },
-          "pid": 345750,
+          "pid": 351227,
           "ram_mapping": {
-            "private_clean_kib": 68,
-            "private_dirty_kib": 2568,
-            "pss_kib": 15900,
-            "rss_kib": 29164,
-            "shared_clean_kib": 26528,
+            "private_clean_kib": 4,
+            "private_dirty_kib": 2536,
+            "pss_kib": 15618,
+            "rss_kib": 28696,
+            "shared_clean_kib": 26156,
             "shared_dirty_kib": 0
           }
         },
         {
           "memory": {
-            "private_clean_kib": 572,
-            "private_dirty_kib": 35268,
-            "pss_kib": 57042,
-            "rss_kib": 83164,
-            "shared_clean_kib": 47324,
+            "private_clean_kib": 1300,
+            "private_dirty_kib": 35236,
+            "pss_kib": 57070,
+            "rss_kib": 82652,
+            "shared_clean_kib": 46116,
             "shared_dirty_kib": 0
           },
-          "pid": 345751,
+          "pid": 351228,
           "ram_mapping": {
-            "private_clean_kib": 8,
-            "private_dirty_kib": 2560,
-            "pss_kib": 15832,
-            "rss_kib": 29096,
-            "shared_clean_kib": 26528,
+            "private_clean_kib": 332,
+            "private_dirty_kib": 2528,
+            "pss_kib": 15938,
+            "rss_kib": 29016,
+            "shared_clean_kib": 26156,
             "shared_dirty_kib": 0
           }
         }
@@ -702,39 +702,39 @@
       "clones": [
         {
           "memory": {
-            "private_clean_kib": 552,
-            "private_dirty_kib": 35276,
-            "pss_kib": 57039,
-            "rss_kib": 83204,
-            "shared_clean_kib": 47376,
+            "private_clean_kib": 860,
+            "private_dirty_kib": 35252,
+            "pss_kib": 56626,
+            "rss_kib": 82232,
+            "shared_clean_kib": 46120,
             "shared_dirty_kib": 0
           },
-          "pid": 345750,
+          "pid": 351227,
           "ram_mapping": {
-            "private_clean_kib": 68,
-            "private_dirty_kib": 2568,
-            "pss_kib": 15900,
-            "rss_kib": 29164,
-            "shared_clean_kib": 26528,
+            "private_clean_kib": 4,
+            "private_dirty_kib": 2532,
+            "pss_kib": 15616,
+            "rss_kib": 28696,
+            "shared_clean_kib": 26160,
             "shared_dirty_kib": 0
           }
         },
         {
           "memory": {
-            "private_clean_kib": 572,
-            "private_dirty_kib": 35268,
-            "pss_kib": 57042,
-            "rss_kib": 83164,
-            "shared_clean_kib": 47324,
+            "private_clean_kib": 1296,
+            "private_dirty_kib": 35236,
+            "pss_kib": 57068,
+            "rss_kib": 82652,
+            "shared_clean_kib": 46120,
             "shared_dirty_kib": 0
           },
-          "pid": 345751,
+          "pid": 351228,
           "ram_mapping": {
-            "private_clean_kib": 8,
-            "private_dirty_kib": 2560,
-            "pss_kib": 15832,
-            "rss_kib": 29096,
-            "shared_clean_kib": 26528,
+            "private_clean_kib": 328,
+            "private_dirty_kib": 2528,
+            "pss_kib": 15936,
+            "rss_kib": 29016,
+            "shared_clean_kib": 26160,
             "shared_dirty_kib": 0
           }
         }
@@ -745,10 +745,10 @@
   },
   "ssh_host_keys": {
     "identity_responses": [
-      "IDENTITY a749de87cea41d2c3a3ed30811151315 densevm-a749de87cea4 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "IDENTITY 075ef1f28a87abe958834f746e8224b9 densevm-075ef1f28a87 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "IDENTITY 6f30c5dda7b454c910ec24074e76d6bd densevm-6f30c5dda7b4 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "IDENTITY 466631352a7c516de994aa98e1e742c0 densevm-466631352a7c RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable"
+      "IDENTITY e7f7dbc4218fb4903937fa71a6a12a47 densevm-e7f7dbc4218f RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 5807d0919d93def586acf53c5b831564 densevm-5807d0919d93 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY da93c241faba3d106db050e1ce310952 densevm-da93c241faba RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 9095cea965904ac99e8b457601f58b5a densevm-9095cea96590 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable"
     ],
     "present": false,
     "unique": true
@@ -756,10 +756,10 @@
   "surviving_clones_verified": true,
   "template": {
     "machine_state_allocated_bytes": 311296,
-    "memory_file_allocated_bytes": 174067712,
+    "memory_file_allocated_bytes": 171970560,
     "memory_file_bytes": 268435456,
     "memory_file_resident_bytes": 268435456,
-    "memory_sha256": "9e3b045cc42183f5916546376e257782e760f131e20568724dc8e91e19b90548",
+    "memory_sha256": "b7bbda85864e1c6bf625fd9e2d30df15ff8e53543890995408f886162a86b511",
     "migration": {
       "downtime": 1,
       "ram": {
@@ -768,7 +768,7 @@
         "dirty-sync-missed-zero-copy": 0,
         "downtime-bytes": 177340,
         "duplicate": 87,
-        "mbps": 1240.788,
+        "mbps": 248.1576,
         "multifd-bytes": 0,
         "normal": 43,
         "normal-bytes": 176128,
@@ -781,9 +781,9 @@
         "total": 532480,
         "transferred": 310197
       },
-      "setup-time": 1,
+      "setup-time": 2,
       "status": "completed",
-      "total-time": 3
+      "total-time": 12
     },
     "qemu_command": [
       "qemu-system-x86_64",
@@ -796,13 +796,13 @@
       "-smp",
       "1",
       "-object",
-      "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/memory.img,size=256M,share=on,readonly=off,merge=off",
+      "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/memory.img,size=256M,share=on,readonly=off,merge=off",
       "-machine",
       "memory-backend=ram",
       "-kernel",
       "/boot/vmlinuz-linux",
       "-initrd",
-      "/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/initramfs.cpio",
+      "/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/initramfs.cpio",
       "-append",
       "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
       "-display",
@@ -812,7 +812,7 @@
       "-nodefaults",
       "-no-reboot",
       "-drive",
-      "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/base.qcow2,format=qcow2",
+      "if=none,id=disk,file=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/base.qcow2,format=qcow2",
       "-device",
       "virtio-blk-pci,drive=disk,id=blk0",
       "-netdev",
@@ -822,73 +822,75 @@
       "-device",
       "vmgenid,guid=auto",
       "-chardev",
-      "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/template.serial.sock,server=on,wait=off",
+      "socket,id=serial,path=/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/template.serial.sock,server=on,wait=off",
       "-serial",
       "chardev:serial",
       "-qmp",
-      "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-345633-1792825334892188735/template.qmp.sock,server=on,wait=off"
+      "unix:/home/xtrmn8/dvm-resources/densevm-vcpu-351078-1792825538779368750/template.qmp.sock,server=on,wait=off"
     ],
-    "vmgenid": "0132b1be-a70a-479c-afe3-74298a53ef20"
+    "vmgenid": "dd8ffc20-cd71-4a43-b802-d804fed92731"
   },
   "template_ram_unchanged": true,
   "vcpu_register_state": {
     "a": {
-      "monitor_output": "\r\nCPU#0\r\nRAX=000000001781e060 RBX=0000000000000005 RCX=0000000000000001 RDX=00000000ffffffff\r\nRSI=00007efea3c64000 RDI=0000000000000004 RBP=00007ffd07077cb0 RSP=00007ffd07077c78\r\nR8 =000000000bc0f030 R9 =00007efea3c60010 R10=0000000000000388 R11=001ab9afd8000000\r\nR12=00005555756d69d0 R13=00007ffd07078120 R14=00007ffd07077e90 R15=00007ffd07077de0\r\nRIP=00007efea3c669c9 RFL=00000206 [-----P-] CPL=3 II=0 A20=1 SMM=0 HLT=0\r\nES =0000 0000000000000000 ffffffff 00c00100\r\nCS =0033 0000000000000000 ffffffff 00a0fb00 DPL=3 CS64 [-RA]\r\nSS =002b 0000000000000000 ffffffff 00c0f300 DPL=3 DS   [-WA]\r\nDS =0000 0000000000000000 ffffffff 00c00100\r\nFS =0000 00005555756d3480 ffffffff 00c00100\r\nGS =0000 0000000000000000 ffffffff 00c00100\r\nLDT=0000 0000000000000000 ffffffff 00c00000\r\nTR =0040 fffffe3c7c58a000 00004087 00008b00 DPL=0 TSS64-busy\r\nGDT=     fffffe3c7c588000 0000007f\r\nIDT=     fffffe0000000000 00000fff\r\nCR0=80050033 CR2=00007efea3c64000 CR3=0000000002e53003 CR4=00f70ef0\r\nDR0=0000000000000000 DR1=0000000000000000 DR2=0000000000000000 DR3=0000000000000000 \r\nDR6=00000000ffff0ff0 DR7=0000000000000400\r\nEFER=0000000000000d01\r\nFCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80\r\nFPR0=0000000000000000 0000 FPR1=0000000000000000 0000\r\nFPR2=0000000000000000 0000 FPR3=0000000000000000 0000\r\nFPR4=0000000000000000 0000 FPR5=0000000000000000 0000\r\nFPR6=0000000000000000 0000 FPR7=0000000000000000 0000\r\nYMM00=0000000000000000 0000000000000000 0000000000000000 0000000039343335\r\nYMM01=0000000000000000 0000000000000000 0000000000000026 00005555756d6b60\r\nYMM02=0000000000000000 0000000000000000 00005555756d6b86 00005555756d6b6f\r\nYMM03=0000000000000000 0000000000000000 0000000000000001 000000000000000f\r\nYMM04=0000000000000000 0000000000000000 0000000000000058 00005555756d6bd0\r\nYMM05=0000000000000000 0000000000000000 00007efea3dee902 00007ffd07077bf0\r\nYMM06=0000000000000000 0000000000000000 00007ffd07077ca8 000000000000002c\r\nYMM07=0000000000000000 0000000000000000 0000000000000001 0000000000000058\r\nYMM08=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM09=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM10=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM11=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM12=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM13=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM14=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM15=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\n",
+      "gs_base_expected": 286326784,
+      "gs_base_observed": 286326784,
+      "monitor_output": "\r\nCPU#0\r\nRAX=00000000d1b032dc RBX=0000000035872fd9 RCX=0000000000000000 RDX=0000000000000000\r\nRSI=00007f852aff3000 RDI=0000000000000004 RBP=00007ffd05b875d0 RSP=00007ffd05b87598\r\nR8 =00007f852afef000 R9 =00007f852afef010 R10=0000000000000362 R11=001ac474fb800000\r\nR12=0000555593e5e9d0 R13=00007ffd05b87a50 R14=00007ffd05b877d0 R15=0000000000000000\r\nRIP=00007f852aff59ab RFL=00000202 [-------] CPL=3 II=0 A20=1 SMM=0 HLT=0\r\nES =0000 0000000000000000 ffffffff 00c00100\r\nCS =0033 0000000000000000 ffffffff 00a0fb00 DPL=3 CS64 [-RA]\r\nSS =002b 0000000000000000 ffffffff 00c0f300 DPL=3 DS   [-WA]\r\nDS =0000 0000000000000000 ffffffff 00c00100\r\nFS =0000 0000555593e5b480 ffffffff 00c00100\r\nGS =0000 0000000011110000 ffffffff 00c00000\r\nLDT=0000 0000000000000000 ffffffff 00c00000\r\nTR =0040 fffffe6413ccd000 00004087 00008b00 DPL=0 TSS64-busy\r\nGDT=     fffffe6413ccb000 0000007f\r\nIDT=     fffffe0000000000 00000fff\r\nCR0=80050033 CR2=00007f852aff3000 CR3=0000000002e53003 CR4=00f70ef0\r\nDR0=0000000000000000 DR1=0000000000000000 DR2=0000000000000000 DR3=0000000000000000 \r\nDR6=00000000ffff0ff0 DR7=0000000000000400\r\nEFER=0000000000000d01\r\nFCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80\r\nFPR0=0000000000000000 0000 FPR1=0000000000000000 0000\r\nFPR2=0000000000000000 0000 FPR3=0000000000000000 0000\r\nFPR4=0000000000000000 0000 FPR5=0000000000000000 0000\r\nFPR6=0000000000000000 0000 FPR7=0000000000000000 0000\r\nYMM00=0000000000000000 0000000000000000 0000000000000000 0000000032333638\r\nYMM01=0000000000000000 0000000000000000 ffffffffffffffff ffffffffffffffff\r\nYMM02=0000000000000000 0000000000000000 0000555593e5ea83 0000555593e5ea62\r\nYMM03=0000000000000000 0000000000000000 0000000000000001 0000000000000012\r\nYMM04=0000000000000000 0000000000000000 0000000000000058 0000555593e5ebd0\r\nYMM05=0000000000000000 0000000000000000 00007f852b17e2c2 00007ffd05b87510\r\nYMM06=0000000000000000 0000000000000000 00007ffd05b875c8 000000000000002c\r\nYMM07=0000000000000000 0000000000000000 0000000000000001 0000000000000058\r\nYMM08=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM09=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM10=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM11=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM12=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM13=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM14=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM15=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\n",
       "registers": {
-        "R10": 904,
-        "R11": 7522514288771072,
-        "R12": 93825530685904,
-        "R13": 140724721385760,
-        "R14": 140724721385104,
-        "R15": 140724721384928,
-        "R8": 197193776,
-        "R9": 139632134455312,
-        "RAX": 394387552,
-        "RBP": 140724721384624,
-        "RBX": 5,
-        "RCX": 1,
+        "R10": 866,
+        "R11": 7534356109197312,
+        "R12": 93826041899472,
+        "R13": 140724699429456,
+        "R14": 140724699428816,
+        "R15": 0,
+        "R8": 140209928728576,
+        "R9": 140209928728592,
+        "RAX": 3517985500,
+        "RBP": 140724699428304,
+        "RBX": 898052057,
+        "RCX": 0,
         "RDI": 4,
-        "RDX": 4294967295,
-        "RSI": 139632134471680,
-        "RSP": 140724721384568
+        "RDX": 0,
+        "RSI": 140209928744960,
+        "RSP": 140724699428248
       },
       "seed": 45349242685213201,
-      "workload_done": "CPU-STATE-DONE seed=45349242685213201 value=5537008238466328190 iterations=198065153"
+      "workload_done": "CPU-REGISTER-DONE seed=45349242685213201 gs_base=286326784 value=4774056554007884243 iterations=197472326"
     },
     "b": {
-      "monitor_output": "\r\nCPU#0\r\nRAX=0000000002e5f95e RBX=0000000000000005 RCX=00000000464c6620 RDX=0000000000000004\r\nRSI=00007efea3c64000 RDI=0000000000000004 RBP=00007ffd07077cb0 RSP=00007ffd07077c78\r\nR8 =0000000003817deb R9 =00007efea3c60010 R10=0000000000000384 R11=001753ef98000000\r\nR12=00005555756d69d0 R13=00007ffd07078120 R14=00007ffd07077e90 R15=00007ffd07077de0\r\nRIP=00007efea3c669e9 RFL=00000246 [---Z-P-] CPL=3 II=0 A20=1 SMM=0 HLT=0\r\nES =0000 0000000000000000 ffffffff 00c00100\r\nCS =0033 0000000000000000 ffffffff 00a0fb00 DPL=3 CS64 [-RA]\r\nSS =002b 0000000000000000 ffffffff 00c0f300 DPL=3 DS   [-WA]\r\nDS =0000 0000000000000000 ffffffff 00c00100\r\nFS =0000 00005555756d3480 ffffffff 00c00100\r\nGS =0000 0000000000000000 ffffffff 00c00100\r\nLDT=0000 0000000000000000 ffffffff 00c00000\r\nTR =0040 fffffe3c7c58a000 00004087 00008b00 DPL=0 TSS64-busy\r\nGDT=     fffffe3c7c588000 0000007f\r\nIDT=     fffffe0000000000 00000fff\r\nCR0=80050033 CR2=00007efea3c64000 CR3=0000000002e53003 CR4=00f70ef0\r\nDR0=0000000000000000 DR1=0000000000000000 DR2=0000000000000000 DR3=0000000000000000 \r\nDR6=00000000ffff0ff0 DR7=0000000000000400\r\nEFER=0000000000000d01\r\nFCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80\r\nFPR0=0000000000000000 0000 FPR1=0000000000000000 0000\r\nFPR2=0000000000000000 0000 FPR3=0000000000000000 0000\r\nFPR4=0000000000000000 0000 FPR5=0000000000000000 0000\r\nFPR6=0000000000000000 0000 FPR7=0000000000000000 0000\r\nYMM00=0000000000000000 0000000000000000 0000000000000000 0000000038303133\r\nYMM01=0000000000000000 0000000000000000 0000000000000025 00005555756d6b60\r\nYMM02=0000000000000000 0000000000000000 00005555756d6b85 00005555756d6b6f\r\nYMM03=0000000000000000 0000000000000000 0000000000000001 000000000000000f\r\nYMM04=0000000000000000 0000000000000000 0000000000000058 00005555756d6bd0\r\nYMM05=0000000000000000 0000000000000000 00007efea3dee902 00007ffd07077bf0\r\nYMM06=0000000000000000 0000000000000000 00007ffd07077ca8 000000000000002c\r\nYMM07=0000000000000000 0000000000000000 0000000000000001 0000000000000058\r\nYMM08=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM09=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM10=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM11=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM12=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM13=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM14=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM15=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\n",
+      "gs_base_expected": 572653568,
+      "gs_base_observed": 572653568,
+      "monitor_output": "\r\nCPU#0\r\nRAX=00000000c0f832eb RBX=000000002e8fbfb2 RCX=0000000000000000 RDX=0000000000000000\r\nRSI=00007f852aff3000 RDI=0000000000000004 RBP=00007ffd05b875d0 RSP=00007ffd05b87598\r\nR8 =00007f852afef000 R9 =00007f852afef010 R10=0000000000000356 R11=001747d15b800000\r\nR12=0000555593e5e9d0 R13=00007ffd05b87a50 R14=00007ffd05b877d0 R15=0000000000000000\r\nRIP=00007f852aff59ab RFL=00000202 [-------] CPL=3 II=0 A20=1 SMM=0 HLT=0\r\nES =0000 0000000000000000 ffffffff 00c00100\r\nCS =0033 0000000000000000 ffffffff 00a0fb00 DPL=3 CS64 [-RA]\r\nSS =002b 0000000000000000 ffffffff 00c0f300 DPL=3 DS   [-WA]\r\nDS =0000 0000000000000000 ffffffff 00c00100\r\nFS =0000 0000555593e5b480 ffffffff 00c00100\r\nGS =0000 0000000022220000 ffffffff 00c00000\r\nLDT=0000 0000000000000000 ffffffff 00c00000\r\nTR =0040 fffffe6413ccd000 00004087 00008b00 DPL=0 TSS64-busy\r\nGDT=     fffffe6413ccb000 0000007f\r\nIDT=     fffffe0000000000 00000fff\r\nCR0=80050033 CR2=00007f852aff3000 CR3=0000000002e53003 CR4=00f70ef0\r\nDR0=0000000000000000 DR1=0000000000000000 DR2=0000000000000000 DR3=0000000000000000 \r\nDR6=00000000ffff0ff0 DR7=0000000000000400\r\nEFER=0000000000000d01\r\nFCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80\r\nFPR0=0000000000000000 0000 FPR1=0000000000000000 0000\r\nFPR2=0000000000000000 0000 FPR3=0000000000000000 0000\r\nFPR4=0000000000000000 0000 FPR5=0000000000000000 0000\r\nFPR6=0000000000000000 0000 FPR7=0000000000000000 0000\r\nYMM00=0000000000000000 0000000000000000 0000000000000000 0000000035363237\r\nYMM01=0000000000000000 0000000000000000 ffffffffffffffff ffffffffffffffff\r\nYMM02=0000000000000000 0000000000000000 0000555593e5ea82 0000555593e5ea62\r\nYMM03=0000000000000000 0000000000000000 0000000000000001 0000000000000012\r\nYMM04=0000000000000000 0000000000000000 0000000000000058 0000555593e5ebd0\r\nYMM05=0000000000000000 0000000000000000 00007f852b17e2c2 00007ffd05b87510\r\nYMM06=0000000000000000 0000000000000000 00007ffd05b875c8 000000000000002c\r\nYMM07=0000000000000000 0000000000000000 0000000000000001 0000000000000058\r\nYMM08=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM09=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM10=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM11=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM12=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM13=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM14=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM15=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\n",
       "registers": {
-        "R10": 900,
-        "R11": 6566212976771072,
-        "R12": 93825530685904,
-        "R13": 140724721385760,
-        "R14": 140724721385104,
-        "R15": 140724721384928,
-        "R8": 58818027,
-        "R9": 139632134455312,
-        "RAX": 48626014,
-        "RBP": 140724721384624,
-        "RBX": 5,
-        "RCX": 1179412000,
+        "R10": 854,
+        "R11": 6552888973197312,
+        "R12": 93826041899472,
+        "R13": 140724699429456,
+        "R14": 140724699428816,
+        "R15": 0,
+        "R8": 140209928728576,
+        "R9": 140209928728592,
+        "RAX": 3237491435,
+        "RBP": 140724699428304,
+        "RBX": 781172658,
+        "RCX": 0,
         "RDI": 4,
-        "RDX": 4,
-        "RSI": 139632134471680,
-        "RSP": 140724721384568
+        "RDX": 0,
+        "RSI": 140209928744960,
+        "RSP": 140724699428248
       },
       "seed": 3108727087488546,
-      "workload_done": "CPU-STATE-DONE seed=3108727087488546 value=6337855381835650088 iterations=198124875"
+      "workload_done": "CPU-REGISTER-DONE seed=3108727087488546 gs_base=572653568 value=1634920789485254105 iterations=197737481"
     },
     "capture": "QMP human-monitor-command info registers while each clone was paused",
     "differing_general_purpose_registers": [
       "R10",
       "R11",
-      "R8",
       "RAX",
-      "RCX",
-      "RDX"
+      "RBX"
     ],
     "status": "verified",
-    "workload": "guest CPU arithmetic with clone-specific seed, stopped after both workloads announced readiness"
+    "workload": "guest CPU arithmetic with clone-specific seed and user GS base, stopped after both workloads announced readiness"
   },
   "vcpu_register_state_verified": true,
   "vmgenid_guest_reaction": {
