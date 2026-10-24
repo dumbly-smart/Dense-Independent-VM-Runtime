@@ -46,7 +46,7 @@ distribution. Current synthetic probes use QEMU/KVM 11.1.2 on Linux 7.2.11.
 | Independent virtual device state | YES | PARTIAL | Separate QMP, serial, block and hotplugged NIC observed; timer/interrupt behavior untested. |
 | Unique MAC visible inside guest | YES | YES | Guest sysfs returned distinct MACs after NIC hotplug. Launch-time MAC changes alone failed because migration restored the template MAC. |
 | Unique vmgenid in QEMU | optional | YES | QMP returned three distinct GUIDs for template, A, and B. Guest reaction to generation change is UNKNOWN. |
-| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Synthetic guest machine-id/hostname are unique. SSH keys are absent from the Alpine fixture; ordinary distribution key rotation remains untested. |
+| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Machine-id/hostname are unique. If OpenSSH host keys exist, identity preparation removes and regenerates them after CRNG reseed and the probe checks fingerprints for duplicates. Current Alpine fixture has no SSH keys, so real key regeneration is not yet demonstrated; other SSH daemons remain UNKNOWN. |
 | Independent entropy/RNG state | expected | PARTIAL | Synthetic guest receives fresh kernel entropy and forces CRNG reseed before identity/network setup. Existing userspace PRNG state and application secrets remain untested. |
 | Independent DHCP identity/IP | expected | PARTIAL | Range guests receive unique static IPs and pass client-to-target UDP checks. DHCP identity and lease behavior remain untested. |
 | Separate guest process state | YES | YES | Range starts a process only in T1; every sibling reports zero matching processes. |
