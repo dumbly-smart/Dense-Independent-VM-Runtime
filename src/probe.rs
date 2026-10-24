@@ -518,6 +518,13 @@ mod login_tests {
         assert!(ssh_identities_are_unique(&unique));
         let duplicate = vec![unique[0].clone(), unique[0].clone()];
         assert!(!ssh_identities_are_unique(&duplicate));
+        let overlapping = vec![
+            "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY SHA256:first,SHA256:shared"
+                .to_string(),
+            "IDENTITY b densevm-b RNG-RESEEDED | SSH-IDENTITY SHA256:shared,SHA256:second"
+                .to_string(),
+        ];
+        assert!(!ssh_identities_are_unique(&overlapping));
         assert!(!ssh_identities_are_unique(&[
             unique[0].clone(),
             absent[1].clone()
@@ -1901,8 +1908,18 @@ fn ssh_identities_are_unique(replies: &[String]) -> bool {
     if values.iter().any(|value| *value == "ABSENT") {
         return false;
     }
-    let unique = values.iter().collect::<std::collections::HashSet<_>>();
-    unique.len() == values.len()
+    let mut fingerprints = std::collections::HashSet::new();
+    for value in values {
+        let entries: Vec<_> = value.split(',').collect();
+        if entries.is_empty()
+            || entries.iter().any(|fingerprint| {
+                !fingerprint.starts_with("SHA256:") || !fingerprints.insert(*fingerprint)
+            })
+        {
+            return false;
+        }
+    }
+    true
 }
 
 pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
