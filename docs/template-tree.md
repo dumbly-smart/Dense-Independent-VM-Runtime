@@ -36,7 +36,12 @@ framework documentation](https://qemu.readthedocs.io/en/v11.1.2/devel/migration/
 Build a regular template with `densevm probe`, then pass that output directory
 to the experiment. It refuses an existing output path, less than 2 GiB of
 available host memory, or less than 1 GiB of free disk space. Use a disk-backed
-filesystem for both input and output.
+filesystem for both input and output. The experiment builds in a short hidden
+staging directory and atomically renames it to the requested output path only
+after all checks pass. A caught error removes the staging directory. A hard
+process or host crash can leave an orphan `.dvm-*` staging directory, but does
+not publish it at the requested path; automatic orphan recovery is not
+implemented.
 
 ```sh
 cargo build
@@ -113,15 +118,19 @@ The third run's hashed generation manifest is also saved as
 The v2 content-addressed fourth run is recorded in
 [`two-generation-run4.json`](../results/template-tree/2026-10-25/two-generation-run4.json)
 and [`two-generation-run4-generation.json`](../results/template-tree/2026-10-25/two-generation-run4-generation.json).
+Run 5 exercises atomic publication and post-publication manifest validation:
+[`two-generation-run5.json`](../results/template-tree/2026-10-25/two-generation-run5.json)
+and [`two-generation-run5-generation.json`](../results/template-tree/2026-10-25/two-generation-run5-generation.json).
 
 ## Scope and remaining work
 
 This verifies one parent-to-child materialization and two independent
 descendants for the tested synthetic guest and QEMU machine. The v2 generation
 manifest is experimental provenance, not a persistent Template Manager. It
-does not provide artifact relocation, garbage collection, crash-safe
-publication, migration compatibility checks across QEMU versions, network
-identity behavior across generations, or large multi-level tree benchmarks.
+does not provide artifact relocation, garbage collection or orphan recovery,
+durable publication after power loss, migration compatibility checks across
+QEMU versions, network identity behavior across generations, or large
+multi-level tree benchmarks.
 It does not establish that every machine/device configuration supports the
 same migration sequence. Those require separate failure and compatibility
 tests before hierarchical templates are exposed as a general runtime feature.
