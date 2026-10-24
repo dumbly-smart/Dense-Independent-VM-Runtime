@@ -120,8 +120,10 @@ justifying a fabricated resume claim.
 The basic two-clone mechanism and Alpine service/login checkpoint have been
 demonstrated. An opt-in Alpine identity profile now demonstrates OpenSSH host
 key rotation, DHCP client identity, and the tested Linux kernel's VMGenID
-reaction. Remaining gates are broader distribution coverage, device/register
-checks, exact timer interrupt and RTC alarm behavior, positive KSM measurements,
-and complete kernel-memory accounting. KSM measurements are blocked by the current user's
+reaction. QMP now captures distinct general-purpose register snapshots for two
+clones, while control-register, MSR, APIC, and interrupt-state checks remain
+open. Remaining gates are broader distribution coverage, exact timer interrupt
+and RTC alarm behavior, positive KSM measurements, and complete kernel-memory
+accounting. KSM measurements are blocked by the current user's
 permissions for host-global sysfs. Template trees and TCG sharing remain
 deferred; explicit parking is measured but changes guest time.
