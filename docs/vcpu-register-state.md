@@ -27,12 +27,14 @@ version and architecture. Do not treat one pair of distinct snapshots as
 exhaustive proof of all CPU-state isolation.
 
 The opt-in register probe also requests QEMU HMP `info lapic` for each paused
-clone. A live two-clone run captured LAPIC state from both guests, and those
-reported LAPIC dumps were identical. This confirms that QEMU returned a LAPIC
-snapshot for each paused clone, but does not prove that independently changing
-APIC state in one clone leaves the other unchanged. APIC register and pending
-interrupt independence therefore remain **unverified**; the next experiment
-needs controlled per-clone APIC/interrupt divergence.
+clone. Two repeated live two-clone runs captured LAPIC state from both guests;
+within each run, the dumps were identical and both reported `TPR 0x10`. This
+confirms that QEMU returned consistent LAPIC snapshots for both paused clones,
+but does not prove that independently changing APIC state in one clone leaves
+the other unchanged. APIC register and pending-interrupt independence remain
+**unverified**; the next experiment needs controlled per-clone APIC/interrupt
+divergence.
 
-Raw results: [`results/2026-10-24/vcpu-register-state-2.json`](../results/2026-10-24/vcpu-register-state-2.json)
-and [`results/2026-10-24/vcpu-register-state-lapic-2.json`](../results/2026-10-24/vcpu-register-state-lapic-2.json).
+Raw results: [`results/2026-10-24/vcpu-register-state-2.json`](../results/2026-10-24/vcpu-register-state-2.json),
+[`results/2026-10-24/vcpu-register-state-lapic-2.json`](../results/2026-10-24/vcpu-register-state-lapic-2.json),
+and [`results/2026-10-24/vcpu-register-state-lapic-2-run2.json`](../results/2026-10-24/vcpu-register-state-lapic-2-run2.json).
