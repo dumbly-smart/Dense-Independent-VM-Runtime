@@ -41,6 +41,28 @@ fn counts_vmgenid_triggered_kernel_rng_reseed_messages() {
     assert_eq!(guest_init::vmgenid_reseed_event_count("no fork event\n"), 0);
 }
 
+#[test]
+fn sums_guest_local_timer_interrupt_counts() {
+    let interrupts = "           CPU0       CPU1\nLOC:        123        124   Local timer interrupts\nRES:          3          4   Rescheduling interrupts\n";
+    assert_eq!(
+        guest_init::local_timer_interrupt_count(interrupts),
+        Some(247)
+    );
+    assert_eq!(
+        guest_init::local_timer_interrupt_count("no LOC row\n"),
+        None
+    );
+}
+
+#[test]
+fn parses_guest_rtc_epoch_seconds() {
+    assert_eq!(
+        guest_init::rtc_epoch_seconds("1792822284\n"),
+        Some(1_792_822_284)
+    );
+    assert_eq!(guest_init::rtc_epoch_seconds("not available\n"), None);
+}
+
 fn dhcp_frame(source_port: u16, destination_port: u16, client_id: Option<&[u8]>) -> Vec<u8> {
     let mut dhcp = vec![0u8; 240];
     dhcp[0] = 1;

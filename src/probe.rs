@@ -515,6 +515,25 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_optional_guest_interrupt_and_rtc_samples() {
+        assert_eq!(
+            parse_guest_local_timer_interrupts("LOCAL-TIMER-INTERRUPTS count=70"),
+            Ok(Some(70))
+        );
+        assert_eq!(
+            parse_guest_local_timer_interrupts("LOCAL-TIMER-INTERRUPTS UNKNOWN"),
+            Ok(None)
+        );
+        assert_eq!(
+            parse_guest_rtc_epoch("RTC epoch_seconds=1792822284"),
+            Ok(Some(1_792_822_284))
+        );
+        assert_eq!(parse_guest_rtc_epoch("RTC UNKNOWN"), Ok(None));
+        assert!(parse_guest_local_timer_interrupts("LOCAL-TIMER-INTERRUPTS count=x").is_err());
+        assert!(parse_guest_rtc_epoch("RTC epoch_seconds=x").is_err());
+    }
+
+    #[test]
     fn accepts_absent_ssh_keys_and_rejects_duplicated_present_keys() {
         let absent = vec![
             "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT".to_string(),
@@ -835,6 +854,40 @@ fn parse_guest_timer_expirations(response: &str) -> Result<u64, String> {
         .ok_or_else(|| "guest timer response omitted count".to_string())?
         .parse::<u64>()
         .map_err(|error| format!("invalid guest timer expiration count: {error}"))
+}
+
+fn parse_guest_local_timer_interrupts(response: &str) -> Result<Option<u64>, String> {
+    if response.starts_with("LOCAL-TIMER-INTERRUPTS UNKNOWN") {
+        return Ok(None);
+    }
+    if !response.starts_with("LOCAL-TIMER-INTERRUPTS ") {
+        return Err(format!(
+            "invalid local timer interrupt response {response:?}"
+        ));
+    }
+    response
+        .split_whitespace()
+        .find_map(|part| part.strip_prefix("count="))
+        .ok_or_else(|| "local timer interrupt response omitted count".to_string())?
+        .parse::<u64>()
+        .map(Some)
+        .map_err(|error| format!("invalid local timer interrupt count: {error}"))
+}
+
+fn parse_guest_rtc_epoch(response: &str) -> Result<Option<u64>, String> {
+    if response.starts_with("RTC UNKNOWN") {
+        return Ok(None);
+    }
+    if !response.starts_with("RTC ") {
+        return Err(format!("invalid guest RTC response {response:?}"));
+    }
+    response
+        .split_whitespace()
+        .find_map(|part| part.strip_prefix("epoch_seconds="))
+        .ok_or_else(|| "guest RTC response omitted epoch_seconds".to_string())?
+        .parse::<u64>()
+        .map(Some)
+        .map_err(|error| format!("invalid guest RTC epoch: {error}"))
 }
 
 fn run_disk_benchmark(serials: &mut [&mut Serial]) -> Result<Vec<Value>, String> {
@@ -1663,6 +1716,19 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         for (_, _, serial, _, _, _, _) in &mut extra_clones {
             guest_timer_before.push(serial.command("timer-read", "TIMER-EXPIRATIONS ")?);
         }
+        let mut guest_interrupts_before = vec![
+            aserial.command("local-timer-interrupts-read", "LOCAL-TIMER-INTERRUPTS ")?,
+            bserial.command("local-timer-interrupts-read", "LOCAL-TIMER-INTERRUPTS ")?,
+        ];
+        let mut guest_rtc_before = vec![
+            aserial.command("rtc-read", "RTC ")?,
+            bserial.command("rtc-read", "RTC ")?,
+        ];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guest_interrupts_before
+                .push(serial.command("local-timer-interrupts-read", "LOCAL-TIMER-INTERRUPTS ")?);
+            guest_rtc_before.push(serial.command("rtc-read", "RTC ")?);
+        }
         let mut guest_clock_before = vec![
             aserial.command("clock-read", "CLOCK ")?,
             bserial.command("clock-read", "CLOCK ")?,
@@ -1702,6 +1768,19 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         for (_, _, serial, _, _, _, _) in &mut extra_clones {
             guest_timer_after.push(serial.command("timer-read", "TIMER-EXPIRATIONS ")?);
         }
+        let mut guest_interrupts_after = vec![
+            aserial.command("local-timer-interrupts-read", "LOCAL-TIMER-INTERRUPTS ")?,
+            bserial.command("local-timer-interrupts-read", "LOCAL-TIMER-INTERRUPTS ")?,
+        ];
+        let mut guest_rtc_after = vec![
+            aserial.command("rtc-read", "RTC ")?,
+            bserial.command("rtc-read", "RTC ")?,
+        ];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guest_interrupts_after
+                .push(serial.command("local-timer-interrupts-read", "LOCAL-TIMER-INTERRUPTS ")?);
+            guest_rtc_after.push(serial.command("rtc-read", "RTC ")?);
+        }
         let guest_timer_deltas = guest_timer_before
             .iter()
             .zip(&guest_timer_after)
@@ -1724,6 +1803,12 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             .map(|(index, (before, after))| {
                 let before = parse_guest_clock(before)?;
                 let after = parse_guest_clock(after)?;
+                let local_interrupts_before =
+                    parse_guest_local_timer_interrupts(&guest_interrupts_before[index])?;
+                let local_interrupts_after =
+                    parse_guest_local_timer_interrupts(&guest_interrupts_after[index])?;
+                let rtc_before = parse_guest_rtc_epoch(&guest_rtc_before[index])?;
+                let rtc_after = parse_guest_rtc_epoch(&guest_rtc_after[index])?;
                 Ok(json!({
                     "clone_index":index,
                     "realtime_before_ms":before.0,
@@ -1731,7 +1816,13 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                     "realtime_delta_ms":after.0 as i128 - before.0 as i128,
                     "uptime_before_ms":before.1,
                     "uptime_after_ms":after.1,
-                    "uptime_delta_ms":after.1 as i128 - before.1 as i128
+                    "uptime_delta_ms":after.1 as i128 - before.1 as i128,
+                    "local_timer_interrupts_before":local_interrupts_before,
+                    "local_timer_interrupts_after":local_interrupts_after,
+                    "local_timer_interrupts_delta":local_interrupts_before.zip(local_interrupts_after).and_then(|(before, after)| after.checked_sub(before)),
+                    "rtc_epoch_before_seconds":rtc_before,
+                    "rtc_epoch_after_seconds":rtc_after,
+                    "rtc_epoch_delta_seconds":rtc_before.zip(rtc_after).and_then(|(before, after)| after.checked_sub(before))
                 }))
             })
             .collect::<Result<Vec<_>, String>>()?;
@@ -1753,7 +1844,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             "guest_clock_samples":guest_clock_deltas,
             "guest_timerfd_expiration_samples":guest_timer_deltas,
             "guests_responsive_after_resume":guests_responsive_after_resume,
-            "guest_clock_scope":"wall time and /proc/uptime sampled around a QMP pause; Linux timerfd expiration counters sampled before pause and after resume; expiration deltas include guest time after resume and do not directly count APIC interrupts; hardware RTC remains unmeasured"
+            "guest_clock_scope":"wall time, /proc/uptime, /proc/interrupts LOC counters, and /sys/class/rtc/rtc0/since_epoch sampled around QMP pause; timerfd expiration counters sampled before pause and after resume; post-resume reads include execution after resume and do not isolate events during pause"
         });
     }
     // `-no-reboot` turns a guest reboot into QEMU shutdown. The guest may reset

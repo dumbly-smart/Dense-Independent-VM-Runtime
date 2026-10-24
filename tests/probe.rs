@@ -108,6 +108,14 @@ fn parked_clones_report_guest_timerfd_samples() {
         assert!(sample["expirations_after_resume"].as_u64().is_some());
         assert!(sample["observed_delta"].as_u64().is_some());
     }
+    let clocks = result["parking"]["guest_clock_samples"].as_array().unwrap();
+    assert_eq!(clocks.len(), 2);
+    for sample in clocks {
+        assert!(sample.get("local_timer_interrupts_before").is_some());
+        assert!(sample.get("local_timer_interrupts_after").is_some());
+        assert!(sample.get("rtc_epoch_before_seconds").is_some());
+        assert!(sample.get("rtc_epoch_after_seconds").is_some());
+    }
     assert!(result["ram_isolation"].as_bool().unwrap());
     assert!(result["disk_isolation"].as_bool().unwrap());
 }

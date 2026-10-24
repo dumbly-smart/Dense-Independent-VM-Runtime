@@ -418,6 +418,47 @@ fn guest_timer_expirations() -> String {
     )
 }
 
+pub(crate) fn local_timer_interrupt_count(interrupts: &str) -> Option<u64> {
+    let line = interrupts
+        .lines()
+        .find(|line| line.trim_start().starts_with("LOC:"))?;
+    let mut values = line.split_whitespace().skip(1);
+    let mut count = 0_u64;
+    let mut found_cpu_counter = false;
+    for value in values.by_ref() {
+        let Ok(value) = value.parse::<u64>() else {
+            break;
+        };
+        count = count.checked_add(value)?;
+        found_cpu_counter = true;
+    }
+    found_cpu_counter.then_some(count)
+}
+
+pub(crate) fn rtc_epoch_seconds(contents: &str) -> Option<u64> {
+    contents.trim().parse().ok()
+}
+
+fn local_timer_interrupts_read() -> String {
+    match fs::read_to_string("/proc/interrupts") {
+        Ok(contents) => match local_timer_interrupt_count(&contents) {
+            Some(count) => format!("LOCAL-TIMER-INTERRUPTS count={count}"),
+            None => "LOCAL-TIMER-INTERRUPTS UNKNOWN LOC counter unavailable".to_string(),
+        },
+        Err(error) => format!("LOCAL-TIMER-INTERRUPTS UNKNOWN {error}"),
+    }
+}
+
+fn rtc_epoch_read() -> String {
+    match fs::read_to_string("/sys/class/rtc/rtc0/since_epoch") {
+        Ok(contents) => match rtc_epoch_seconds(&contents) {
+            Some(seconds) => format!("RTC epoch_seconds={seconds}"),
+            None => "RTC UNKNOWN invalid epoch value".to_string(),
+        },
+        Err(error) => format!("RTC UNKNOWN {error}"),
+    }
+}
+
 fn memory_pressure_worker() -> ! {
     let allocation_bytes = std::env::args()
         .nth(2)
@@ -1016,6 +1057,8 @@ fn main() {
                 Err(error) => format!("ERROR timer start: {error}"),
             },
             ["timer-read"] => guest_timer_expirations(),
+            ["local-timer-interrupts-read"] => local_timer_interrupts_read(),
+            ["rtc-read"] => rtc_epoch_read(),
             ["sync"] => {
                 unsafe {
                     syscall(162);
