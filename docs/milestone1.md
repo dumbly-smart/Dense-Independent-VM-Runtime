@@ -46,7 +46,12 @@ The timerfd probe observed 1–3 10 ms-period expirations between reads before
 pause and after resume. A follow-up read of Linux's aggregate `LOC` counter
 showed 18–21 local timer interrupts, and `rtc0/since_epoch` advanced one
 second. These reads happen after resume and do not identify which events were
-delivered during the pause; RTC alarm behavior remains unknown. Broader
+delivered during the pause. Three RTC alarm probes delivered one alarm event
+in each running clone, while all six alarms armed before a seven-second QMP
+pause missed a 20-second post-resume wait on the tested QEMU 11.1.2 / Linux
+7.2.11 host. One timeout reported RTC time later than the still-programmed
+alarm. This timer behavior is a measured semantic difference for that setup;
+the exact loss point and cause are unresolved. Broader
 OpenSSH/DHCP distro behavior, userspace random-state refresh, and total kernel
 memory remain unverified.
 See `docs/semantic-differences.md` for the status table.
