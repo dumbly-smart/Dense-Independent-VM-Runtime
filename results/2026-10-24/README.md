@@ -79,3 +79,18 @@ The p95 spread and tiny 16-write sample make these initial observations only; th
 [`final-two-clone-2.json`](final-two-clone-2.json) is the successful disk-backed rerun after adding an explicit guest identity-preparation gate. It verifies two-clone RAM and disk isolation, unique MAC and vmgenid values, guest OOM isolation, and survival of clone B after clone A is killed. The run used a synthetic Alpine initramfs, 256 MiB per guest, and 0% requested divergence in the 32 MiB test region. Process PSS excludes KVM metadata and host page tables. An earlier live run writing its artifacts to tmpfs `/tmp` encountered a guest disk-write `EIO` while that filesystem was 81% used; the overlay passed `qemu-img check`, and the cause was not isolated. The rerun wrote under disk-backed `/home` and passed. Treat the first failure as unresolved rather than as a proven tmpfs-capacity bug.
 
 The final post-change Cargo integration reruns are saved as [`final-two-clone-cargo-2.json`](final-two-clone-cargo-2.json) and [`final-kernel-crash-cargo-3.json`](final-kernel-crash-cargo-3.json). Both used a disk-backed temporary directory with a short path (Unix domain sockets impose a path-length limit). The two-clone test passed RAM/disk isolation and sibling survival; the three-clone test observed the guest kernel crash, verified the crashed VM's QEMU/QMP process remained independently alive for inspection, and confirmed the sibling guests remained responsive. The opt-in owned-QEMU interruption cleanup test also passed.
+
+## Alpine identity-validation profile
+
+[`identity-validation-2.json`](identity-validation-2.json) and
+[`identity-validation-guest-metadata.json`](identity-validation-guest-metadata.json)
+record the opt-in Alpine profile with two restored clones. Both clones generated
+three unique SSH host keys after entropy preparation, sent distinct
+machine-id-derived DHCP option 61 identifiers observed in guest packet capture,
+and obtained DHCP leases. Each kernel logged one VMGenID-triggered CRNG reseed
+event relative to the template baseline, before the explicit host entropy
+injection. RAM/disk isolation and sibling survival also passed. The independent
+guest OOM workload was explicitly skipped for this identity-focused run and is
+reported as skipped in the JSON; see [`guest-oom-2.json`](guest-oom-2.json) for
+the separate OOM result. Other distributions' DHCP clients and userspace
+randomness behavior remain unmeasured.

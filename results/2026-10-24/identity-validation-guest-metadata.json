@@ -1,0 +1,28 @@
+{
+  "kind": "alpine-ext4-v1",
+  "version": "3.24.2",
+  "source": "/home/xtrmn8/dvm-resources/alpine-minirootfs-3.24.2-x86_64.tar.gz",
+  "archive_sha256": "c5ca053cfe1d85c5b96dff8b9bc57045f7f184a30ffb6b65776409ca90388677",
+  "kernel_sha256": "7ca8265d776950dd3cdfb8eab7ee33978d139125e09bcf2a3a4ff482b7d5728c",
+  "initramfs_sha256": "178e9044cd3e598989726f738a1878ea9a8288d23e0e11cc58ffdff8d6ce945d",
+  "disk_sha256": "a571979440c3fc16c182019ee7be6e6c8cdcc24287c752af3e457240faed899c",
+  "agent_sha256": "82c894a90f1941ce32dbf1d9ec6187018719165115d06b0f7c7b2d23958c20f5",
+  "identity_validation": true,
+  "apk_static_sha256": "c8e2c88c13ba12a12269b79a3543e1190ff8c0ab0beb32b58cadfd5881c619e3",
+  "package_db_sha256": "fd9d9c91ede8505355e8936041919c170094c3b0c0d115fe894987d314612985",
+  "identity_validation_packages": [
+    "openssh=10.3_p1-r1",
+    "BusyBox udhcpc from the locked Alpine rootfs"
+  ],
+  "services": [
+    "busybox-init",
+    "syslogd",
+    "crond",
+    "serial-getty",
+    "densevm-agent",
+    "ssh-keygen host-key generation"
+  ],
+  "ssh": "OpenSSH installed; initial host keys generated at boot and rotated after clone reseeding",
+  "dhcp": "BusyBox udhcpc; client identifier is captured from the emitted DHCP request",
+  "network": "restricted user networking; no shared target LAN"
+}
