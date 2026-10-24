@@ -1,4 +1,4 @@
-use densevm::capabilities::validate_template_support;
+use densevm::capabilities::{require_template_support, validate_template_support};
 use serde_json::json;
 
 #[test]
@@ -18,6 +18,27 @@ fn requires_ram_exclusion_and_writable_private_file_backend() {
             .contains("readonly")
     );
     assert!(validate_template_support(&json!(null), &properties).is_err());
+}
+
+#[test]
+fn requires_accessible_kvm_and_reports_missing_template_capability() {
+    let report = json!({
+        "kvm":{"accessible":false,"error":"permission denied"},
+        "qmp":{"template_supported":true}
+    });
+    assert!(
+        require_template_support(&report)
+            .unwrap_err()
+            .contains("/dev/kvm")
+    );
+
+    let report = json!({
+        "kvm":{"accessible":true},
+        "qmp":{"template_supported":false,"template_error":"QEMU lacks required migration capability x-ignore-shared"}
+    });
+    let error = require_template_support(&report).unwrap_err();
+    assert!(error.contains("does not support"));
+    assert!(error.contains("x-ignore-shared"));
 }
 
 #[test]

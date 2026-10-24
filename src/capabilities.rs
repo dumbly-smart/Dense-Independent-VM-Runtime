@@ -9,6 +9,22 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const MACHINE: &str = "pc-q35-11.1";
 
+fn kvm_capability(open: Result<(), String>) -> Value {
+    match open {
+        Ok(()) => {
+            json!({"accessible":true,"qualification":"device opened; live guest probe must confirm KVM enabled"})
+        }
+        Err(error) => json!({"accessible":false,"error":error}),
+    }
+}
+
+fn ksm_capability(status: Result<Value, String>) -> Value {
+    match status {
+        Ok(counters) => json!({"available":true,"counters":counters}),
+        Err(error) => json!({"available":false,"error":error}),
+    }
+}
+
 pub fn validate_template_support(migration: &Value, properties: &Value) -> Result<(), String> {
     if !migration.as_array().is_some_and(|items| {
         items
@@ -140,12 +156,14 @@ fn qmp_report() -> Result<Value, String> {
 }
 
 pub fn host_report() -> Value {
-    let kvm = match OpenOptions::new().read(true).write(true).open("/dev/kvm") {
-        Ok(_) => {
-            json!({"accessible":true,"qualification":"device opened; live guest probe must confirm KVM enabled"})
-        }
-        Err(e) => json!({"accessible":false,"error":e.to_string()}),
-    };
+    let kvm = kvm_capability(
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/kvm")
+            .map(drop)
+            .map_err(|error| error.to_string()),
+    );
     json!({
         "kernel_version":output("uname", &["-r"]).ok(),
         "qemu":command_value("qemu-system-x86_64", &["--version"]),
@@ -154,12 +172,38 @@ pub fn host_report() -> Value {
         "clock_ticks_per_second":output("getconf", &["CLK_TCK"]).ok().and_then(|s| s.parse::<u64>().ok()),
         "kvm":kvm,
         "qmp":qmp_report().unwrap_or_else(|error| json!({"available":false,"error":error})),
-        "ksm":match crate::inspect::ksm_status() {
-            Ok(counters) => json!({"available":true,"counters":counters}),
-            Err(error) => json!({"available":false,"error":error}),
-        },
+        "ksm":ksm_capability(crate::inspect::ksm_status()),
         "kernel_memory_accounting":"UNKNOWN: process PSS excludes KVM metadata and host page tables",
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ksm_capability, kvm_capability};
+    use serde_json::json;
+
+    #[test]
+    fn unavailable_kvm_and_ksm_are_reported_as_unsupported() {
+        let kvm = kvm_capability(Err("No such file or directory".into()));
+        let ksm = ksm_capability(Err("read KSM pages_shared: not found".into()));
+        assert_eq!(kvm["accessible"], false);
+        assert_eq!(ksm["available"], false);
+        assert!(ksm["counters"].is_null());
+    }
+
+    #[test]
+    fn available_ksm_requires_a_complete_counter_result() {
+        let ksm = ksm_capability(Ok(json!({
+            "run":0,
+            "pages_shared":0,
+            "pages_sharing":0,
+            "pages_unshared":0,
+            "pages_volatile":0,
+            "full_scans":0
+        })));
+        assert_eq!(ksm["available"], true);
+        assert_eq!(ksm["counters"]["pages_shared"], 0);
+    }
 }
 
 pub fn require_template_support(report: &Value) -> Result<(), String> {
