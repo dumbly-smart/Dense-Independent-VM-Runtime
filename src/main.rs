@@ -26,6 +26,7 @@ fn main() {
             range,
             skip_guest_oom,
             vcpu_register_state,
+            lapic_tpr_state,
             rtc_alarm,
         } => densevm::probe::run_options(
             &out,
@@ -39,6 +40,7 @@ fn main() {
                 range,
                 skip_guest_oom,
                 vcpu_register_state,
+                lapic_tpr_state,
                 rtc_alarm,
             },
         ),

@@ -187,6 +187,52 @@ fn clones_report_independent_vcpu_register_snapshots() {
 }
 
 #[test]
+#[ignore = "requires local KVM and guest x2APIC MSR or xAPIC /dev/mem access"]
+fn clones_keep_guest_lapic_tpr_writes_private() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out =
+        std::env::temp_dir().join(format!("densevm-lapic-tpr-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--skip-guest-oom",
+            "--lapic-tpr-state",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "probe failed; artifacts at {}",
+        out.display()
+    );
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["vcpu_register_state_verified"], true);
+    assert_eq!(
+        result["vcpu_register_state"]["lapic_tpr_state"]["status"],
+        "verified"
+    );
+    let tpr = &result["vcpu_register_state"]["lapic_tpr_state"];
+    assert_eq!(tpr["observed"]["a_after_a_write"], tpr["a"]["target_tpr"]);
+    assert_eq!(tpr["observed"]["b_after_a_write"], tpr["b"]["original_tpr"]);
+    assert!(
+        tpr["observed"]["a_after_b_write"] == tpr["a"]["target_tpr"]
+            || tpr["observed"]["a_after_b_write"] == tpr["a"]["original_tpr"]
+    );
+    assert_ne!(tpr["observed"]["a_after_b_write"], tpr["b"]["target_tpr"]);
+    assert_eq!(tpr["observed"]["b_after_b_write"], tpr["b"]["target_tpr"]);
+    assert_eq!(tpr["observed"]["a_restored"], tpr["a"]["original_tpr"]);
+    assert_eq!(tpr["observed"]["b_restored"], tpr["b"]["original_tpr"]);
+}
+
+#[test]
 #[ignore = "requires local KVM and QEMU; compares running and QMP-paused RTC alarm delivery"]
 fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
     let stamp = SystemTime::now()

@@ -55,6 +55,15 @@ unsafe extern "C" {
     fn recv(fd: c_int, buffer: *mut c_void, length: usize, flags: c_int) -> isize;
     fn close(fd: c_int) -> c_int;
     fn if_nametoindex(name: *const c_char) -> u32;
+    fn mmap(
+        address: *mut c_void,
+        length: usize,
+        protection: c_int,
+        flags: c_int,
+        fd: c_int,
+        offset: i64,
+    ) -> *mut c_void;
+    fn munmap(address: *mut c_void, length: usize) -> c_int;
 }
 
 #[repr(C)]
@@ -99,6 +108,58 @@ pub fn set_user_gs_base(base: u64) -> std::io::Result<()> {
     } else {
         Ok(())
     }
+}
+
+fn set_guest_lapic_tpr_msr(value: u8) -> std::io::Result<()> {
+    let mut msr = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/cpu/0/msr")?;
+    msr.seek(SeekFrom::Start(0x808))?;
+    msr.write_all(&u64::from(value).to_ne_bytes())?;
+    msr.seek(SeekFrom::Start(0x808))?;
+    let mut bytes = [0u8; 8];
+    msr.read_exact(&mut bytes)?;
+    let observed = u64::from_ne_bytes(bytes) as u8;
+    if observed != value {
+        return Err(std::io::Error::other(format!(
+            "x2APIC TPR MSR readback was {observed:#04x}, expected {value:#04x}"
+        )));
+    }
+    Ok(())
+}
+
+fn set_guest_lapic_tpr_mmio(value: u8) -> std::io::Result<()> {
+    const APIC_MMIO_BASE: i64 = 0xfee0_0000;
+    const PAGE_SIZE: usize = 4096;
+    const TPR_OFFSET: usize = 0x80;
+    let device = OpenOptions::new().read(true).write(true).open("/dev/mem")?;
+    let mapping = unsafe {
+        mmap(
+            std::ptr::null_mut(),
+            PAGE_SIZE,
+            0x1 | 0x2,
+            0x01,
+            device.as_raw_fd(),
+            APIC_MMIO_BASE,
+        )
+    };
+    if mapping as isize == -1 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let register = unsafe { mapping.cast::<u8>().add(TPR_OFFSET).cast::<u32>() };
+    unsafe { std::ptr::write_volatile(register, u32::from(value)) };
+    let observed = unsafe { std::ptr::read_volatile(register) as u8 };
+    let unmap_result = unsafe { munmap(mapping, PAGE_SIZE) };
+    if unmap_result != 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    if observed != value {
+        return Err(std::io::Error::other(format!(
+            "LAPIC TPR readback was {observed:#04x}, expected {value:#04x}"
+        )));
+    }
+    Ok(())
 }
 
 pub fn rtc_alarm_time_after(hour: i32, minute: i32, second: i32, delay: u32) -> (i32, i32, i32) {
@@ -642,17 +703,6 @@ fn memory_pressure_worker() -> ! {
         std::hint::black_box(&memory);
         thread::sleep(Duration::from_secs(1));
     }
-}
-
-unsafe extern "C" {
-    fn mmap(
-        address: *mut std::ffi::c_void,
-        length: usize,
-        protection: i32,
-        flags: i32,
-        fd: i32,
-        offset: i64,
-    ) -> *mut std::ffi::c_void;
 }
 
 fn memory_pressure_probe() -> std::io::Result<String> {
@@ -1365,6 +1415,20 @@ fn main() {
                     _ => "ERROR cpu-register-burn expects a u64 seed, duration 1..10000 ms, and u64 GS base".to_string(),
                 }
             }
+            ["lapic-tpr", value] => match value.parse::<u8>() {
+                Ok(value) => match set_guest_lapic_tpr_msr(value) {
+                    Ok(()) => format!("LAPIC-TPR method=x2apic-msr value={value:#04x}"),
+                    Err(msr_error) => match set_guest_lapic_tpr_mmio(value) {
+                        Ok(()) => format!(
+                            "LAPIC-TPR method=xapic-mmio value={value:#04x} msr_error={msr_error}"
+                        ),
+                        Err(mmio_error) => {
+                            format!("ERROR LAPIC TPR write: msr={msr_error}; mmio={mmio_error}")
+                        }
+                    },
+                },
+                Err(_) => "ERROR LAPIC TPR expects an integer from 0 to 255".to_string(),
+            },
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {

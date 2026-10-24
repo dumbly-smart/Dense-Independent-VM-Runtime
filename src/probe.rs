@@ -446,6 +446,20 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_task_priority_from_qemu_lapic_output() {
+        assert_eq!(parse_qemu_lapic_tpr("APR 0x00 TPR 0x20 DFR 0x0f"), Ok(0x20));
+        assert!(parse_qemu_lapic_tpr("APIC ID 0\nISR (none)").is_err());
+        assert!(parse_qemu_lapic_tpr("TPR 0xnothex").is_err());
+    }
+
+    #[test]
+    fn selects_distinct_low_priority_task_priorities() {
+        let (a, b) = choose_lapic_tpr_targets(0x10, 0x10).unwrap();
+        assert_eq!((a, b), (0x11, 0x12));
+        assert_eq!(choose_lapic_tpr_targets(0x20, 0x30).unwrap(), (0x21, 0x31));
+    }
+
+    #[test]
     fn parses_disk_io_benchmark_fields_as_numbers() {
         let result = parse_disk_benchmark(
             "DISK-BENCH iterations=16 block_bytes=4096 mean_us=120 p50_us=100 p95_us=301",
@@ -1255,6 +1269,19 @@ fn parse_qemu_cpl(output: &str) -> Result<u8, String> {
         .map_err(|error| format!("invalid QEMU CPL: {error}"))
 }
 
+fn parse_qemu_lapic_tpr(output: &str) -> Result<u8, String> {
+    let value = output
+        .split_ascii_whitespace()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .find_map(|fields| (fields[0] == "TPR").then_some(fields[1]))
+        .ok_or_else(|| "QEMU LAPIC output omitted TPR".to_string())?;
+    let value = value
+        .strip_prefix("0x")
+        .ok_or_else(|| format!("invalid QEMU LAPIC TPR value: {value}"))?;
+    u8::from_str_radix(value, 16).map_err(|error| format!("invalid QEMU LAPIC TPR: {error}"))
+}
+
 fn parse_qemu_segment_base(output: &str, segment: &str) -> Result<u64, String> {
     for line in output.lines() {
         let Some(rest) = line.trim_start().strip_prefix(segment) else {
@@ -1377,6 +1404,29 @@ fn qemu_lapic_snapshot(qmp: &mut Qmp) -> Result<String, String> {
     Ok(output.to_string())
 }
 
+fn choose_lapic_tpr_targets(a_original: u8, b_original: u8) -> Result<(u8, u8), String> {
+    let a_class = a_original & 0xf0;
+    let b_class = b_original & 0xf0;
+    let a = (1..=0x0f)
+        .map(|subclass| a_class | subclass)
+        .find(|value| *value != a_original)
+        .ok_or("could not choose a safe clone A LAPIC TPR")?;
+    let b = (1..=0x0f)
+        .map(|subclass| b_class | subclass)
+        .find(|value| *value != b_original && *value != a && *value != a_original)
+        .ok_or("could not choose a distinct safe clone B LAPIC TPR")?;
+    Ok((a, b))
+}
+
+fn set_guest_lapic_tpr(serial: &mut Serial, value: u8) -> Result<String, String> {
+    let reply = serial.command(&format!("lapic-tpr {value}"), "LAPIC-TPR")?;
+    let expected = format!("value={value:#04x}");
+    if !reply.contains(&expected) {
+        return Err(format!("guest LAPIC TPR write failed: {reply}"));
+    }
+    Ok(reply)
+}
+
 fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool, String> {
     Ok(serial.command(command, wanted)? == wanted)
 }
@@ -1432,6 +1482,7 @@ pub fn run_experiment(
             range: false,
             skip_guest_oom: false,
             vcpu_register_state: false,
+            lapic_tpr_state: false,
             rtc_alarm: false,
         },
     )
@@ -1448,6 +1499,7 @@ pub struct ProbeOptions<'a> {
     pub range: bool,
     pub skip_guest_oom: bool,
     pub vcpu_register_state: bool,
+    pub lapic_tpr_state: bool,
     pub rtc_alarm: bool,
 }
 
@@ -1470,6 +1522,9 @@ pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> 
     }
     if options.range && (options.guest_dir.is_none() || count < 3) {
         return Err("--range requires a prepared Alpine guest and at least 3 clones".into());
+    }
+    if options.lapic_tpr_state && !options.vcpu_register_state {
+        return Err("LAPIC TPR sampling requires vCPU register sampling".into());
     }
     let mut ksm_guard = if ksm {
         Some(crate::ksm::KsmGuard::enable()?)
@@ -1494,6 +1549,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         range,
         skip_guest_oom,
         vcpu_register_state: capture_vcpu_register_state,
+        lapic_tpr_state: capture_lapic_tpr_state,
         rtc_alarm: capture_rtc_alarm,
     } = options;
     let ksm_counters_before = crate::inspect::ksm_status().ok();
@@ -1838,6 +1894,66 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             aserial.expect("CPU-REGISTER-DONE", Duration::from_secs(12))?;
         let b_register_workload_done =
             bserial.expect("CPU-REGISTER-DONE", Duration::from_secs(12))?;
+        let (lapic_tpr_state_verified, lapic_tpr_state) = if capture_lapic_tpr_state {
+            let a_original = parse_qemu_lapic_tpr(&a_lapic_text)?;
+            let b_original = parse_qemu_lapic_tpr(&b_lapic_text)?;
+            let (a_target, b_target) = choose_lapic_tpr_targets(a_original, b_original)?;
+
+            let a_write_reply = set_guest_lapic_tpr(&mut aserial, a_target)?;
+            stop_and_verify(&mut aq)?;
+            stop_and_verify(&mut bq)?;
+            let a_after_a_write = qemu_lapic_snapshot(&mut aq)?;
+            let b_after_a_write = qemu_lapic_snapshot(&mut bq)?;
+            let a_after_a_write_tpr = parse_qemu_lapic_tpr(&a_after_a_write)?;
+            let b_after_a_write_tpr = parse_qemu_lapic_tpr(&b_after_a_write)?;
+            resume_and_verify(&mut aq)?;
+            resume_and_verify(&mut bq)?;
+
+            let b_write_reply = set_guest_lapic_tpr(&mut bserial, b_target)?;
+            stop_and_verify(&mut aq)?;
+            stop_and_verify(&mut bq)?;
+            let a_after_b_write = qemu_lapic_snapshot(&mut aq)?;
+            let b_after_b_write = qemu_lapic_snapshot(&mut bq)?;
+            let a_after_b_write_tpr = parse_qemu_lapic_tpr(&a_after_b_write)?;
+            let b_after_b_write_tpr = parse_qemu_lapic_tpr(&b_after_b_write)?;
+            resume_and_verify(&mut aq)?;
+            resume_and_verify(&mut bq)?;
+
+            let a_restore_reply = set_guest_lapic_tpr(&mut aserial, a_original)?;
+            let b_restore_reply = set_guest_lapic_tpr(&mut bserial, b_original)?;
+            stop_and_verify(&mut aq)?;
+            stop_and_verify(&mut bq)?;
+            let a_restored = qemu_lapic_snapshot(&mut aq)?;
+            let b_restored = qemu_lapic_snapshot(&mut bq)?;
+            let a_restored_tpr = parse_qemu_lapic_tpr(&a_restored)?;
+            let b_restored_tpr = parse_qemu_lapic_tpr(&b_restored)?;
+            resume_and_verify(&mut aq)?;
+            resume_and_verify(&mut bq)?;
+
+            let verified = a_after_a_write_tpr == a_target
+                && b_after_a_write_tpr == b_original
+                && (a_after_b_write_tpr == a_target || a_after_b_write_tpr == a_original)
+                && a_after_b_write_tpr != b_target
+                && b_after_b_write_tpr == b_target
+                && a_restored_tpr == a_original
+                && b_restored_tpr == b_original;
+            (
+                Some(verified),
+                json!({
+                    "status":if verified {"verified"} else {"failed"},
+                    "method":"guest attempts x2APIC TPR MSR then xAPIC TPR MMIO; QMP info lapic snapshots verify the register writes",
+                    "a":{"original_tpr":a_original,"target_tpr":a_target,"after_a_write":a_after_a_write,"after_b_write":a_after_b_write,"restored":a_restored,"write_reply":a_write_reply,"restore_reply":a_restore_reply},
+                    "b":{"original_tpr":b_original,"target_tpr":b_target,"after_a_write":b_after_a_write,"after_b_write":b_after_b_write,"restored":b_restored,"write_reply":b_write_reply,"restore_reply":b_restore_reply},
+                    "observed":{"a_after_a_write":a_after_a_write_tpr,"b_after_a_write":b_after_a_write_tpr,"a_after_b_write":a_after_b_write_tpr,"b_after_b_write":b_after_b_write_tpr,"a_restored":a_restored_tpr,"b_restored":b_restored_tpr},
+                    "b_write_reply":b_write_reply
+                }),
+            )
+        } else {
+            (
+                None,
+                json!({"status":"not-requested","how_to_enable":"densevm probe --lapic-tpr-state"}),
+            )
+        };
         let verified = a_register_workload_armed.starts_with("CPU-REGISTER-ARMED")
             && b_register_workload_armed.starts_with("CPU-REGISTER-ARMED")
             && a_register_workload_done.contains(&format!("seed={a_register_seed}"))
@@ -1845,7 +1961,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             && a_gs_base_observed == a_gs_base
             && b_gs_base_observed == b_gs_base
             && a_gs_base_observed != b_gs_base_observed
-            && !differing_vcpu_registers.is_empty();
+            && !differing_vcpu_registers.is_empty()
+            && lapic_tpr_state_verified.unwrap_or(true);
         (
             Some(verified),
             json!({
@@ -1854,7 +1971,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                 "workload":"guest CPU arithmetic with clone-specific seed and user GS base, stopped after both workloads announced readiness",
                 "a":{"seed":a_register_seed,"gs_base_expected":a_gs_base,"gs_base_observed":a_gs_base_observed,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"lapic_output":a_lapic_text,"workload_done":a_register_workload_done},
                 "b":{"seed":b_register_seed,"gs_base_expected":b_gs_base,"gs_base_observed":b_gs_base_observed,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"lapic_output":b_lapic_text,"workload_done":b_register_workload_done},
-                "differing_general_purpose_registers":differing_vcpu_registers
+                "differing_general_purpose_registers":differing_vcpu_registers,
+                "lapic_tpr_state":lapic_tpr_state
             }),
         )
     } else {

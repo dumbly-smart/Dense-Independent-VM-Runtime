@@ -17,6 +17,7 @@ pub enum Command {
         range: bool,
         skip_guest_oom: bool,
         vcpu_register_state: bool,
+        lapic_tpr_state: bool,
         rtc_alarm: bool,
     },
     BenchmarkBaseline {
@@ -77,6 +78,7 @@ where
     let mut range = false;
     let mut skip_guest_oom = false;
     let mut vcpu_register_state = false;
+    let mut lapic_tpr_state = false;
     let mut rtc_alarm = false;
     let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
@@ -97,6 +99,10 @@ where
             "--range" => range = true,
             "--skip-guest-oom" => skip_guest_oom = true,
             "--vcpu-register-state" => vcpu_register_state = true,
+            "--lapic-tpr-state" => {
+                lapic_tpr_state = true;
+                vcpu_register_state = true;
+            }
             "--rtc-alarm" => rtc_alarm = true,
             "--divergence-mib" => {
                 let divergence_mib = value(args, "--divergence-mib")?
@@ -132,6 +138,7 @@ where
         range,
         skip_guest_oom,
         vcpu_register_state,
+        lapic_tpr_state,
         rtc_alarm,
     })
 }

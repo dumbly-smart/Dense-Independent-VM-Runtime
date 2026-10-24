@@ -16,6 +16,7 @@ fn parses_probe_with_count_and_output() {
             range: false,
             skip_guest_oom: false,
             vcpu_register_state: false,
+            lapic_tpr_state: false,
             rtc_alarm: false
         }
     );
@@ -40,6 +41,7 @@ fn parses_probe_with_count_and_output() {
             range: false,
             skip_guest_oom: false,
             vcpu_register_state: false,
+            lapic_tpr_state: false,
             rtc_alarm: false
         }
     );
@@ -78,6 +80,19 @@ fn enables_vcpu_register_sampling_only_when_requested() {
         result,
         Ok(Command::Probe {
             vcpu_register_state: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn lapic_tpr_probe_enables_register_capture() {
+    let result = parse_args(["densevm", "probe", "--out", "/tmp/run", "--lapic-tpr-state"]);
+    assert!(matches!(
+        result,
+        Ok(Command::Probe {
+            vcpu_register_state: true,
+            lapic_tpr_state: true,
             ..
         })
     ));
