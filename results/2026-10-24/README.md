@@ -73,3 +73,7 @@ The p95 spread and tiny 16-write sample make these initial observations only; th
 ## Guest OOM isolation
 
 [`guest-oom-2.json`](guest-oom-2.json) records a two-clone synthetic KVM probe on QEMU 11.1.2 / Linux 7.2.11. Each guest is configured with 256 MiB. Inside clone A, eight workers each faulted in a 64 MiB anonymous mapping (`MAP_NORESERVE`); the guest kernel's `/proc/vmstat` `oom_kill` count increased by 6 and six worker processes were killed. Both clone guests remained responsive after pressure. The probe only reports success when a worker was killed and the guest counter increased. This exercises guest OOM isolation, not host OOM handling or the behavior of a production distribution's memory manager.
+
+## Final two-clone verification
+
+[`final-two-clone-2.json`](final-two-clone-2.json) is the successful disk-backed rerun after adding an explicit guest identity-preparation gate. It verifies two-clone RAM and disk isolation, unique MAC and vmgenid values, guest OOM isolation, and survival of clone B after clone A is killed. The run used a synthetic Alpine initramfs, 256 MiB per guest, and 0% requested divergence in the 32 MiB test region. Process PSS excludes KVM metadata and host page tables. An earlier live run writing its artifacts to tmpfs `/tmp` encountered a guest disk-write `EIO` while that filesystem was 81% used; the overlay passed `qemu-img check`, and the cause was not isolated. The rerun wrote under disk-backed `/home` and passed. Treat the first failure as unresolved rather than as a proven tmpfs-capacity bug.
