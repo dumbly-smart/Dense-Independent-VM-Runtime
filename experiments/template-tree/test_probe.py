@@ -4,7 +4,12 @@ from pathlib import Path
 
 
 sys.path.insert(0, str(Path(__file__).parent))
-from probe import build_child_generation_manifest, parse_ram_mapping, validate_generation_manifest
+from probe import (
+    build_child_generation_manifest,
+    parse_ram_mapping,
+    publish_atomically,
+    validate_generation_manifest,
+)
 
 
 class RamMappingTests(unittest.TestCase):
@@ -113,6 +118,63 @@ class GenerationManifestTests(unittest.TestCase):
             (output / "child-memory.img").write_bytes(b"modified ram")
             with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
                 validate_generation_manifest(output / "generation.json")
+
+
+class AtomicPublicationTests(unittest.TestCase):
+    def test_staging_keeps_qmp_socket_path_under_linux_unix_limit(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / ("o" * 80)
+            measured: list[int] = []
+
+            def build(staging: Path) -> dict[str, str]:
+                measured.append(len(str(staging / "child-template.serial.sock").encode()))
+                staging.mkdir()
+                return {}
+
+            publish_atomically(output, build)
+
+            self.assertLess(measured[0], 108)
+
+    def test_publishes_complete_directory_and_rewrites_staging_paths(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "template"
+
+            def build(staging: Path) -> dict[str, str]:
+                staging.mkdir()
+                (staging / "result.json").write_text(
+                    json.dumps({"artifact": str(staging / "memory.img")})
+                )
+                (staging / "memory.img").write_bytes(b"RAM")
+                return {"artifact": str(staging / "memory.img")}
+
+            result = publish_atomically(output, build)
+
+            self.assertEqual(result["artifact"], str(output / "memory.img"))
+            self.assertEqual(json.loads((output / "result.json").read_text())["artifact"], str(output / "memory.img"))
+            self.assertTrue((output / "memory.img").is_file())
+            self.assertEqual(list(Path(temporary).glob(".dvm-*")), [])
+
+    def test_failed_build_does_not_publish_a_partial_directory(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "template"
+
+            def fail(staging: Path) -> dict[str, str]:
+                staging.mkdir()
+                (staging / "partial").write_text("incomplete")
+                raise RuntimeError("simulated experiment failure")
+
+            with self.assertRaisesRegex(RuntimeError, "simulated experiment failure"):
+                publish_atomically(output, fail)
+
+            self.assertFalse(output.exists())
+            self.assertEqual(list(Path(temporary).glob(".dvm-*")), [])
 
 
 if __name__ == "__main__":

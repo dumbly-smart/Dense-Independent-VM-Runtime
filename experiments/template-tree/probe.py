@@ -16,9 +16,10 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 class QMP:
@@ -414,6 +415,44 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
     }
 
 
+def _rewrite_staging_paths(value: Any, staging: str, final: str) -> Any:
+    if isinstance(value, str):
+        return value.replace(staging, final)
+    if isinstance(value, list):
+        return [_rewrite_staging_paths(item, staging, final) for item in value]
+    if isinstance(value, dict):
+        return {key: _rewrite_staging_paths(item, staging, final) for key, item in value.items()}
+    return value
+
+
+def publish_atomically(
+    output: Path,
+    build: Callable[[Path], dict[str, Any]],
+) -> dict[str, Any]:
+    output = output.resolve()
+    if output.exists():
+        raise ValueError(f"output path already exists: {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=".dvm-", dir=output.parent))
+    staging.rmdir()
+    try:
+        result = build(staging)
+        for json_path in staging.glob("*.json"):
+            contents = json.loads(json_path.read_text())
+            contents = _rewrite_staging_paths(contents, str(staging), str(output))
+            json_path.write_text(json.dumps(contents, indent=2) + "\n")
+        if output.exists():
+            raise ValueError(f"output path appeared during experiment: {output}")
+        os.rename(staging, output)
+        return _rewrite_staging_paths(result, str(staging), str(output))
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+
+
 def parse_ram_mapping(text: str, memory_path: str) -> dict[str, int]:
     records: list[dict[str, int]] = []
     fields: dict[str, int] | None = None
@@ -462,7 +501,7 @@ def prepare_identity(serial: GuestSerial) -> dict[str, str]:
     }
 
 
-def run(template_dir: Path, out: Path) -> dict[str, Any]:
+def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
     metadata = json.loads((template_dir / "result.json").read_text())
     template_ram = template_dir / "memory.img"
     base_disk = template_dir / "base.qcow2"
@@ -653,6 +692,10 @@ def run(template_dir: Path, out: Path) -> dict[str, Any]:
     if result["status"] != "verified":
         raise RuntimeError("template input changed during experiment")
     return result
+
+
+def run(template_dir: Path, out: Path) -> dict[str, Any]:
+    return publish_atomically(out, lambda staging: _run_in_directory(template_dir, staging))
 
 
 def main(argv: list[str]) -> int:
