@@ -117,6 +117,20 @@ they do not establish whether expirations occurred during the pause or measure
 APIC interrupt counts. Hardware RTC behavior remains unmeasured. The OOM
 workload was explicitly skipped in these timing-focused runs.
 
+## Local timer interrupt and RTC samples
+
+[`parking-clock-devices-2-run1.json`](parking-clock-devices-2-run1.json) and
+[`parking-clock-devices-2-run2.json`](parking-clock-devices-2-run2.json) repeat
+the two-clone pause test with guest `/proc/interrupts` `LOC` and RTC
+`since_epoch` reads. The two guests' realtime advanced 7–8 ms and uptime
+advanced 0–10 ms around the approximately one-second host pause. Each guest's
+RTC epoch advanced one second; local timer interrupt totals increased by
+18–21, and 10 ms-period timerfd counters increased by two. All counter reads
+were taken after resume, so these samples do not show which interrupts were
+delivered while paused. They establish the behavior of these counters for this
+QEMU/kernel configuration, not independent RTC alarm delivery or exact APIC
+timing.
+
 ## Timerfd samples around parking
 
 [`parking-timerfd-2-run1.json`](parking-timerfd-2-run1.json) and
