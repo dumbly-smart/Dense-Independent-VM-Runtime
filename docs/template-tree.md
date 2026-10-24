@@ -51,7 +51,12 @@ qcow2 overlays, and a machine-readable `result.json` into the new output
 directory. It checks input template hashes before and after the run, verifies
 the qcow2 backing chain, samples the exact child-RAM VMA from each QEMU
 process's `smaps`, and fails unless the descendants initially map resident
-shared pages and A's RAM write increases A's private dirty pages.
+shared pages and A's RAM write increases A's private dirty pages. A successful
+run also writes `generation.json` (schema version 1) with hashes for the child
+RAM/state/disk artifacts, the parent result and base disk, the QEMU version,
+the source QEMU device command, and the qcow2 backing path. `result.json`
+records the manifest hash. The parent path is absolute, so the manifest is
+provenance for this experiment and is not yet a relocatable template package.
 
 ## Measurements
 
@@ -84,17 +89,20 @@ Each generation also received a different machine-id and hostname after
 reseed. This synthetic profile has no SSH server, NIC, or DHCP client, so
 identity behavior for those services was not exercised in this tree test.
 
-Raw evidence: [`two-generation-run1.json`](../results/template-tree/2026-10-25/two-generation-run1.json)
-and [`two-generation-run2.json`](../results/template-tree/2026-10-25/two-generation-run2.json).
+Raw evidence: [`two-generation-run1.json`](../results/template-tree/2026-10-25/two-generation-run1.json),
+[`two-generation-run2.json`](../results/template-tree/2026-10-25/two-generation-run2.json),
+and [`two-generation-run3.json`](../results/template-tree/2026-10-25/two-generation-run3.json).
+The third run's hashed generation manifest is also saved as
+[`two-generation-run3-generation.json`](../results/template-tree/2026-10-25/two-generation-run3-generation.json).
 
 ## Scope and remaining work
 
 This verifies one parent-to-child materialization and two independent
-descendants for the tested synthetic guest and QEMU machine. It does not yet
-provide a persistent Template Manager, generation metadata schema, garbage
-collection, crash-safe publication, migration compatibility checks across
-QEMU versions, network identity behavior across generations, or large
-multi-level tree benchmarks. It does not establish that every machine/device
-configuration supports the same migration sequence. Those require separate
-failure and compatibility tests before hierarchical templates are exposed as
-a general runtime feature.
+descendants for the tested synthetic guest and QEMU machine. The v1 generation
+manifest is experimental provenance, not a persistent Template Manager. It
+does not provide artifact relocation, garbage collection, crash-safe
+publication, migration compatibility checks across QEMU versions, network
+identity behavior across generations, or large multi-level tree benchmarks.
+It does not establish that every machine/device configuration supports the
+same migration sequence. Those require separate failure and compatibility
+tests before hierarchical templates are exposed as a general runtime feature.
