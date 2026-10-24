@@ -3,7 +3,7 @@ use std::process::Command;
 use std::time::SystemTime;
 
 #[test]
-#[ignore = "requires local KVM, host kernel and QEMU 11.1.1"]
+#[ignore = "requires local KVM and the inspected Linux/QEMU host"]
 fn two_clones_resume_and_isolate_ram_and_disk() {
     let stamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -27,6 +27,8 @@ fn two_clones_resume_and_isolate_ram_and_disk() {
     assert_eq!(result["backing_verified"], true);
     assert_eq!(result["vmgenid_unique"], true);
     assert_eq!(result["identity_unique"], true);
+    assert_eq!(result["ssh_host_keys"]["unique"], true);
+    assert_eq!(result["guest_oom"]["isolation_verified"], true);
     assert!(
         result["template"]["qemu_command"]
             .as_array()
@@ -67,6 +69,39 @@ fn two_clones_resume_and_isolate_ram_and_disk() {
         .unwrap();
     assert!(a_private_after >= a_private_before + 24 * 1024);
     assert!(b_private_after < b_private_before + 4096);
+}
+
+#[test]
+#[ignore = "requires local KVM and three-clone memory budget"]
+fn guest_kernel_crash_does_not_kill_sibling_clones() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out = std::env::temp_dir().join(format!("densevm-crash-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--count",
+            "3",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "probe failed; artifacts at {}",
+        out.display()
+    );
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["guest_crash"]["crash_observed"], true);
+    assert_eq!(result["guest_crash"]["crashed_clone_qemu_alive"], true);
+    assert_eq!(result["guest_crash"]["other_clones_survived"], true);
+    assert_eq!(result["guest_crash"]["isolation_verified"], true);
 }
 
 #[test]

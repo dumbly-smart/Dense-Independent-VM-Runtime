@@ -529,6 +529,10 @@ mod login_tests {
             unique[0].clone(),
             absent[1].clone()
         ]));
+        assert_eq!(
+            guest_identity_value("IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT"),
+            Some("IDENTITY a densevm-a RNG-RESEEDED")
+        );
     }
 }
 
@@ -1679,8 +1683,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         } else {
             100 + *index
         };
+        let identity_reply = serial.command("identity-read", "IDENTITY ")?;
         surviving_clones_verified &= expect_value(serial, "ping", "PONG")?
-            && serial.command("identity-read", "IDENTITY ")? == *identity
+            && guest_identity_value(identity).is_some_and(|expected| expected == identity_reply)
             && serial.command("disk-read", "DISK ")? == format!("DISK {}", 10 + *index)
             && serial.command("ram-read", "RAM ")? == format!("RAM {expected_ram}");
     }
@@ -1888,6 +1893,12 @@ fn identity_matches(reply: &str, identity: &str) -> bool {
             &identity[..12]
         )
         && ssh_identity.starts_with("SSH-IDENTITY ")
+}
+
+fn guest_identity_value(reply: &str) -> Option<&str> {
+    reply
+        .split_once(" | ")
+        .map(|(guest_identity, _)| guest_identity)
 }
 
 fn ssh_identity_value(reply: &str) -> Option<&str> {
