@@ -19,22 +19,49 @@ Sampling/resume did not prevent the workloads or ordinary RAM/disk isolation
 checks from completing.
 
 The sample does not verify every part of architectural CPU state. Independent
-control-register writes, other MSR writes, APIC registers, pending interrupts,
-and multi-vCPU behavior remain unmeasured. The result preserves the full HMP
-output for inspection, while the structured parser compares x86-64
-general-purpose registers and the GS base. QEMU's output format can vary by
-version and architecture. Do not treat one pair of distinct snapshots as
+control-register writes, other MSR writes, APIC registers beyond TPR, pending
+interrupts, and multi-vCPU behavior remain unmeasured. The result preserves
+the full HMP output for inspection, while the structured parser compares
+x86-64 general-purpose registers and the GS base. QEMU's output format can
+vary by version and architecture. Do not treat these sampled states as
 exhaustive proof of all CPU-state isolation.
 
 The opt-in register probe also requests QEMU HMP `info lapic` for each paused
 clone. Two repeated live two-clone runs captured LAPIC state from both guests;
 within each run, the dumps were identical and both reported `TPR 0x10`. This
 confirms that QEMU returned consistent LAPIC snapshots for both paused clones,
-but does not prove that independently changing APIC state in one clone leaves
-the other unchanged. APIC register and pending-interrupt independence remain
-**unverified**; the next experiment needs controlled per-clone APIC/interrupt
-divergence.
+but alone does not prove independent APIC state.
+
+## LAPIC task-priority register divergence
+
+The opt-in `--lapic-tpr-state` experiment writes each guest's LAPIC task
+priority register and captures it with QEMU `info lapic`. It tries the guest
+x2APIC TPR MSR first and falls back to xAPIC MMIO. Both successful runs used
+the MSR path. Each guest began at TPR `0x10`. DenseVM set clone A's TPR to
+`0x11`; QMP then reported A at `0x11` and B still at `0x10`. It next set B to
+`0x12`; QMP reported B at `0x12`, while A had returned to `0x10` during the
+intervening guest execution. This is consistent with Linux rewriting TPR as
+the guest runs. It did not show B's value appearing in A. Both clones were
+then restored to `0x10`, verified through QMP. The transitions repeated in
+two runs; RAM/disk isolation and sibling survival passed in each.
+
+The experiment changes only TPR's subpriority bits. Intel documents TPR bits
+7:4 as the task-priority class and bits 3:0 as the sub-class; the sub-class
+does not control interrupt delivery. This keeps the priority class unchanged
+while giving each guest a distinct observable TPR value ([Intel SDM, APIC
+TPR/PPR description](https://cdrdv2-public.intel.com/874240/325462-090-sdm-vol-1-2abcd-3abcd-4.pdf)).
+These results demonstrate independent TPR writes for the tested one-vCPU
+QEMU/KVM configuration. They do not establish isolation for other LAPIC
+registers, pending interrupts, other MSRs, or multi-vCPU machines.
+
+An earlier `/dev/mem`-only attempt read back the value from its mapping but
+QEMU continued to report TPR `0x10`; that raw failed observation is retained
+separately. A first task-priority-class attempt also timed out on the guest
+serial console, so the final experiment changes only subpriority bits.
 
 Raw results: [`results/2026-10-24/vcpu-register-state-2.json`](../results/2026-10-24/vcpu-register-state-2.json),
 [`results/2026-10-24/vcpu-register-state-lapic-2.json`](../results/2026-10-24/vcpu-register-state-lapic-2.json),
-and [`results/2026-10-24/vcpu-register-state-lapic-2-run2.json`](../results/2026-10-24/vcpu-register-state-lapic-2-run2.json).
+[`results/2026-10-24/vcpu-register-state-lapic-2-run2.json`](../results/2026-10-24/vcpu-register-state-lapic-2-run2.json),
+[`results/2026-10-24/lapic-tpr-divergence-2.json`](../results/2026-10-24/lapic-tpr-divergence-2.json),
+[`results/2026-10-24/lapic-tpr-divergence-2-run2.json`](../results/2026-10-24/lapic-tpr-divergence-2-run2.json),
+and [`results/2026-10-24/lapic-tpr-divergence-mmio-noeffect-2.json`](../results/2026-10-24/lapic-tpr-divergence-mmio-noeffect-2.json).

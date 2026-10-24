@@ -90,8 +90,8 @@ different user GS-base values; QEMU reported both requested values exactly.
 Four of the 16 reported x86-64 general-purpose registers differed between the
 snapshots; CR0, CR2, CR3, CR4, and EFER matched. Each workload completed after
 resume. The run also passed RAM and disk isolation and confirmed clone B
-survived clone A's QEMU termination. Other MSRs, APIC state, and interrupt
-state remain unmeasured. See
+survived clone A's QEMU termination. Other MSRs, APIC registers beyond TPR,
+and interrupt state remain unmeasured. See
 [`docs/vcpu-register-state.md`](../../docs/vcpu-register-state.md) for the
 method and limits.
 
@@ -103,6 +103,23 @@ Within each run, the LAPIC text dumps were identical and reported `TPR 0x10`.
 This is not a test of independent APIC mutation or pending-interrupt
 isolation. RAM and disk isolation and sibling survival passed in both runs.
 APIC independence remains unverified.
+
+## LAPIC TPR divergence
+
+[`lapic-tpr-divergence-2.json`](lapic-tpr-divergence-2.json) and
+[`lapic-tpr-divergence-2-run2.json`](lapic-tpr-divergence-2-run2.json) record
+two successful opt-in guest TPR write probes. Both guests began at `0x10`.
+When A was changed to `0x11`, QMP observed B still at `0x10`; after B was
+changed to `0x12`, QMP observed B at `0x12` while A had returned to `0x10`
+during continued guest execution. Both values were restored to `0x10` and
+verified. These writes change only the TPR subpriority field. RAM/disk
+isolation and sibling survival passed in both runs. This does not test other
+APIC registers or pending-interrupt isolation.
+
+[`lapic-tpr-divergence-mmio-noeffect-2.json`](lapic-tpr-divergence-mmio-noeffect-2.json)
+preserves an unsuccessful xAPIC MMIO attempt: the guest mapping read back its
+write, but QEMU's LAPIC snapshots stayed at `0x10`. It was not counted as a
+successful TPR write result.
 
 ## Alpine identity-validation profile
 

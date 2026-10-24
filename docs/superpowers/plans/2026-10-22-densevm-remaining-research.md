@@ -178,6 +178,7 @@ tests pass, and side-channel/operational trade-offs are documented.
 - [x] Publish raw JSON and interpretations without treating configured RAM as physical savings.
 - [x] Add optional delegated cgroup-v2 accounting for `memory.current` and `memory.stat` at baseline and clone snapshots; collect two live runs and document page-cache/kernel-accounting limits. Evidence: `results/2026-10-24/cgroup-memory-summary.json`.
 - [x] Capture x86-64 general-purpose registers and distinct user GS-base values from two running clones through QMP while they execute distinct seeded workloads; preserve the raw monitor output and keep other MSR/APIC state explicitly open. Evidence: `results/2026-10-24/vcpu-register-state-2.json`.
+- [x] Add an opt-in guest LAPIC TPR divergence probe. Two repeated x2APIC MSR runs observed A's subpriority write without changing B, then B's write without matching A; restore both original values and preserve the MMIO false-readback failure. APIC registers beyond TPR, pending interrupts, and multi-vCPU state remain open. Evidence: `results/2026-10-24/lapic-tpr-divergence-2.json` and `lapic-tpr-divergence-2-run2.json`.
 - [x] Commit workloads, results, and semantic status updates.
 
 ### Task 9: Close project status and defer unsupported research branches honestly

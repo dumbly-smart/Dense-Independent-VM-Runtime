@@ -1,0 +1,945 @@
+{
+  "a_guest_reboot_observed": true,
+  "a_reboot_process_exited": true,
+  "a_reboot_qmp_status": null,
+  "active_cpu_workload": {
+    "cpu_ticks_units": "raw /proc/<pid>/stat scheduler ticks",
+    "guest_command": "cpu-burn 1500",
+    "sample_interval_ms": 1000,
+    "ticks_per_second": 100
+  },
+  "b_survives_a_kill": true,
+  "b_survives_guest_reboot": true,
+  "backing_verified": true,
+  "baseline": {
+    "active_cpu_sample_interval_ms": 1000,
+    "cgroup_memory_at_measurement": {
+      "status": "not-requested"
+    },
+    "count": 2,
+    "idle_cpu_sample_interval_ms": 1000,
+    "time_to_count_ready_ms": 2543,
+    "vms": [
+      {
+        "active_cpu_percent_one_core": 103.0,
+        "active_cpu_ticks": 103,
+        "disk_allocated_bytes": 200704,
+        "disk_benchmark": null,
+        "identity_guest": "IDENTITY 90cf9027bb22963a9e3d4389f96247c3 densevm-90cf9027bb22 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 5,
+        "index": 0,
+        "memory": {
+          "private_clean_kib": 248,
+          "private_dirty_kib": 201052,
+          "pss_kib": 208239,
+          "rss_kib": 226912,
+          "shared_clean_kib": 23576,
+          "shared_dirty_kib": 2036
+        },
+        "pid": 43638,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm,mem-merge=off",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/tmp/densevm-lapic-tpr-43459-1792860319620792426/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/tmp/densevm-lapic-tpr-43459-1792860319620792426/baseline-000.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=92:36:29:e0:7f:ac,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/baseline-000.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/tmp/densevm-lapic-tpr-43459-1792860319620792426/baseline-000.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "active_cpu_percent_one_core": 104.0,
+        "active_cpu_ticks": 104,
+        "disk_allocated_bytes": 200704,
+        "disk_benchmark": null,
+        "identity_guest": "IDENTITY fecb4d7355cfcc9e40b1dd7937a5603b densevm-fecb4d7355cf RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 5,
+        "index": 1,
+        "memory": {
+          "private_clean_kib": 340,
+          "private_dirty_kib": 203328,
+          "pss_kib": 210623,
+          "rss_kib": 229316,
+          "shared_clean_kib": 23612,
+          "shared_dirty_kib": 2036
+        },
+        "pid": 43695,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm,mem-merge=off",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/tmp/densevm-lapic-tpr-43459-1792860319620792426/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/tmp/densevm-lapic-tpr-43459-1792860319620792426/baseline-001.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=2a:79:cc:84:4e:17,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/baseline-001.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/tmp/densevm-lapic-tpr-43459-1792860319620792426/baseline-001.qmp.sock,server=on,wait=off"
+        ]
+      }
+    ]
+  },
+  "clones": {
+    "a": {
+      "active_cpu_percent_one_core": 103.0,
+      "active_cpu_ticks": 103,
+      "after_ram_write_memory": {
+        "private_clean_kib": 484,
+        "private_dirty_kib": 35352,
+        "pss_kib": 54442,
+        "rss_kib": 84500,
+        "shared_clean_kib": 22764,
+        "shared_dirty_kib": 25900
+      },
+      "after_ram_write_ram_mapping": {
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2548,
+        "pss_kib": 15498,
+        "rss_kib": 28448,
+        "shared_clean_kib": 0,
+        "shared_dirty_kib": 25900
+      },
+      "disk_benchmark": null,
+      "identity_guest": "IDENTITY 26cec820159756edfe702a5c8f56540f densevm-26cec8201597 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 3,
+      "mac_guest": "MAC 4a:34:0e:ee:de:35",
+      "memory": {
+        "private_clean_kib": 484,
+        "private_dirty_kib": 35344,
+        "pss_kib": 54436,
+        "rss_kib": 84496,
+        "shared_clean_kib": 22764,
+        "shared_dirty_kib": 25904
+      },
+      "migration": {
+        "status": "completed"
+      },
+      "overlay_after_full_write_allocated_bytes": 67375104,
+      "overlay_final_allocated_bytes": 67375104,
+      "overlay_initial_allocated_bytes": 200704,
+      "pid": 43937,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm,mem-merge=off",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-object",
+        "memory-backend-file,id=ram,mem-path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "-machine",
+        "memory-backend=ram",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/tmp/densevm-lapic-tpr-43459-1792860319620792426/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/tmp/densevm-lapic-tpr-43459-1792860319620792426/clone-000.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/clone-000.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/tmp/densevm-lapic-tpr-43459-1792860319620792426/clone-000.qmp.sock,server=on,wait=off",
+        "-incoming",
+        "defer"
+      ],
+      "ram_mapping": {
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2540,
+        "pss_kib": 15492,
+        "rss_kib": 28444,
+        "shared_clean_kib": 0,
+        "shared_dirty_kib": 25904
+      },
+      "vmgenid": "e7a3dae7-f8ef-4e96-a92c-311d7d609407"
+    },
+    "active_cpu_sample_interval_ms": 1000,
+    "b": {
+      "active_cpu_percent_one_core": 104.0,
+      "active_cpu_ticks": 104,
+      "after_a_ram_write_memory": {
+        "private_clean_kib": 480,
+        "private_dirty_kib": 35520,
+        "pss_kib": 54576,
+        "rss_kib": 84616,
+        "shared_clean_kib": 22716,
+        "shared_dirty_kib": 25900
+      },
+      "after_a_ram_write_ram_mapping": {
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2732,
+        "pss_kib": 15682,
+        "rss_kib": 28632,
+        "shared_clean_kib": 0,
+        "shared_dirty_kib": 25900
+      },
+      "disk_benchmark": null,
+      "identity_guest": "IDENTITY f541939f930843fc95e692d411ff015c densevm-f541939f9308 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 3,
+      "mac_guest": "MAC 42:8e:26:bc:00:5f",
+      "memory": {
+        "private_clean_kib": 480,
+        "private_dirty_kib": 35516,
+        "pss_kib": 54574,
+        "rss_kib": 84616,
+        "shared_clean_kib": 22716,
+        "shared_dirty_kib": 25904
+      },
+      "migration": {
+        "status": "completed"
+      },
+      "overlay_final_allocated_bytes": 331776,
+      "overlay_initial_allocated_bytes": 200704,
+      "pid": 43938,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm,mem-merge=off",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-object",
+        "memory-backend-file,id=ram,mem-path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "-machine",
+        "memory-backend=ram",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/tmp/densevm-lapic-tpr-43459-1792860319620792426/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/tmp/densevm-lapic-tpr-43459-1792860319620792426/clone-001.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/clone-001.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/tmp/densevm-lapic-tpr-43459-1792860319620792426/clone-001.qmp.sock,server=on,wait=off",
+        "-incoming",
+        "defer"
+      ],
+      "ram_mapping": {
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2728,
+        "pss_kib": 15680,
+        "rss_kib": 28632,
+        "shared_clean_kib": 0,
+        "shared_dirty_kib": 25904
+      },
+      "vmgenid": "0a06e20b-b3de-4fab-8b82-b43a0f4f79b7"
+    },
+    "count": 2,
+    "extra": [],
+    "idle_cpu_sample_interval_ms": 1000,
+    "time_to_count_resumed_ms": 10466
+  },
+  "dhcp_identity": {
+    "guest_responses": [
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest",
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest",
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest",
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest"
+    ],
+    "method": "not measured",
+    "reason": "the tested guest does not run a DHCP client; unique MAC and static IP values do not prove DHCP client identity",
+    "status": "UNKNOWN",
+    "unique": null
+  },
+  "disk_io_benchmark": null,
+  "disk_isolation": true,
+  "disk_storage": {
+    "base_allocated_bytes": 200704,
+    "total_clone_overlay_allocated_bytes": 67706880
+  },
+  "distribution_checkpoint": {
+    "disk_probe_scope": "entire 64 MiB raw test disk",
+    "kind": "synthetic"
+  },
+  "divergence_all_verified": true,
+  "divergence_region_bytes": 33554432,
+  "divergence_scope": "clone A only",
+  "effective_ram_divergence_percent": 0,
+  "experiment": "two-clone-cow-probe",
+  "extra_clone_isolation": true,
+  "full_disk_isolation": true,
+  "guest": {
+    "kind": "synthetic-initramfs"
+  },
+  "guest_crash": {
+    "crash_observed": false,
+    "crashed_clone_qemu_alive": false,
+    "isolation_verified": false,
+    "other_clones_survived": false,
+    "requested": false,
+    "status": "not run; requires at least three clones"
+  },
+  "guest_oom": {
+    "all_guests_survived": null,
+    "isolation_verified": null,
+    "oom_kill_delta": 0,
+    "requested": false,
+    "response": "PRESSURE-SKIPPED",
+    "status": "skipped",
+    "total_worker_allocation_bytes": 536870912,
+    "worker_oom_killed": null
+  },
+  "guest_ram_mib": 256,
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "host_mem_available_kib_at_start": 7350532,
+  "host_mem_required_kib": 2097152,
+  "identity_unique": true,
+  "identity_validation_verified": true,
+  "kernel_version": "7.2.11-arch1-1",
+  "ksm_run": "0",
+  "ksm_telemetry": {
+    "counters_after": {
+      "full_scans": 0,
+      "pages_shared": 0,
+      "pages_sharing": 0,
+      "pages_unshared": 0,
+      "pages_volatile": 0,
+      "run": 0
+    },
+    "counters_before": {
+      "full_scans": 0,
+      "pages_shared": 0,
+      "pages_sharing": 0,
+      "pages_unshared": 0,
+      "pages_volatile": 0,
+      "run": 0
+    },
+    "ksmd_cpu_ticks_after": 0,
+    "ksmd_cpu_ticks_before": 0,
+    "ksmd_cpu_ticks_delta": 0,
+    "scope": "host-global counters; other KSM workloads may affect deltas"
+  },
+  "mac_unique": true,
+  "parking": {
+    "requested": false
+  },
+  "parking_verified": true,
+  "process_isolation": true,
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "ram_divergence_bytes": 0,
+  "ram_divergence_pages": 0,
+  "ram_isolation": true,
+  "range": {
+    "attacker_index": null,
+    "backend": null,
+    "connectivity_after_target_kill": true,
+    "connectivity_before": true,
+    "enabled": false,
+    "network_benchmark": null,
+    "target_count": null
+  },
+  "rtc_alarm": {
+    "how_to_enable": "densevm probe --rtc-alarm",
+    "status": "not-requested"
+  },
+  "rtc_alarm_verified": null,
+  "snapshots": {
+    "after_divergence": {
+      "cgroup_memory": {
+        "status": "not-requested"
+      },
+      "clones": [
+        {
+          "memory": {
+            "private_clean_kib": 484,
+            "private_dirty_kib": 35352,
+            "pss_kib": 54442,
+            "rss_kib": 84500,
+            "shared_clean_kib": 22764,
+            "shared_dirty_kib": 25900
+          },
+          "pid": 43937,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2548,
+            "pss_kib": 15498,
+            "rss_kib": 28448,
+            "shared_clean_kib": 0,
+            "shared_dirty_kib": 25900
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 480,
+            "private_dirty_kib": 35520,
+            "pss_kib": 54576,
+            "rss_kib": 84616,
+            "shared_clean_kib": 22716,
+            "shared_dirty_kib": 25900
+          },
+          "pid": 43938,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2732,
+            "pss_kib": 15682,
+            "rss_kib": 28632,
+            "shared_clean_kib": 0,
+            "shared_dirty_kib": 25900
+          }
+        }
+      ],
+      "sampling": "sequential procfs reads while all clones are alive",
+      "template_file_resident_bytes": 164823040
+    },
+    "before_divergence": {
+      "cgroup_memory": {
+        "status": "not-requested"
+      },
+      "clones": [
+        {
+          "memory": {
+            "private_clean_kib": 484,
+            "private_dirty_kib": 35344,
+            "pss_kib": 54436,
+            "rss_kib": 84496,
+            "shared_clean_kib": 22764,
+            "shared_dirty_kib": 25904
+          },
+          "pid": 43937,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2540,
+            "pss_kib": 15492,
+            "rss_kib": 28444,
+            "shared_clean_kib": 0,
+            "shared_dirty_kib": 25904
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 480,
+            "private_dirty_kib": 35516,
+            "pss_kib": 54574,
+            "rss_kib": 84616,
+            "shared_clean_kib": 22716,
+            "shared_dirty_kib": 25904
+          },
+          "pid": 43938,
+          "ram_mapping": {
+            "private_clean_kib": 0,
+            "private_dirty_kib": 2728,
+            "pss_kib": 15680,
+            "rss_kib": 28632,
+            "shared_clean_kib": 0,
+            "shared_dirty_kib": 25904
+          }
+        }
+      ],
+      "sampling": "sequential procfs reads while all clones are alive",
+      "template_file_resident_bytes": 164823040
+    }
+  },
+  "ssh_host_keys": {
+    "identity_responses": [
+      "IDENTITY 90cf9027bb22963a9e3d4389f96247c3 densevm-90cf9027bb22 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY fecb4d7355cfcc9e40b1dd7937a5603b densevm-fecb4d7355cf RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 26cec820159756edfe702a5c8f56540f densevm-26cec8201597 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY f541939f930843fc95e692d411ff015c densevm-f541939f9308 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable"
+    ],
+    "present": false,
+    "unique": true
+  },
+  "surviving_clones_verified": true,
+  "template": {
+    "machine_state_allocated_bytes": 311296,
+    "memory_file_allocated_bytes": 220463104,
+    "memory_file_bytes": 268435456,
+    "memory_file_resident_bytes": 164823040,
+    "memory_sha256": "e3c07677938840a56b262ec9e4e8be9c0ae34954f18acbaa42892830c32971ba",
+    "migration": {
+      "downtime": 3,
+      "ram": {
+        "dirty-pages-rate": 0,
+        "dirty-sync-count": 2,
+        "dirty-sync-missed-zero-copy": 0,
+        "downtime-bytes": 177340,
+        "duplicate": 87,
+        "mbps": 620.394,
+        "multifd-bytes": 0,
+        "normal": 43,
+        "normal-bytes": 176128,
+        "page-size": 4096,
+        "pages-per-second": 0,
+        "postcopy-bytes": 0,
+        "postcopy-requests": 0,
+        "precopy-bytes": 0,
+        "remaining": 0,
+        "total": 532480,
+        "transferred": 310197
+      },
+      "setup-time": 3,
+      "status": "completed",
+      "total-time": 7
+    },
+    "qemu_command": [
+      "qemu-system-x86_64",
+      "-machine",
+      "pc-q35-11.1,accel=kvm,mem-merge=off",
+      "-cpu",
+      "host",
+      "-m",
+      "256M",
+      "-smp",
+      "1",
+      "-object",
+      "memory-backend-file,id=ram,mem-path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/memory.img,size=256M,share=on,readonly=off,merge=off",
+      "-machine",
+      "memory-backend=ram",
+      "-kernel",
+      "/boot/vmlinuz-linux",
+      "-initrd",
+      "/tmp/densevm-lapic-tpr-43459-1792860319620792426/initramfs.cpio",
+      "-append",
+      "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+      "-display",
+      "none",
+      "-monitor",
+      "none",
+      "-nodefaults",
+      "-no-reboot",
+      "-drive",
+      "if=none,id=disk,file=/tmp/densevm-lapic-tpr-43459-1792860319620792426/base.qcow2,format=qcow2",
+      "-device",
+      "virtio-blk-pci,drive=disk,id=blk0",
+      "-netdev",
+      "user,id=net0,restrict=on",
+      "-device",
+      "pcie-root-port,id=rp1,slot=2,chassis=1",
+      "-device",
+      "vmgenid,guid=auto",
+      "-chardev",
+      "socket,id=serial,path=/tmp/densevm-lapic-tpr-43459-1792860319620792426/template.serial.sock,server=on,wait=off",
+      "-serial",
+      "chardev:serial",
+      "-qmp",
+      "unix:/tmp/densevm-lapic-tpr-43459-1792860319620792426/template.qmp.sock,server=on,wait=off"
+    ],
+    "vmgenid": "307d261c-b678-4791-93a1-5cffcd1c45df"
+  },
+  "template_ram_unchanged": true,
+  "vcpu_register_state": {
+    "a": {
+      "gs_base_expected": 286326784,
+      "gs_base_observed": 286326784,
+      "lapic_output": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+      "monitor_output": "\r\nCPU#0\r\nRAX=00000000e14b2263 RBX=00000000041d4b93 RCX=0000000000000000 RDX=0000000000000000\r\nRSI=00007f6681654000 RDI=0000000000000006 RBP=00007ffc9af17470 RSP=00007ffc9af17438\r\nR8 =00007f6681650000 R9 =00007f6681650010 R10=00000000000004d0 R11=000252e03c000000\r\nR12=000055556d14c9d0 R13=000000000000000b R14=00007ffc9af176b0 R15=00007ffc9af174d4\r\nRIP=00007f66816569ab RFL=00000206 [-----P-] CPL=3 II=0 A20=1 SMM=0 HLT=0\r\nES =0000 0000000000000000 ffffffff 00c00100\r\nCS =0033 0000000000000000 ffffffff 00a0fb00 DPL=3 CS64 [-RA]\r\nSS =002b 0000000000000000 ffffffff 00c0f300 DPL=3 DS   [-WA]\r\nDS =0000 0000000000000000 ffffffff 00c00100\r\nFS =0000 000055556d149480 ffffffff 00c00000\r\nGS =0000 0000000011110000 ffffffff 00c00000\r\nLDT=0000 0000000000000000 ffffffff 00c00000\r\nTR =0040 fffffe14b6d78000 00004087 00008b00 DPL=0 TSS64-busy\r\nGDT=     fffffe14b6d76000 0000007f\r\nIDT=     fffffe0000000000 00000fff\r\nCR0=80050033 CR2=00007f6681654000 CR3=0000000002e43003 CR4=00f70ef0\r\nDR0=0000000000000000 DR1=0000000000000000 DR2=0000000000000000 DR3=0000000000000000 \r\nDR6=00000000ffff0ff0 DR7=0000000000000400\r\nEFER=0000000000000d01\r\nFCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80\r\nFPR0=0000000000000000 0000 FPR1=0000000000000000 0000\r\nFPR2=0000000000000000 0000 FPR3=0000000000000000 0000\r\nFPR4=0000000000000000 0000 FPR5=0000000000000000 0000\r\nFPR6=0000000000000000 0000 FPR7=0000000000000000 0000\r\nYMM00=0000000000000000 0000000000000000 0000000000000000 0000000032333638\r\nYMM01=0000000000000000 0000000000000000 ffffffffffffffff ffffffffffffffff\r\nYMM02=0000000000000000 0000000000000000 000055556d14ca84 000055556d14ca62\r\nYMM03=0000000000000000 0000000000000000 0000000000000001 0000000000000012\r\nYMM04=0000000000000000 0000000000000000 0000000000000058 000055556d14cbd0\r\nYMM05=0000000000000000 0000000000000000 00007f66817e1cc2 00007ffc9af173b0\r\nYMM06=0000000000000000 0000000000000000 00007ffc9af17468 000000000000002c\r\nYMM07=0000000000000000 0000000000000000 0000000000000001 0000000000000058\r\nYMM08=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM09=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM10=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM11=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM12=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM13=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM14=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM15=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\n",
+      "registers": {
+        "R10": 1232,
+        "R11": 654072986206208,
+        "R12": 93825390660048,
+        "R13": 11,
+        "R14": 140722908001968,
+        "R15": 140722908001492,
+        "R8": 140078234271744,
+        "R9": 140078234271760,
+        "RAX": 3779797603,
+        "RBP": 140722908001392,
+        "RBX": 69028755,
+        "RCX": 0,
+        "RDI": 6,
+        "RDX": 0,
+        "RSI": 140078234288128,
+        "RSP": 140722908001336
+      },
+      "seed": 45349242685213201,
+      "workload_done": "CPU-REGISTER-DONE seed=45349242685213201 gs_base=286326784 value=16756868392385937018 iterations=172650693"
+    },
+    "b": {
+      "gs_base_expected": 572653568,
+      "gs_base_observed": 572653568,
+      "lapic_output": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+      "monitor_output": "\r\nCPU#0\r\nRAX=00000000cf9a7827 RBX=00000000390b3f41 RCX=0000000000000000 RDX=0000000000000000\r\nRSI=00007f6681654000 RDI=0000000000000004 RBP=00007ffc9af17470 RSP=00007ffc9af17438\r\nR8 =00007f6681650000 R9 =00007f6681650010 R10=00000000000004c8 R11=001c945f5c000000\r\nR12=000055556d14c9d0 R13=000000000000000a R14=00007ffc9af176b0 R15=00007ffc9af174d4\r\nRIP=00007f66816569ab RFL=00000202 [-------] CPL=3 II=0 A20=1 SMM=0 HLT=0\r\nES =0000 0000000000000000 ffffffff 00c00100\r\nCS =0033 0000000000000000 ffffffff 00a0fb00 DPL=3 CS64 [-RA]\r\nSS =002b 0000000000000000 ffffffff 00c0f300 DPL=3 DS   [-WA]\r\nDS =0000 0000000000000000 ffffffff 00c00100\r\nFS =0000 000055556d149480 ffffffff 00c00100\r\nGS =0000 0000000022220000 ffffffff 00c00000\r\nLDT=0000 0000000000000000 ffffffff 00c00000\r\nTR =0040 fffffe14b6d78000 00004087 00008b00 DPL=0 TSS64-busy\r\nGDT=     fffffe14b6d76000 0000007f\r\nIDT=     fffffe0000000000 00000fff\r\nCR0=80050033 CR2=00007f6681654000 CR3=0000000002e43003 CR4=00f70ef0\r\nDR0=0000000000000000 DR1=0000000000000000 DR2=0000000000000000 DR3=0000000000000000 \r\nDR6=00000000ffff0ff0 DR7=0000000000000400\r\nEFER=0000000000000d01\r\nFCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80\r\nFPR0=0000000000000000 0000 FPR1=0000000000000000 0000\r\nFPR2=0000000000000000 0000 FPR3=0000000000000000 0000\r\nFPR4=0000000000000000 0000 FPR5=0000000000000000 0000\r\nFPR6=0000000000000000 0000 FPR7=0000000000000000 0000\r\nYMM00=0000000000000000 0000000000000000 0000000000000000 0000000035363237\r\nYMM01=0000000000000000 0000000000000000 ffffffffffffffff ffffffffffffffff\r\nYMM02=0000000000000000 0000000000000000 000055556d14ca83 000055556d14ca62\r\nYMM03=0000000000000000 0000000000000000 0000000000000001 0000000000000012\r\nYMM04=0000000000000000 0000000000000000 0000000000000058 000055556d14cbd0\r\nYMM05=0000000000000000 0000000000000000 00007f66817e1cc2 00007ffc9af173b0\r\nYMM06=0000000000000000 0000000000000000 00007ffc9af17468 000000000000002c\r\nYMM07=0000000000000000 0000000000000000 0000000000000001 0000000000000058\r\nYMM08=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM09=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM10=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM11=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM12=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM13=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM14=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\nYMM15=0000000000000000 0000000000000000 0000000000000000 0000000000000000\r\n",
+      "registers": {
+        "R10": 1224,
+        "R11": 8044436634206208,
+        "R12": 93825390660048,
+        "R13": 10,
+        "R14": 140722908001968,
+        "R15": 140722908001492,
+        "R8": 140078234271744,
+        "R9": 140078234271760,
+        "RAX": 3483007015,
+        "RBP": 140722908001392,
+        "RBX": 957038401,
+        "RCX": 0,
+        "RDI": 4,
+        "RDX": 0,
+        "RSI": 140078234288128,
+        "RSP": 140722908001336
+      },
+      "seed": 3108727087488546,
+      "workload_done": "CPU-REGISTER-DONE seed=3108727087488546 gs_base=572653568 value=10588939807427287021 iterations=172800402"
+    },
+    "capture": "QMP human-monitor-command info registers and info lapic while each clone was paused",
+    "differing_general_purpose_registers": [
+      "R10",
+      "R11",
+      "R13",
+      "RAX",
+      "RBX",
+      "RDI"
+    ],
+    "lapic_tpr_state": {
+      "a": {
+        "after_a_write": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x11 DFR 0x0f LDR 0x00 PPR 0x11\r\n",
+        "after_b_write": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+        "original_tpr": 16,
+        "restore_reply": "LAPIC-TPR method=x2apic-msr value=0x10",
+        "restored": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+        "target_tpr": 17,
+        "write_reply": "LAPIC-TPR method=x2apic-msr value=0x11"
+      },
+      "b": {
+        "after_a_write": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+        "after_b_write": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x12 DFR 0x0f LDR 0x00 PPR 0x12\r\n",
+        "original_tpr": 16,
+        "restore_reply": "LAPIC-TPR method=x2apic-msr value=0x10",
+        "restored": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+        "target_tpr": 18,
+        "write_reply": "LAPIC-TPR method=x2apic-msr value=0x12"
+      },
+      "b_write_reply": "LAPIC-TPR method=x2apic-msr value=0x12",
+      "method": "guest attempts x2APIC TPR MSR then xAPIC TPR MMIO; QMP info lapic snapshots verify the register writes",
+      "observed": {
+        "a_after_a_write": 17,
+        "a_after_b_write": 16,
+        "a_restored": 16,
+        "b_after_a_write": 16,
+        "b_after_b_write": 18,
+        "b_restored": 16
+      },
+      "status": "verified"
+    },
+    "status": "verified",
+    "workload": "guest CPU arithmetic with clone-specific seed and user GS base, stopped after both workloads announced readiness"
+  },
+  "vcpu_register_state_verified": true,
+  "vmgenid_guest_reaction": {
+    "clone_responses": [
+      "VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "VMGENID-REACTION UNKNOWN template baseline unavailable"
+    ],
+    "measurement": "positive delta in the Linux kernel log message emitted by add_vmfork_randomness before host entropy injection",
+    "status": "UNKNOWN"
+  },
+  "vmgenid_unique": true
+}
