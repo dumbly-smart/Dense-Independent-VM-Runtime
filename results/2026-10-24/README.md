@@ -85,14 +85,15 @@ The final post-change Cargo integration reruns are saved as [`final-two-clone-ca
 [`vcpu-register-state-2.json`](vcpu-register-state-2.json) records an opt-in
 two-clone run. Each guest ran a different seeded CPU workload, announced that
 it was active, and was paused through QMP; DenseVM then read QEMU's `info
-registers` output before resuming both workloads. Six of the 16 reported
-x86-64 general-purpose registers differed between the two snapshots; CR0, CR2,
-CR3, CR4, and EFER matched. Each workload completed after resume. The run also
-passed RAM and disk isolation and confirmed clone B survived clone A's QEMU
-termination. Matching control-register values in one sample do not establish
-independent mutation; other MSRs, APIC state, and interrupt state remain
-unmeasured. See [`docs/vcpu-register-state.md`](../../docs/vcpu-register-state.md)
-for the method and limits.
+registers` output before resuming both workloads. The two guests were assigned
+different user GS-base values; QEMU reported both requested values exactly.
+Four of the 16 reported x86-64 general-purpose registers differed between the
+snapshots; CR0, CR2, CR3, CR4, and EFER matched. Each workload completed after
+resume. The run also passed RAM and disk isolation and confirmed clone B
+survived clone A's QEMU termination. Other MSRs, APIC state, and interrupt
+state remain unmeasured. See
+[`docs/vcpu-register-state.md`](../../docs/vcpu-register-state.md) for the
+method and limits.
 
 ## Alpine identity-validation profile
 
