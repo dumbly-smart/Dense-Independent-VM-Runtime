@@ -61,7 +61,7 @@
 - [x] Add tests for distinct clone identities and guest rejection of identity/network setup before entropy preparation.
 - [x] Define guest-side machine-id and OpenSSH host-key actions; DHCP remains explicitly UNKNOWN because the fixture has no DHCP client.
 - [x] Implement the protocol with fresh host-kernel entropy credited/reseeded in the guest before key generation and NIC hotplug.
-- [ ] Validate with a disposable supported Linux guest image; compare machine-id, SSH host keys, vmgenid reaction, and DHCP client identity before enabling network access.
+- [ ] **Blocked by fixture coverage:** Validate with a disposable supported Linux guest image; compare machine-id, SSH host keys, vmgenid reaction, and DHCP client identity before enabling network access. Current synthetic and prepared Alpine fixtures do not contain OpenSSH host keys or run a DHCP client, so only machine-id/hostname/MAC/vmgenid assignment is measured. The live guest protocol fails closed until reseeding and identity preparation complete.
 - [x] Document image prerequisites and remaining SSH/DHCP validation gaps.
 
 ### Task 3: Re-run and extend controlled RAM divergence measurements
@@ -111,8 +111,8 @@
 
 - [x] Add tests that unsupported counters and failed writes preserve the previous global KSM state.
 - [x] Verify failure paths without changing host-global KSM settings.
-- [ ] Run only when explicitly requested and restore the exact original KSM setting on success, error, and interruption.
-- [ ] Collect PSS, pages_shared/pages_sharing/pages_unshared/pages_volatile, ksmd CPU ticks, and a warning that counters are host-global.
+- [ ] **Blocked by host permission:** Run only when explicitly requested and restore the exact original KSM setting on success, error, and interruption. This host reports KSM `run=0`; `/sys/kernel/mm/ksm/run` is not writable by the current user and noninteractive sudo is unavailable. Do not change host-global KSM state without administrative access.
+- [ ] **Blocked by host permission:** Collect PSS, pages_shared/pages_sharing/pages_unshared/pages_volatile, ksmd CPU ticks, and a warning that counters are host-global. Read-only counters and disabled-state telemetry are recorded, but a positive merge sample requires an administrator to enable KSM.
 - [x] Document side-channel and operational trade-offs and commit.
 
 Positive KSM measurement remains blocked on this host: `/sys/kernel/mm/ksm/run`
