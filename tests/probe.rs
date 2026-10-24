@@ -153,6 +153,16 @@ fn clones_report_independent_vcpu_register_snapshots() {
     let b = &result["vcpu_register_state"]["b"];
     assert_eq!(a["gs_base_expected"], a["gs_base_observed"]);
     assert_eq!(b["gs_base_expected"], b["gs_base_observed"]);
+    assert!(
+        a["lapic_output"]
+            .as_str()
+            .is_some_and(|text| !text.is_empty())
+    );
+    assert!(
+        b["lapic_output"]
+            .as_str()
+            .is_some_and(|text| !text.is_empty())
+    );
     assert_ne!(a["gs_base_observed"], b["gs_base_observed"]);
     assert!(
         result["vcpu_register_state"]["a"]["registers"]

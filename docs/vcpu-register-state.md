@@ -26,4 +26,12 @@ general-purpose registers and the GS base. QEMU's output format can vary by
 version and architecture. Do not treat one pair of distinct snapshots as
 exhaustive proof of all CPU-state isolation.
 
+The opt-in register probe now also requests QEMU HMP `info lapic` for each
+paused clone and stores the returned monitor text in the result. This is only
+instrumentation: the checked-in result below predates that addition, and a
+successful live capture has not yet been recorded. APIC register independence
+therefore remains **unverified**. Even a pair of non-empty snapshots would
+show only that QEMU reported LAPIC state for both clones; proving mutable APIC
+state isolation requires a controlled per-clone APIC/interrupt divergence.
+
 Raw result: [`results/2026-10-24/vcpu-register-state-2.json`](../results/2026-10-24/vcpu-register-state-2.json).
