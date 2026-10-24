@@ -162,17 +162,18 @@ is measured below.
 
 ## RTC alarm delivery across QMP pause
 
-[`rtc-alarm-pause-2.json`](rtc-alarm-pause-2.json) compares a running control
-against a paused trial on QEMU 11.1.2 / Linux 7.2.11. Each clone's five-second
-RTC alarm fired in the running control, with one event and flags `160`
-(`RTC_IRQF | RTC_AF`). The next alarm was armed in both guests before QMP
-stopped them for seven host seconds. After resume, neither guest received an
-alarm during a 20-second wait. RAM and disk isolation, clone identity, and
-sibling survival still passed. The observed pause-related alarm difference is
-specific to this setup; the cause is unresolved. The probe writes the result
-and exits unsuccessfully when paused alarm delivery is absent. The Linux RTC
-interface documents `RTC_ALM_SET` plus `RTC_AIE_ON` as the alarm setup sequence
-([kernel RTC interface documentation](https://kernel.org/doc/html/latest/admin-guide/abi-testing.html));
+[`rtc-alarm-pause-2.json`](rtc-alarm-pause-2.json) and
+[`rtc-alarm-pause-2-run2.json`](rtc-alarm-pause-2-run2.json) are two repeated
+running-control / paused-trial probes on QEMU 11.1.2 / Linux 7.2.11. In both
+runs, each clone's five-second RTC alarm fired once in the running control,
+with flags `160` (`RTC_IRQF | RTC_AF`). The next alarm was armed in both guests
+before QMP stopped them for seven host seconds. After resume, neither guest
+received an alarm during a 20-second wait. RAM and disk isolation, clone
+identity, and sibling survival still passed. The observed pause-related alarm
+difference is specific to this setup; the cause is unresolved. The probe
+writes the result and exits unsuccessfully when paused alarm delivery is
+absent. The Linux RTC interface documents `RTC_ALM_SET` plus `RTC_AIE_ON` as
+the alarm setup sequence ([kernel RTC interface documentation](https://kernel.org/doc/html/latest/admin-guide/abi-testing.html));
 QEMU documents its default RTC clock as host time
 ([QEMU invocation documentation](https://www.qemu.org/docs/master/system/invocation.html)).
 This probe does not establish whether another QEMU clock mode or hardware
