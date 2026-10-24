@@ -72,6 +72,47 @@ fn two_clones_resume_and_isolate_ram_and_disk() {
 }
 
 #[test]
+#[ignore = "requires local KVM and QEMU; runs the timerfd pause/resume experiment"]
+fn parked_clones_report_guest_timerfd_samples() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out = std::env::temp_dir().join(format!("densevm-timerfd-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--skip-guest-oom",
+            "--park-idle",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "probe failed; artifacts at {}",
+        out.display()
+    );
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["parking_verified"], true);
+    let samples = result["parking"]["guest_timerfd_expiration_samples"]
+        .as_array()
+        .unwrap();
+    assert_eq!(samples.len(), 2);
+    for sample in samples {
+        assert!(sample["expirations_before_pause"].as_u64().is_some());
+        assert!(sample["expirations_after_resume"].as_u64().is_some());
+        assert!(sample["observed_delta"].as_u64().is_some());
+    }
+    assert!(result["ram_isolation"].as_bool().unwrap());
+    assert!(result["disk_isolation"].as_bool().unwrap());
+}
+
+#[test]
 #[ignore = "requires local KVM and three-clone memory budget"]
 fn guest_kernel_crash_does_not_kill_sibling_clones() {
     let stamp = SystemTime::now()

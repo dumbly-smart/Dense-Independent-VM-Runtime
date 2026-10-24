@@ -5,8 +5,24 @@ use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::os::fd::AsRawFd;
 use std::os::raw::{c_char, c_int, c_long, c_ulong, c_void};
 use std::os::unix::fs::PermissionsExt;
+use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
+
+static TIMER_PROBE_FD: AtomicI32 = AtomicI32::new(-1);
+static TIMER_PROBE_EXPIRATIONS: AtomicU64 = AtomicU64::new(0);
+
+#[repr(C)]
+struct KernelTimeSpec {
+    seconds: c_long,
+    nanoseconds: c_long,
+}
+
+#[repr(C)]
+struct KernelItimerSpec {
+    interval: KernelTimeSpec,
+    value: KernelTimeSpec,
+}
 
 unsafe extern "C" {
     fn mount(
@@ -334,6 +350,72 @@ fn guest_clock() -> std::io::Result<String> {
         "CLOCK realtime_ms={realtime_ms} uptime_ms={:.0}",
         uptime_seconds * 1000.0
     ))
+}
+
+fn start_guest_timer_probe() -> std::io::Result<String> {
+    if TIMER_PROBE_FD.load(Ordering::Acquire) >= 0 {
+        return Ok("TIMER-STARTED already=true".to_string());
+    }
+
+    // x86-64 Linux syscall numbers: timerfd_create=283, timerfd_settime=286.
+    let fd = unsafe { syscall(283, 1_i32, 0_i32) };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let fd = fd as c_int;
+    let timer = KernelItimerSpec {
+        interval: KernelTimeSpec {
+            seconds: 0,
+            nanoseconds: 10_000_000,
+        },
+        value: KernelTimeSpec {
+            seconds: 0,
+            nanoseconds: 10_000_000,
+        },
+    };
+    let configured = unsafe {
+        syscall(
+            286,
+            fd,
+            0_i32,
+            &timer as *const KernelItimerSpec,
+            std::ptr::null_mut::<KernelItimerSpec>(),
+        )
+    };
+    if configured < 0 {
+        unsafe { close(fd) };
+        return Err(std::io::Error::last_os_error());
+    }
+    if TIMER_PROBE_FD
+        .compare_exchange(-1, fd, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        unsafe { close(fd) };
+        return Ok("TIMER-STARTED already=true".to_string());
+    }
+
+    thread::spawn(move || {
+        loop {
+            let mut expirations = 0_u64;
+            let bytes_read = unsafe { syscall(0, fd, &mut expirations as *mut u64, 8_usize) };
+            if bytes_read == 8 {
+                TIMER_PROBE_EXPIRATIONS.fetch_add(expirations, Ordering::Relaxed);
+            } else {
+                break;
+            }
+        }
+    });
+    Ok("TIMER-STARTED period_ms=10".to_string())
+}
+
+fn guest_timer_expirations() -> String {
+    if TIMER_PROBE_FD.load(Ordering::Acquire) < 0 {
+        return "TIMER-UNKNOWN timer probe is not running".to_string();
+    }
+    format!(
+        "TIMER-EXPIRATIONS count={}",
+        TIMER_PROBE_EXPIRATIONS.load(Ordering::Relaxed)
+    )
 }
 
 fn memory_pressure_worker() -> ! {
@@ -929,6 +1011,11 @@ fn main() {
                 Ok(value) => value,
                 Err(error) => format!("ERROR guest clock: {error}"),
             },
+            ["timer-start"] => match start_guest_timer_probe() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR timer start: {error}"),
+            },
+            ["timer-read"] => guest_timer_expirations(),
             ["sync"] => {
                 unsafe {
                     syscall(162);

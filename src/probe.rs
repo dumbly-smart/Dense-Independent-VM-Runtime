@@ -505,6 +505,16 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_guest_timerfd_expiration_samples() {
+        assert_eq!(
+            parse_guest_timer_expirations("TIMER-EXPIRATIONS count=123"),
+            Ok(123)
+        );
+        assert!(parse_guest_timer_expirations("TIMER-UNKNOWN").is_err());
+        assert!(parse_guest_timer_expirations("TIMER-EXPIRATIONS count=-1").is_err());
+    }
+
+    #[test]
     fn accepts_absent_ssh_keys_and_rejects_duplicated_present_keys() {
         let absent = vec![
             "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT".to_string(),
@@ -813,6 +823,18 @@ fn parse_guest_clock(response: &str) -> Result<(u64, u64), String> {
             .map_err(|error| format!("invalid guest clock {name}: {error}"))
     };
     Ok((field("realtime_ms")?, field("uptime_ms")?))
+}
+
+fn parse_guest_timer_expirations(response: &str) -> Result<u64, String> {
+    if !response.starts_with("TIMER-EXPIRATIONS ") {
+        return Err(format!("invalid guest timer response {response:?}"));
+    }
+    response
+        .split_whitespace()
+        .find_map(|part| part.strip_prefix("count="))
+        .ok_or_else(|| "guest timer response omitted count".to_string())?
+        .parse::<u64>()
+        .map_err(|error| format!("invalid guest timer expiration count: {error}"))
 }
 
 fn run_disk_benchmark(serials: &mut [&mut Serial]) -> Result<Vec<Value>, String> {
@@ -1628,6 +1650,19 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut parking_verified = !park_idle;
     let mut parking_details = json!({"requested":park_idle});
     if park_idle {
+        aserial.command("timer-start", "TIMER-STARTED ")?;
+        bserial.command("timer-start", "TIMER-STARTED ")?;
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            serial.command("timer-start", "TIMER-STARTED ")?;
+        }
+        thread::sleep(Duration::from_millis(50));
+        let mut guest_timer_before = vec![
+            aserial.command("timer-read", "TIMER-EXPIRATIONS ")?,
+            bserial.command("timer-read", "TIMER-EXPIRATIONS ")?,
+        ];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guest_timer_before.push(serial.command("timer-read", "TIMER-EXPIRATIONS ")?);
+        }
         let mut guest_clock_before = vec![
             aserial.command("clock-read", "CLOCK ")?,
             bserial.command("clock-read", "CLOCK ")?,
@@ -1660,6 +1695,28 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         for (_, _, serial, _, _, _, _) in &mut extra_clones {
             guest_clock_after.push(serial.command("clock-read", "CLOCK ")?);
         }
+        let mut guest_timer_after = vec![
+            aserial.command("timer-read", "TIMER-EXPIRATIONS ")?,
+            bserial.command("timer-read", "TIMER-EXPIRATIONS ")?,
+        ];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guest_timer_after.push(serial.command("timer-read", "TIMER-EXPIRATIONS ")?);
+        }
+        let guest_timer_deltas = guest_timer_before
+            .iter()
+            .zip(&guest_timer_after)
+            .enumerate()
+            .map(|(index, (before, after))| {
+                let before = parse_guest_timer_expirations(before)?;
+                let after = parse_guest_timer_expirations(after)?;
+                Ok(json!({
+                    "clone_index":index,
+                    "expirations_before_pause":before,
+                    "expirations_after_resume":after,
+                    "observed_delta":after.checked_sub(before)
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
         let guest_clock_deltas = guest_clock_before
             .iter()
             .zip(&guest_clock_after)
@@ -1694,8 +1751,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             "qemu_process_cpu_ticks":parked_cpu_ticks,
             "resume_qmp_elapsed_ms":resume_qmp_elapsed_ms,
             "guest_clock_samples":guest_clock_deltas,
+            "guest_timerfd_expiration_samples":guest_timer_deltas,
             "guests_responsive_after_resume":guests_responsive_after_resume,
-            "guest_clock_scope":"wall time and /proc/uptime sampled around a QMP pause; timer interrupt delivery and hardware RTC behavior remain unmeasured"
+            "guest_clock_scope":"wall time and /proc/uptime sampled around a QMP pause; Linux timerfd expiration counters sampled before pause and after resume; expiration deltas include guest time after resume and do not directly count APIC interrupts; hardware RTC remains unmeasured"
         });
     }
     // `-no-reboot` turns a guest reboot into QEMU shutdown. The guest may reset
