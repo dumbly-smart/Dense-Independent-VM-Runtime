@@ -2107,12 +2107,35 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         range_network_benchmark = Some(benchmark);
     }
     let clone_elapsed_ms = clone_start.elapsed().as_millis();
-    let process_isolation = if guest.disk.is_some() {
+    let (
+        process_isolation,
+        process_isolation_status,
+        process_isolation_scope,
+        pair_process_isolation,
+    ) = if guest.disk.is_some() {
         aserial.command("process-start", "PROCESS-STARTED")?;
-        expect_value(&mut aserial, "process-count", "PROCESS-COUNT 1")?
-            && expect_value(&mut bserial, "process-count", "PROCESS-COUNT 0")?
+        let a_process_isolated = expect_value(&mut aserial, "process-count", "PROCESS-COUNT 1")?;
+        let b_process_isolated = expect_value(&mut bserial, "process-count", "PROCESS-COUNT 0")?;
+        let mut extra_processes_isolated = true;
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            let isolated = expect_value(serial, "process-count", "PROCESS-COUNT 0")?;
+            extra_processes_isolated &= isolated;
+        }
+        let pair_verified = a_process_isolated && b_process_isolated;
+        let verified = pair_verified && extra_processes_isolated;
+        (
+            Some(verified),
+            if verified { "verified" } else { "failed" },
+            "clone-000 started /bin/sleep 137; every other live clone reported zero matching processes",
+            Some(pair_verified),
+        )
     } else {
-        true
+        (
+            None,
+            "not-requested",
+            "not sampled for the synthetic initramfs guest profile",
+            None,
+        )
     };
     let guest_oom_response = if skip_guest_oom {
         "PRESSURE-SKIPPED".to_string()
@@ -2600,6 +2623,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     };
     result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified,"network_benchmark":range_network_benchmark});
     result["process_isolation"] = json!(process_isolation);
+    result["process_isolation_status"] = json!(process_isolation_status);
+    result["process_isolation_scope"] = json!(process_isolation_scope);
+    result["process_isolation_pair_verified"] = json!(pair_process_isolation);
     result["guest_oom"] = json!({
         "requested":!skip_guest_oom,
         "status":if skip_guest_oom {"skipped"} else if guest_oom_isolation_verified {"verified"} else {"failed"},
@@ -2653,7 +2679,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && b_survives_a_kill
         && parking_verified
         && divergence_all_verified
-        && process_isolation
+        && process_isolation != Some(false)
         && guest_oom_check_passed
         && (!guest_crash_requested || guest_crash_isolation_verified)
         && surviving_clones_verified

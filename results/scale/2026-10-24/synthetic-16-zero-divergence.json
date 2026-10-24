@@ -2507,7 +2507,7 @@
     "requested": false
   },
   "parking_verified": true,
-  "process_isolation": true,
+  "process_isolation": null,
   "qemu_version": "QEMU emulator version 11.1.2",
   "ram_divergence_bytes": 0,
   "ram_divergence_pages": 0,
@@ -3259,5 +3259,8 @@
     "vmgenid": "08b4b916-82d4-4a2c-bded-fa82b84b0232"
   },
   "template_ram_unchanged": true,
-  "vmgenid_unique": true
+  "vmgenid_unique": true,
+  "process_isolation_status": "not-requested",
+  "process_isolation_pair_verified": null,
+  "process_isolation_scope": "not sampled for the synthetic initramfs guest profile"
 }

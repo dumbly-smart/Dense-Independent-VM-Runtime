@@ -843,5 +843,8 @@
     "vmgenid": "7d552227-b4b3-4820-82b0-7ccd8e5c692b"
   },
   "template_ram_unchanged": true,
-  "vmgenid_unique": true
+  "vmgenid_unique": true,
+  "process_isolation_status": "verified",
+  "process_isolation_pair_verified": true,
+  "process_isolation_scope": "all clones (clone-000 and clone-001)"
 }

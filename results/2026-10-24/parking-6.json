@@ -1302,7 +1302,7 @@
     ]
   },
   "parking_verified": true,
-  "process_isolation": true,
+  "process_isolation": null,
   "qemu_version": "QEMU emulator version 11.1.2",
   "ram_divergence_bytes": 0,
   "ram_divergence_pages": 0,
@@ -1640,5 +1640,8 @@
     "vmgenid": "1f903c47-0dfc-4c65-9982-92b0778847ca"
   },
   "template_ram_unchanged": true,
-  "vmgenid_unique": true
+  "vmgenid_unique": true,
+  "process_isolation_status": "partial",
+  "process_isolation_pair_verified": true,
+  "process_isolation_scope": "historical run sampled clone-000 and clone-001 only; additional clones were not queried"
 }

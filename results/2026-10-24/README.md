@@ -24,7 +24,7 @@ The full machine-readable measurement is in [`security-range-6.json`](security-r
 
 The initial clone process PSS was about 22.5% of the six-process conventional baseline PSS for this fixture and measurement point. After the private RAM writes it was about 38.7%. These are process-PSS comparisons, not complete host physical-memory totals: QEMU PSS omits KVM metadata, host page tables, and other kernel allocations. The 32 MiB divergence region is not the full 256 MiB guest RAM.
 
-The run verified RAM and disk isolation, whole-test-disk isolation, unique guest/MAC/vmgenid identities, isolated process state, per-clone parking and resume, guest reboot of target A, survival of its sibling, and client connectivity to all five targets both before and after killing target T1's QEMU process. `KSM run` remained 0; this run measures template COW without KSM.
+The run verified RAM and disk isolation, whole-test-disk isolation, unique guest/MAC/vmgenid identities, process separation for clone-000 and clone-001 only, per-clone parking and resume, guest reboot of target A, survival of its sibling, and client connectivity to all five targets both before and after killing target T1's QEMU process. The other four clones were not queried for process counts in this historical run. `KSM run` remained 0; this run measures template COW without KSM.
 
 [`security-range-6-network.json`](security-range-6-network.json) is a follow-up with the same six-guest topology and a bounded UDP request burst. It sent 64 one-kilobyte datagrams from the client to T1, received all 64 identity-verified replies, and measured 1,241 microseconds end to end (about 51,571 requests/s and 422.5 Mbps of request payload). The socket multicast backend is local to this host and the sample is short, unpaced guest-to-guest traffic. Treat it as a diagnostic of this path, not as host NIC line rate or a general network benchmark.
 
@@ -103,6 +103,17 @@ Within each run, the LAPIC text dumps were identical and reported `TPR 0x10`.
 This is not a test of independent APIC mutation or pending-interrupt
 isolation. RAM and disk isolation and sibling survival passed in both runs.
 APIC independence remains unverified.
+
+## Process-isolation scope correction
+
+[`process-isolation-4.json`](process-isolation-4.json) records a four-clone
+Alpine identity-profile probe. Clone-000 started `/bin/sleep 137`; all three
+sibling clones reported zero matching processes. RAM/disk isolation, unique
+identity, and sibling survival also passed. Earlier synthetic-initramfs
+results incorrectly serialized the unrun process check as `true`; those fields
+are corrected to `null` / `not-requested`. Older Alpine runs with more than two
+clones are marked `partial`, because they checked only clone-000 and
+clone-001.
 
 ## LAPIC TPR divergence
 

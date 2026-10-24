@@ -633,7 +633,7 @@
     "requested": false
   },
   "parking_verified": true,
-  "process_isolation": true,
+  "process_isolation": null,
   "qemu_version": "QEMU emulator version 11.1.2",
   "ram_divergence_bytes": 0,
   "ram_divergence_pages": 0,
@@ -909,5 +909,8 @@
     "measurement": "positive delta in the Linux kernel log message emitted by add_vmfork_randomness before host entropy injection",
     "status": "UNKNOWN"
   },
-  "vmgenid_unique": true
+  "vmgenid_unique": true,
+  "process_isolation_status": "not-requested",
+  "process_isolation_pair_verified": null,
+  "process_isolation_scope": "not sampled for the synthetic initramfs guest profile"
 }

@@ -148,6 +148,8 @@ fn clones_report_independent_vcpu_register_snapshots() {
     let result: Value =
         serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
     assert_eq!(result["vcpu_register_state_verified"], true);
+    assert_eq!(result["process_isolation"], Value::Null);
+    assert_eq!(result["process_isolation_status"], "not-requested");
     assert_eq!(result["vcpu_register_state"]["status"], "verified");
     let a = &result["vcpu_register_state"]["a"];
     let b = &result["vcpu_register_state"]["b"];

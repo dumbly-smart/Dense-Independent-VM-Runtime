@@ -901,5 +901,8 @@
     "measurement": "positive delta in the Linux kernel log message emitted by add_vmfork_randomness before host entropy injection",
     "status": "VERIFIED"
   },
-  "vmgenid_unique": true
+  "vmgenid_unique": true,
+  "process_isolation_status": "verified",
+  "process_isolation_pair_verified": true,
+  "process_isolation_scope": "all clones (clone-000 and clone-001)"
 }
