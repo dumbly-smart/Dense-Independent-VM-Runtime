@@ -6,8 +6,10 @@ default fixture stays minimal. An opt-in identity-validation fixture adds
 OpenSSH and exercises BusyBox DHCP client identity in actual QEMU/KVM clones.
 The tested Alpine kernel logged its VMGenID-triggered CRNG reseed after clone
 restore. Existing userspace PRNG caches, arbitrary service identity caches, and
-independent timer behavior still require separate tests. See
-`examples/alpine/README.md`.
+userspace random-state caches still require separate tests. Two synthetic
+guests also have timerfd counter samples around pause/resume; they do not
+isolate timer delivery during the pause or establish hardware RTC behavior.
+See `examples/alpine/README.md`.
 
 Update, 2026-10-24: the current synthetic guest receives a fresh host-kernel
 entropy payload per clone, credits it with Linux `RNDADDENTROPY`, and forces
@@ -59,7 +61,7 @@ distribution. Current synthetic probes use QEMU/KVM 11.1.2 on Linux 7.2.11.
 | Shared virtual Ethernet segment | optional | YES | Six separate virtio NICs use a QEMU socket multicast backend bound to host loopback; targets respond before and after T1 is killed. This is a shared range network, not host-user isolation. |
 | Guest network throughput | workload-dependent | PARTIAL | A 64 KiB UDP request burst completed with 0% observed loss in 1,241 µs. This is a short guest-to-guest sample on a local multicast backend, not host NIC line rate. |
 | Guest disk write+sync latency | workload-dependent | PARTIAL | A two-VM Alpine run recorded 16 × 4 KiB ext4 writes with `fdatasync`; p95 values varied from 735 to 3,102 µs across four guests. The small sample is not a performance conclusion. |
-| Independent wall clock/timers | YES | PARTIAL | Across a one-second host pause, two synthetic guests' wall clock advanced 8–9 ms and `/proc/uptime` advanced 10 ms. Periodic timer delivery and hardware RTC behavior remain UNKNOWN. |
+| Independent wall clock/timers | YES | PARTIAL | Two repeated two-clone runs around an approximately one-second QMP pause measured realtime deltas of 7–15 ms and `/proc/uptime` deltas of 0–20 ms. A guest `CLOCK_MONOTONIC` timerfd with a 10 ms period accumulated 1–3 expirations between the pre-pause and post-resume reads. The post-resume counts include serial and guest execution after resume; they do not show when each expiration occurred or directly count APIC interrupts. Hardware RTC behavior remains UNKNOWN. Raw records: `results/2026-10-24/parking-timerfd-2-run1.json` and `parking-timerfd-2-run2.json`. |
 | Explicit idle parking | optional | PARTIAL | Six paused QEMU processes accumulated zero CPU ticks over one second and resumed in 6 ms total. The guest clock sample shows guest time nearly stops during this interval; parking changes time semantics. |
 | Kernel and KVM memory overhead included in result | applicable | UNKNOWN | Process PSS and template file cache residency are measured; kernel metadata is not isolated. |
 

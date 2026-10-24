@@ -11,9 +11,14 @@ filesystem-file isolation plus process-kill and explicit parking checks. A
 six-guest range run then verified five-target UDP reachability, per-guest
 process separation, reboot and QEMU-kill isolation, and continued network
 access to surviving targets. Eight clones passed the same isolation checks.
-The prepared image has no SSH server or DHCP client, so it duplicates neither
-SSH host keys nor a DHCP client identity. Arbitrary distribution services and
-application secrets remain outside this demonstrated profile.
+The default prepared image has no SSH server or DHCP client. An opt-in
+identity-validation profile adds OpenSSH and exercises BusyBox `udhcpc`:
+two-clone results show distinct regenerated host-key fingerprints and distinct
+machine-id-derived DHCP option 61 values in captured client packets, with
+successful lease acquisition. The tested Alpine kernel also logged a
+VMGenID-triggered CRNG reseed after restore. Other distributions' services,
+userspace random-state refresh, and application secrets remain outside this
+demonstrated profile.
 
 The original synthetic reference record is retained below. The current
 eight-clone 0/5/10/25/50/100% buffer-divergence sweep is saved under
@@ -34,11 +39,12 @@ metadata and host page tables are not included.
 Additional current-host evidence includes guest OOM isolation
 (`results/2026-10-24/guest-oom-2.json`), a three-clone guest-kernel panic
 isolation probe (`results/isolation/2026-10-24/`), matched synthetic
-2/4/8/16-clone scale data, and the controlled six-point divergence sweep. The guest
-clock advanced only 8–10 ms across an approximately one-second QMP pause;
-periodic timer delivery remains unmeasured. OpenSSH host-key regeneration is
-implemented for images that contain such keys, but no current guest fixture
-includes OpenSSH. DHCP identity and total kernel memory remain unverified.
+2/4/8/16-clone scale data, and the controlled six-point divergence sweep. Across
+two approximately one-second QMP pause samples, guest clocks advanced 0–20 ms.
+The timerfd probe observed 1–3 10 ms-period expirations between reads before
+pause and after resume; it does not isolate expiry timing during pause or count
+APIC interrupts. Hardware RTC, broader OpenSSH/DHCP distro behavior, userspace
+random-state refresh, and total kernel memory remain unverified.
 See `docs/semantic-differences.md` for the status table.
 
 ## Historical synthetic reference
@@ -81,6 +87,8 @@ This historical synthetic run assigned distinct machine-id, hostname, and
 seed-token values in A and B. Its seed token was deterministic and was not
 cryptographic entropy. The current guest path uses fresh host-kernel entropy
 and forces guest CRNG reseeding before identity/network preparation. The
-supported Alpine profile has no SSH server or DHCP client; SSH key rotation,
-DHCP behavior, guest reaction to vmgenid, timer behavior, and kernel page-table
+default Alpine profile has no SSH server or DHCP client; its opt-in identity
+profile covers OpenSSH key rotation, BusyBox DHCP identity, and the tested
+guest kernel's VMGenID response. Timerfd samples are available for pause/resume,
+while direct APIC timer delivery, hardware RTC behavior, and kernel page-table
 accounting remain unverified in `docs/semantic-differences.md`.
