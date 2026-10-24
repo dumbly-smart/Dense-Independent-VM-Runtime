@@ -1,0 +1,11 @@
+{
+  "status": "blocked",
+  "reason": "current user cannot enable host-global KSM; administrator access is required",
+  "ksm_run_before": 0,
+  "ksm_run_writable": false,
+  "densevm_binary": "/home/xtrmn8/Dense-Independent-VM-Runtime/target/debug/densevm",
+  "clone_count": 2,
+  "divergence_percent": 0,
+  "guest": null,
+  "guest_oom_skipped": true
+}

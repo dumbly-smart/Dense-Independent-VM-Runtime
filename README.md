@@ -35,6 +35,8 @@ cargo run -- probe --out /tmp/densevm-my-8m-run --divergence-mib 8
 cargo run -- probe --out /tmp/densevm-park-run --park-idle
 # Compare the same probe with KSM temporarily enabled; prior KSM settings are restored:
 cargo run -- probe --out /tmp/densevm-my-ksm-run --ksm
+# Run a paired COW-only vs KSM experiment with preflight and summary:
+experiments/ksm/run.sh --out /tmp/densevm-ksm-pair --count 2
 # Run a conventional baseline at a requested count:
 cargo run -- benchmark baseline --count 8 --out /tmp/densevm-baseline-8
 # Inspect saved disk and live RAM metadata:
@@ -80,8 +82,13 @@ memory-map, and liveness checks.
 | --- | --- |
 | Demonstrated | Separate QEMU/KVM guests resume from one frozen state, share unchanged RAM pages, COW private RAM writes, and use private qcow2 overlays. Live 2/4/8/16 synthetic-clone scale measurements and a six-point 8-clone divergence sweep are saved under `results/`. |
 | Isolation tested | Guest RAM and disk writes, unique MAC/machine-id/hostname/vmgenid, guest OOM, guest kernel panic, guest reboot, QEMU process termination, process state, and a six-guest Alpine range. |
-| Partial | OpenSSH keys are regenerated and fingerprint-checked when present, but the supported fixture has no SSH server. DHCP identity, guest response to vmgenid, periodic timers/RTC, register-level checks, and kernel/KVM memory overhead remain unverified. QMP parking nearly stops guest clock progress. |
+| Partial | The opt-in Alpine profile verifies unique OpenSSH host-key fingerprints, DHCP option 61 identity, and the tested kernel's VMGenID reaction. Other distributions' identity behavior, periodic timers/RTC, register-level checks, and kernel/KVM memory overhead remain unverified. QMP parking nearly stops guest clock progress. |
 | Host blocked | Positive KSM measurements require write access to host-global `/sys/kernel/mm/ksm/run`; this user cannot change it. Current KSM state is `run=0`; no positive KSM result is claimed. |
 | Deferred | TCG translated-code sharing and hierarchical template trees. KVM guests still execute their own instructions. |
+
+The paired KSM harness and its output format are documented in
+[`docs/ksm-experiment.md`](docs/ksm-experiment.md). It is ready for an
+administrator-enabled host; the current permission refusal is recorded under
+`results/2026-10-24/ksm-comparison-blocked/`.
 
 The current read-only capability snapshot is [`results/2026-10-24/host-capabilities.json`](results/2026-10-24/host-capabilities.json). The test suite runs with `cargo test --all-targets`; opt-in KVM integration tests can be run with `cargo test --test probe -- --ignored --nocapture` on a host with adequate memory and QEMU/KVM.

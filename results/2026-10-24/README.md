@@ -94,3 +94,11 @@ guest OOM workload was explicitly skipped for this identity-focused run and is
 reported as skipped in the JSON; see [`guest-oom-2.json`](guest-oom-2.json) for
 the separate OOM result. Other distributions' DHCP clients and userspace
 randomness behavior remain unmeasured.
+
+## KSM comparison preflight
+
+[`ksm-comparison-blocked/preflight.json`](ksm-comparison-blocked/preflight.json)
+is the paired harness's read-only preflight record. It found `/sys/kernel/mm/ksm/run`
+at `0` and not writable by this user, so it stopped before launching either
+probe. No KSM setting changed and no positive KSM merge data is claimed. The
+runner and comparison format are documented in [`docs/ksm-experiment.md`](../../docs/ksm-experiment.md).

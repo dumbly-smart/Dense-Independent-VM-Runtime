@@ -73,3 +73,8 @@ Probe results include host-global KSM counters and `ksmd` CPU ticks before and
 after the run when procfs/sysfs expose them. These deltas are not attributable
 solely to DenseVM if other host processes use KSM concurrently; CPU values are
 raw scheduler ticks and should be converted using the host's clock-tick rate.
+`experiments/ksm/run.sh` runs matched COW-only and KSM probes and summarizes
+clone PSS, RAM-mapping PSS, global KSM counters, and `ksmd` ticks. The current
+host fails its read-only preflight because `/sys/kernel/mm/ksm/run` is not
+writable; no positive KSM merge measurement is available yet. See
+`docs/ksm-experiment.md` for the exact procedure.
