@@ -230,7 +230,10 @@
         "process_pss_kib": 424456,
         "cgroup_memory": {
           "current_bytes": 457453568,
-          "memory_stat_bytes": {
+          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285020-1792823157885264476",
+          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+          "status": "measured",
+          "memory_stat": {
             "active_anon": 416313344,
             "active_file": 0,
             "anon": 416317440,
@@ -303,10 +306,7 @@
             "zswpin": 0,
             "zswpout": 0,
             "zswpwb": 0
-          },
-          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285020-1792823157885264476",
-          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-          "status": "measured"
+          }
         }
       },
       "clones_before_divergence": {
@@ -314,7 +314,10 @@
         "ram_mapping_pss_kib": 31912,
         "cgroup_memory": {
           "current_bytes": 383746048,
-          "memory_stat_bytes": {
+          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285020-1792823157885264476",
+          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+          "status": "measured",
+          "memory_stat": {
             "active_anon": 72933376,
             "active_file": 0,
             "anon": 72945664,
@@ -387,10 +390,7 @@
             "zswpin": 0,
             "zswpout": 0,
             "zswpwb": 0
-          },
-          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285020-1792823157885264476",
-          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-          "status": "measured"
+          }
         }
       },
       "clones_after_divergence": {
@@ -398,7 +398,10 @@
         "ram_mapping_pss_kib": 31964,
         "cgroup_memory": {
           "current_bytes": 381108224,
-          "memory_stat_bytes": {
+          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285020-1792823157885264476",
+          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+          "status": "measured",
+          "memory_stat": {
             "active_anon": 73261056,
             "active_file": 0,
             "anon": 73273344,
@@ -471,10 +474,7 @@
             "zswpin": 0,
             "zswpout": 0,
             "zswpwb": 0
-          },
-          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285020-1792823157885264476",
-          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-          "status": "measured"
+          }
         }
       }
     },
@@ -487,7 +487,10 @@
         "process_pss_kib": 406919,
         "cgroup_memory": {
           "current_bytes": 427040768,
-          "memory_stat_bytes": {
+          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
+          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+          "status": "measured",
+          "memory_stat": {
             "active_anon": 397279232,
             "active_file": 1056768,
             "anon": 397565952,
@@ -560,10 +563,7 @@
             "zswpin": 0,
             "zswpout": 0,
             "zswpwb": 0
-          },
-          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
-          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-          "status": "measured"
+          }
         }
       },
       "clones_before_divergence": {
@@ -571,7 +571,10 @@
         "ram_mapping_pss_kib": 30492,
         "cgroup_memory": {
           "current_bytes": 301002752,
-          "memory_stat_bytes": {
+          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
+          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+          "status": "measured",
+          "memory_stat": {
             "active_anon": 23126016,
             "active_file": 64987136,
             "anon": 72957952,
@@ -644,10 +647,7 @@
             "zswpin": 0,
             "zswpout": 0,
             "zswpwb": 0
-          },
-          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
-          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-          "status": "measured"
+          }
         }
       },
       "clones_after_divergence": {
@@ -655,7 +655,10 @@
         "ram_mapping_pss_kib": 30652,
         "cgroup_memory": {
           "current_bytes": 302039040,
-          "memory_stat_bytes": {
+          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
+          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+          "status": "measured",
+          "memory_stat": {
             "active_anon": 23126016,
             "active_file": 64987136,
             "anon": 72957952,
@@ -728,10 +731,7 @@
             "zswpin": 0,
             "zswpout": 0,
             "zswpwb": 0
-          },
-          "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
-          "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-          "status": "measured"
+          }
         }
       }
     }

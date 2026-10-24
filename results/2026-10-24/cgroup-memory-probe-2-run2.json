@@ -15,7 +15,10 @@
     "active_cpu_sample_interval_ms": 1000,
     "cgroup_memory_at_measurement": {
       "current_bytes": 427040768,
-      "memory_stat_bytes": {
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
+      "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+      "status": "measured",
+      "memory_stat": {
         "active_anon": 397279232,
         "active_file": 1056768,
         "anon": 397565952,
@@ -88,10 +91,7 @@
         "zswpin": 0,
         "zswpout": 0,
         "zswpwb": 0
-      },
-      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
-      "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-      "status": "measured"
+      }
     },
     "count": 2,
     "idle_cpu_sample_interval_ms": 1000,
@@ -710,7 +710,7 @@
     "requested": false
   },
   "parking_verified": true,
-  "process_isolation": true,
+  "process_isolation": null,
   "qemu_version": "QEMU emulator version 11.1.2",
   "ram_divergence_bytes": 0,
   "ram_divergence_pages": 0,
@@ -728,7 +728,10 @@
     "after_divergence": {
       "cgroup_memory": {
         "current_bytes": 302039040,
-        "memory_stat_bytes": {
+        "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
+        "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+        "status": "measured",
+        "memory_stat": {
           "active_anon": 23126016,
           "active_file": 64987136,
           "anon": 72957952,
@@ -801,10 +804,7 @@
           "zswpin": 0,
           "zswpout": 0,
           "zswpwb": 0
-        },
-        "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
-        "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-        "status": "measured"
+        }
       },
       "clones": [
         {
@@ -852,7 +852,10 @@
     "before_divergence": {
       "cgroup_memory": {
         "current_bytes": 301002752,
-        "memory_stat_bytes": {
+        "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
+        "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+        "status": "measured",
+        "memory_stat": {
           "active_anon": 23126016,
           "active_file": 64987136,
           "anon": 72957952,
@@ -925,10 +928,7 @@
           "zswpin": 0,
           "zswpout": 0,
           "zswpwb": 0
-        },
-        "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-285586-1792823179000735114",
-        "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
-        "status": "measured"
+        }
       },
       "clones": [
         {
@@ -1070,5 +1070,8 @@
     "measurement": "positive delta in the Linux kernel log message emitted by add_vmfork_randomness before host entropy injection",
     "status": "UNKNOWN"
   },
-  "vmgenid_unique": true
+  "vmgenid_unique": true,
+  "process_isolation_status": "not-requested",
+  "process_isolation_pair_verified": null,
+  "process_isolation_scope": "not sampled for the synthetic initramfs guest profile"
 }

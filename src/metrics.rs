@@ -40,7 +40,7 @@ pub fn parse_cgroup_memory(current: &str, stat: &str) -> Result<Value, String> {
     }
     Ok(json!({
         "current_bytes":current_bytes,
-        "memory_stat_bytes":memory_stat
+        "memory_stat":memory_stat
     }))
 }
 

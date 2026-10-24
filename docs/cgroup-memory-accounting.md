@@ -24,7 +24,9 @@ DenseVM executable.
 The result stores cgroup samples at conventional baseline readiness and at the
 templated-clone snapshots before and after requested divergence. Each sample
 contains the cgroup path, `memory.current`, and the full parsed `memory.stat`
-map. Without the wrapper, these fields say `not-requested`. PSS remains a
+map. `memory.stat` contains both byte-valued memory fields and non-byte
+counters such as `pgfault`, so its JSON field name is intentionally unit
+neutral. Without the wrapper, these fields say `not-requested`. PSS remains a
 separate measurement; do not add PSS to cgroup memory because the values overlap.
 
 Linux documents that cgroup v2 accounts major user and kernel memory classes,

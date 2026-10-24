@@ -71,13 +71,16 @@ fn supports_paths_with_spaces_and_rejects_shared_or_readonly_clone_mappings() {
 fn parses_cgroup_v2_current_and_kernel_memory_breakdown() {
     let memory = parse_cgroup_memory(
         "1048576\n",
-        "anon 500000\nfile 300000\nkernel 248576\npagetables 32768\nsec_pagetables 8192\nkernel_stack 4096\nslab 8192\n",
+        "anon 500000\nfile 300000\nkernel 248576\npagetables 32768\nsec_pagetables 8192\nkernel_stack 4096\nslab 8192\npgfault 41\npgmajfault 3\n",
     )
     .unwrap();
     assert_eq!(memory["current_bytes"], 1_048_576);
-    assert_eq!(memory["memory_stat_bytes"]["kernel"], 248_576);
-    assert_eq!(memory["memory_stat_bytes"]["pagetables"], 32_768);
-    assert_eq!(memory["memory_stat_bytes"]["sec_pagetables"], 8_192);
+    assert!(memory.get("memory_stat_bytes").is_none());
+    assert_eq!(memory["memory_stat"]["kernel"], 248_576);
+    assert_eq!(memory["memory_stat"]["pagetables"], 32_768);
+    assert_eq!(memory["memory_stat"]["sec_pagetables"], 8_192);
+    assert_eq!(memory["memory_stat"]["pgfault"], 41);
+    assert_eq!(memory["memory_stat"]["pgmajfault"], 3);
 }
 
 #[test]
