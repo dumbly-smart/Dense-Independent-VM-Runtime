@@ -8,7 +8,13 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 unsafe extern "C" {
-    fn mount(source: *const c_char, target: *const c_char, kind: *const c_char, flags: c_ulong, data: *const c_void) -> c_int;
+    fn mount(
+        source: *const c_char,
+        target: *const c_char,
+        kind: *const c_char,
+        flags: c_ulong,
+        data: *const c_void,
+    ) -> c_int;
     fn syscall(number: c_long, ...) -> c_long;
     fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
     fn sethostname(name: *const c_char, len: usize) -> c_int;
@@ -26,7 +32,15 @@ fn mount_fs(source: &str, target: &str, kind: &str) {
     let source = CString::new(source).unwrap();
     let target = CString::new(target).unwrap();
     let kind = CString::new(kind).unwrap();
-    let code = unsafe { mount(source.as_ptr(), target.as_ptr(), kind.as_ptr(), 0, std::ptr::null()) };
+    let code = unsafe {
+        mount(
+            source.as_ptr(),
+            target.as_ptr(),
+            kind.as_ptr(),
+            0,
+            std::ptr::null(),
+        )
+    };
     assert_eq!(code, 0, "mount failed: {}", std::io::Error::last_os_error());
 }
 
@@ -54,15 +68,30 @@ fn fill_disk(value: u8) -> std::io::Result<()> {
 }
 
 fn disk_bench(iterations: &str) -> std::io::Result<String> {
-    let iterations: usize = iterations.parse().map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid disk benchmark iteration count"))?;
+    let iterations: usize = iterations.parse().map_err(|_| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "invalid disk benchmark iteration count",
+        )
+    })?;
     if !(1..=64).contains(&iterations) {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "disk benchmark iterations must be 1..64"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "disk benchmark iterations must be 1..64",
+        ));
     }
     if disk_path() == "/dev/vda" {
-        return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, "disk benchmark requires a filesystem-backed guest"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Unsupported,
+            "disk benchmark requires a filesystem-backed guest",
+        ));
     }
     let path = std::path::Path::new(disk_path()).with_file_name("disk-bench.bin");
-    let mut file = OpenOptions::new().create(true).truncate(true).write(true).open(path)?;
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(path)?;
     let block = [0x5au8; 4096];
     let mut latencies = Vec::with_capacity(iterations);
     for _ in 0..iterations {
@@ -74,43 +103,91 @@ fn disk_bench(iterations: &str) -> std::io::Result<String> {
     latencies.sort_unstable();
     let mean_us = latencies.iter().sum::<u128>() / iterations as u128;
     let p50_us = latencies[iterations / 2];
-    let p95_us = latencies[((iterations * 95).div_ceil(100)).saturating_sub(1).min(iterations - 1)];
-    Ok(format!("DISK-BENCH iterations={iterations} block_bytes=4096 mean_us={mean_us} p50_us={p50_us} p95_us={p95_us}"))
+    let p95_us = latencies[((iterations * 95).div_ceil(100))
+        .saturating_sub(1)
+        .min(iterations - 1)];
+    Ok(format!(
+        "DISK-BENCH iterations={iterations} block_bytes=4096 mean_us={mean_us} p50_us={p50_us} p95_us={p95_us}"
+    ))
 }
 
 fn disk_path() -> &'static str {
-    if std::path::Path::new("/etc/alpine-release").exists() { "/var/lib/densevm/disk-probe.bin" } else { "/dev/vda" }
+    if std::path::Path::new("/etc/alpine-release").exists() {
+        "/var/lib/densevm/disk-probe.bin"
+    } else {
+        "/dev/vda"
+    }
 }
 
 fn services() -> std::io::Result<String> {
     let mut names = std::collections::HashSet::new();
     for entry in fs::read_dir("/proc")?.flatten() {
-        if let Ok(name) = fs::read_to_string(entry.path().join("comm")) { names.insert(name.trim().to_owned()); }
+        if let Ok(name) = fs::read_to_string(entry.path().join("comm")) {
+            names.insert(name.trim().to_owned());
+        }
     }
     let init = fs::read_to_string("/proc/1/comm")?;
-    Ok(format!("SERVICES init={} syslogd={} crond={} getty={}", init.trim() == "init", names.contains("syslogd"), names.contains("crond"), names.contains("getty")))
+    Ok(format!(
+        "SERVICES init={} syslogd={} crond={} getty={}",
+        init.trim() == "init",
+        names.contains("syslogd"),
+        names.contains("crond"),
+        names.contains("getty")
+    ))
 }
 
 fn range_ip(value: &str) -> std::io::Result<std::net::Ipv4Addr> {
-    let ip: std::net::Ipv4Addr = value.parse().map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid IPv4 address"))?;
+    let ip: std::net::Ipv4Addr = value.parse().map_err(|_| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid IPv4 address")
+    })?;
     let octets = ip.octets();
     if octets[..3] != [10, 77, 0] || !(10..=41).contains(&octets[3]) {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "address outside bounded range subnet"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "address outside bounded range subnet",
+        ));
     }
     Ok(ip)
 }
 
 fn network_set(value: &str) -> std::io::Result<String> {
     let ip = range_ip(value)?;
-    for args in [vec!["ip".to_owned(), "addr".to_owned(), "add".to_owned(), format!("{ip}/24"), "dev".to_owned(), "eth0".to_owned()], vec!["ip".to_owned(), "link".to_owned(), "set".to_owned(), "eth0".to_owned(), "up".to_owned()]] {
-        let output = std::process::Command::new("/bin/busybox").args(args).output()?;
-        if !output.status.success() { return Err(std::io::Error::other(String::from_utf8_lossy(&output.stderr).to_string())); }
+    for args in [
+        vec![
+            "ip".to_owned(),
+            "addr".to_owned(),
+            "add".to_owned(),
+            format!("{ip}/24"),
+            "dev".to_owned(),
+            "eth0".to_owned(),
+        ],
+        vec![
+            "ip".to_owned(),
+            "link".to_owned(),
+            "set".to_owned(),
+            "eth0".to_owned(),
+            "up".to_owned(),
+        ],
+    ] {
+        let output = std::process::Command::new("/bin/busybox")
+            .args(args)
+            .output()?;
+        if !output.status.success() {
+            return Err(std::io::Error::other(
+                String::from_utf8_lossy(&output.stderr).to_string(),
+            ));
+        }
     }
     let socket = std::net::UdpSocket::bind((ip, 7777))?;
-    let identity = fs::read_to_string("/etc/machine-id")?.trim().as_bytes().to_vec();
+    let identity = fs::read_to_string("/etc/machine-id")?
+        .trim()
+        .as_bytes()
+        .to_vec();
     thread::spawn(move || {
         let mut data = [0u8; 256];
-        while let Ok((_, peer)) = socket.recv_from(&mut data) { let _ = socket.send_to(&identity, peer); }
+        while let Ok((_, peer)) = socket.recv_from(&mut data) {
+            let _ = socket.send_to(&identity, peer);
+        }
     });
     Ok(format!("NETWORK {ip}"))
 }
@@ -122,16 +199,23 @@ fn udp_probe(value: &str) -> std::io::Result<String> {
     socket.send_to(b"densevm", (ip, 7777))?;
     let mut data = [0u8; 256];
     let (count, peer) = socket.recv_from(&mut data)?;
-    if peer.ip() != std::net::IpAddr::V4(ip) { return Err(std::io::Error::other("unexpected UDP responder")); }
+    if peer.ip() != std::net::IpAddr::V4(ip) {
+        return Err(std::io::Error::other("unexpected UDP responder"));
+    }
     Ok(format!("UDP {}", String::from_utf8_lossy(&data[..count])))
 }
 
 fn udp_bench(value: &str, packet_count: &str) -> std::io::Result<String> {
     const PACKET_BYTES: usize = 1024;
     let ip = range_ip(value)?;
-    let packets: usize = packet_count.parse().map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid packet count"))?;
+    let packets: usize = packet_count.parse().map_err(|_| {
+        std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid packet count")
+    })?;
     if !(1..=128).contains(&packets) {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "packet count must be 1..128"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "packet count must be 1..128",
+        ));
     }
     let socket = std::net::UdpSocket::bind("0.0.0.0:0")?;
     socket.set_read_timeout(Some(Duration::from_secs(3)))?;
@@ -148,7 +232,10 @@ fn udp_bench(value: &str, packet_count: &str) -> std::io::Result<String> {
         let (length, peer) = match socket.recv_from(&mut response) {
             Ok(reply) => reply,
             Err(error)
-                if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) =>
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) =>
             {
                 break;
             }
@@ -158,7 +245,9 @@ fn udp_bench(value: &str, packet_count: &str) -> std::io::Result<String> {
         if peer.ip() != std::net::IpAddr::V4(ip)
             || value.len() != 32
             || !value.bytes().all(|byte| byte.is_ascii_hexdigit())
-            || remote_identity.as_ref().is_some_and(|expected| expected != &value)
+            || remote_identity
+                .as_ref()
+                .is_some_and(|expected| expected != &value)
         {
             return Err(std::io::Error::other("unexpected UDP benchmark responder"));
         }
@@ -172,15 +261,24 @@ fn udp_bench(value: &str, packet_count: &str) -> std::io::Result<String> {
     let payload_mbps = delivered_bytes as f64 * 8.0 / elapsed_us as f64;
     let loss_percent = (packets - received) as f64 * 100.0 / packets as f64;
     if remote_identity.is_none() {
-        return Err(std::io::Error::new(std::io::ErrorKind::TimedOut, "no UDP benchmark response"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "no UDP benchmark response",
+        ));
     }
-    Ok(format!("UDP-BENCH sent_packets={packets} received_packets={received} offered_bytes={offered_bytes} delivered_bytes={delivered_bytes} elapsed_us={elapsed_us} packets_per_second={packets_per_second:.1} delivered_mbps={payload_mbps:.3} loss_percent={loss_percent:.2} remote_identity={}", remote_identity.unwrap_or_default()))
+    Ok(format!(
+        "UDP-BENCH sent_packets={packets} received_packets={received} offered_bytes={offered_bytes} delivered_bytes={delivered_bytes} elapsed_us={elapsed_us} packets_per_second={packets_per_second:.1} delivered_mbps={payload_mbps:.3} loss_percent={loss_percent:.2} remote_identity={}",
+        remote_identity.unwrap_or_default()
+    ))
 }
 
 fn process_count() -> std::io::Result<usize> {
-    Ok(fs::read_dir("/proc")?.flatten().filter(|entry| {
-        fs::read(entry.path().join("cmdline")).is_ok_and(|cmd| cmd == b"/bin/sleep\x00137\x00")
-    }).count())
+    Ok(fs::read_dir("/proc")?
+        .flatten()
+        .filter(|entry| {
+            fs::read(entry.path().join("cmdline")).is_ok_and(|cmd| cmd == b"/bin/sleep\x00137\x00")
+        })
+        .count())
 }
 
 fn reboot_guest() -> ! {
@@ -207,7 +305,10 @@ fn guest_clock() -> std::io::Result<String> {
         .ok_or_else(|| std::io::Error::other("/proc/uptime has no value"))?
         .parse::<f64>()
         .map_err(std::io::Error::other)?;
-    Ok(format!("CLOCK realtime_ms={realtime_ms} uptime_ms={:.0}", uptime_seconds * 1000.0))
+    Ok(format!(
+        "CLOCK realtime_ms={realtime_ms} uptime_ms={:.0}",
+        uptime_seconds * 1000.0
+    ))
 }
 
 fn memory_pressure_worker() -> ! {
@@ -333,6 +434,14 @@ fn valid_identity(value: &str) -> bool {
     value.len() == 32 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
+pub(crate) fn identity_preparation_allowed(prepared: bool) -> Result<(), &'static str> {
+    if prepared {
+        Ok(())
+    } else {
+        Err("guest entropy must be reseeded before identity or network setup")
+    }
+}
+
 fn set_identity(value: &str) -> std::io::Result<()> {
     if !valid_identity(value) {
         return Err(std::io::Error::new(
@@ -359,9 +468,12 @@ fn ssh_host_key_paths() -> std::io::Result<Vec<std::path::PathBuf>> {
         .flatten()
         .map(|entry| entry.path())
         .filter(|path| {
-            path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
-                name.starts_with("ssh_host_") && (name.ends_with("_key") || name.ends_with("_key.pub"))
-            })
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| {
+                    name.starts_with("ssh_host_")
+                        && (name.ends_with("_key") || name.ends_with("_key.pub"))
+                })
         })
         .collect())
 }
@@ -375,7 +487,9 @@ fn rotate_ssh_host_keys() -> std::io::Result<()> {
     for path in existing {
         fs::remove_file(path)?;
     }
-    let output = std::process::Command::new("ssh-keygen").arg("-A").output()?;
+    let output = std::process::Command::new("ssh-keygen")
+        .arg("-A")
+        .output()?;
     if !output.status.success() {
         return Err(std::io::Error::other(format!(
             "ssh-keygen -A failed: {}",
@@ -383,7 +497,9 @@ fn rotate_ssh_host_keys() -> std::io::Result<()> {
         )));
     }
     if server_installed && ssh_host_key_paths()?.is_empty() {
-        return Err(std::io::Error::other("sshd is installed but no host keys were regenerated"));
+        return Err(std::io::Error::other(
+            "sshd is installed but no host keys were regenerated",
+        ));
     }
     Ok(())
 }
@@ -398,7 +514,10 @@ fn ssh_host_key_identity() -> std::io::Result<String> {
     }
     let mut fingerprints = Vec::new();
     for path in paths {
-        let output = std::process::Command::new("ssh-keygen").args(["-lf"]).arg(path).output()?;
+        let output = std::process::Command::new("ssh-keygen")
+            .args(["-lf"])
+            .arg(path)
+            .output()?;
         if !output.status.success() {
             return Err(std::io::Error::other(format!(
                 "ssh-keygen fingerprint failed: {}",
@@ -418,19 +537,34 @@ fn ssh_host_key_identity() -> std::io::Result<String> {
 
 fn reseed(value: &str) -> std::io::Result<()> {
     if value.len() != 64 || !value.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "expected 32 bytes of host entropy"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "expected 32 bytes of host entropy",
+        ));
     }
     // Linux UAPI linux/random.h: rand_pool_info and RNDADDENTROPY,
     // followed by RNDRESEEDCRNG to force a new CRNG key before networking.
     #[repr(C)]
-    struct Pool { entropy_count: c_int, size: c_int, bytes: [u8; 32] }
-    let mut pool = Pool { entropy_count: 256, size: 32, bytes: [0; 32] };
-    for (i, byte) in pool.bytes.iter_mut().enumerate() {
-        *byte = u8::from_str_radix(&value[i*2..i*2+2], 16).unwrap();
+    struct Pool {
+        entropy_count: c_int,
+        size: c_int,
+        bytes: [u8; 32],
     }
-    let random = OpenOptions::new().read(true).write(true).open("/dev/random")?;
+    let mut pool = Pool {
+        entropy_count: 256,
+        size: 32,
+        bytes: [0; 32],
+    };
+    for (i, byte) in pool.bytes.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&value[i * 2..i * 2 + 2], 16).unwrap();
+    }
+    let random = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/random")?;
     if unsafe { ioctl(random.as_raw_fd(), 0x40085203, &pool as *const Pool) } != 0
-        || unsafe { ioctl(random.as_raw_fd(), 0x5207, 0) } != 0 {
+        || unsafe { ioctl(random.as_raw_fd(), 0x5207, 0) } != 0
+    {
         return Err(std::io::Error::last_os_error());
     }
     Ok(())
@@ -439,7 +573,11 @@ fn reseed(value: &str) -> std::io::Result<()> {
 fn read_identity(prepared: bool) -> std::io::Result<String> {
     let machine_id = fs::read_to_string("/etc/machine-id")?.trim().to_string();
     let hostname = fs::read_to_string("/etc/hostname")?.trim().to_string();
-    let status = if prepared { "RNG-RESEEDED" } else { "UNPREPARED" };
+    let status = if prepared {
+        "RNG-RESEEDED"
+    } else {
+        "UNPREPARED"
+    };
     Ok(format!("IDENTITY {machine_id} {hostname} {status}"))
 }
 
@@ -463,10 +601,19 @@ fn write_ram_pages(region: &mut [u8], pages: usize, value: u8) -> Result<(), &'s
 }
 
 fn random_ram_pages(region: &mut [u8], pages: usize, value: u8) -> std::io::Result<()> {
-    let bytes = pages.checked_mul(4096).filter(|bytes| *bytes <= region.len())
-        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "RAM divergence exceeds region"))?;
+    let bytes = pages
+        .checked_mul(4096)
+        .filter(|bytes| *bytes <= region.len())
+        .ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "RAM divergence exceeds region",
+            )
+        })?;
     File::open("/dev/urandom")?.read_exact(&mut region[..bytes])?;
-    if bytes > 0 { region[0] = value; }
+    if bytes > 0 {
+        region[0] = value;
+    }
     Ok(())
 }
 
@@ -474,9 +621,15 @@ fn main() {
     if std::env::args().nth(1).as_deref() == Some("--memory-pressure-worker") {
         memory_pressure_worker();
     }
-    if !std::path::Path::new("/dev/null").exists() { mount_fs("devtmpfs", "/dev", "devtmpfs"); }
-    if !std::path::Path::new("/sys/class").exists() { mount_fs("sysfs", "/sys", "sysfs"); }
-    if !std::path::Path::new("/proc/self").exists() { mount_fs("proc", "/proc", "proc"); }
+    if !std::path::Path::new("/dev/null").exists() {
+        mount_fs("devtmpfs", "/dev", "devtmpfs");
+    }
+    if !std::path::Path::new("/sys/class").exists() {
+        mount_fs("sysfs", "/sys", "sysfs");
+    }
+    if !std::path::Path::new("/proc/self").exists() {
+        mount_fs("proc", "/proc", "proc");
+    }
     for module in ["failover", "net_failover", "virtio_net"] {
         load_module(module);
     }
@@ -486,8 +639,14 @@ fn main() {
         }
         thread::sleep(Duration::from_millis(100));
     }
-    let mut serial_out = OpenOptions::new().write(true).open("/dev/ttyS0").expect("serial output");
-    let serial_in = OpenOptions::new().read(true).open("/dev/ttyS0").expect("serial input");
+    let mut serial_out = OpenOptions::new()
+        .write(true)
+        .open("/dev/ttyS0")
+        .expect("serial output");
+    let serial_in = OpenOptions::new()
+        .read(true)
+        .open("/dev/ttyS0")
+        .expect("serial input");
     let mut reader = BufReader::new(serial_in);
     set_identity("00000000000000000000000000000000").expect("initialize template identity");
     let mut region = vec![0u8; 32 * 1024 * 1024];
@@ -506,18 +665,48 @@ fn main() {
         let fields: Vec<_> = line.split_whitespace().collect();
         let result = match fields.as_slice() {
             ["ping"] => "PONG".to_string(),
-            ["clock-read"] => match guest_clock() { Ok(value) => value, Err(error) => format!("ERROR guest clock: {error}") },
-            ["sync"] => { unsafe { syscall(162); } "SYNCED".to_string() },
-            ["services-read"] => match services() { Ok(value) => value, Err(e) => format!("ERROR services: {e}") },
-            ["network-set", _] if !prepared => "ERROR identity preparation required before networking".to_string(),
-            ["network-set", value] => match network_set(value) { Ok(value) => value, Err(e) => format!("ERROR network: {e}") },
-            ["udp-probe", value] => match udp_probe(value) { Ok(value) => value, Err(e) => format!("ERROR UDP: {e}") },
-            ["udp-bench", value, packets] => match udp_bench(value, packets) { Ok(value) => value, Err(e) => format!("ERROR UDP benchmark: {e}") },
-            ["process-start"] => match std::process::Command::new("/bin/sleep").arg("137").spawn() {
-                Ok(child) => { processes.push(child); "PROCESS-STARTED".to_string() },
+            ["clock-read"] => match guest_clock() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR guest clock: {error}"),
+            },
+            ["sync"] => {
+                unsafe {
+                    syscall(162);
+                }
+                "SYNCED".to_string()
+            }
+            ["services-read"] => match services() {
+                Ok(value) => value,
+                Err(e) => format!("ERROR services: {e}"),
+            },
+            ["network-set", value] => match identity_preparation_allowed(prepared) {
+                Err(_) => "ERROR identity preparation required before networking".to_string(),
+                Ok(()) => match network_set(value) {
+                    Ok(value) => value,
+                    Err(e) => format!("ERROR network: {e}"),
+                },
+            },
+            ["udp-probe", value] => match udp_probe(value) {
+                Ok(value) => value,
+                Err(e) => format!("ERROR UDP: {e}"),
+            },
+            ["udp-bench", value, packets] => match udp_bench(value, packets) {
+                Ok(value) => value,
+                Err(e) => format!("ERROR UDP benchmark: {e}"),
+            },
+            ["process-start"] => {
+                match std::process::Command::new("/bin/sleep").arg("137").spawn() {
+                    Ok(child) => {
+                        processes.push(child);
+                        "PROCESS-STARTED".to_string()
+                    }
+                    Err(e) => format!("ERROR process: {e}"),
+                }
+            }
+            ["process-count"] => match process_count() {
+                Ok(n) => format!("PROCESS-COUNT {n}"),
                 Err(e) => format!("ERROR process: {e}"),
             },
-            ["process-count"] => match process_count() { Ok(n) => format!("PROCESS-COUNT {n}"), Err(e) => format!("ERROR process: {e}") },
             ["memory-pressure"] => match memory_pressure_probe() {
                 Ok(value) => value,
                 Err(error) => format!("ERROR memory pressure: {error}"),
@@ -571,13 +760,15 @@ fn main() {
                     _ => "ERROR invalid RAM write arguments".to_string(),
                 }
             }
-            ["ram-random-pages", pages, value] => match (pages.parse::<usize>(), value.parse::<u8>()) {
-                (Ok(pages), Ok(value)) => match random_ram_pages(&mut region, pages, value) {
-                    Ok(()) => format!("RAM-WROTE-PAGES {pages} {value}"),
-                    Err(error) => format!("ERROR {error}"),
-                },
-                _ => "ERROR invalid RAM write arguments".to_string(),
-            },
+            ["ram-random-pages", pages, value] => {
+                match (pages.parse::<usize>(), value.parse::<u8>()) {
+                    (Ok(pages), Ok(value)) => match random_ram_pages(&mut region, pages, value) {
+                        Ok(()) => format!("RAM-WROTE-PAGES {pages} {value}"),
+                        Err(error) => format!("ERROR {error}"),
+                    },
+                    _ => "ERROR invalid RAM write arguments".to_string(),
+                }
+            }
             ["disk-read"] => match disk_byte() {
                 Ok(value) => format!("DISK {value}"),
                 Err(error) => format!("ERROR disk read: {error}"),
@@ -606,16 +797,21 @@ fn main() {
                 reboot_guest()
             }
             ["entropy-add", value] => match reseed(value) {
-                Ok(()) => { prepared = true; "RNG-RESEEDED".to_string() },
+                Ok(()) => {
+                    prepared = true;
+                    "RNG-RESEEDED".to_string()
+                }
                 Err(error) => format!("ERROR reseed: {error}"),
             },
-            ["identity-set", _] if !prepared => "ERROR reseed required before identity preparation".to_string(),
-            ["identity-set", value] => match set_identity(value) {
-                Ok(()) => match rotate_ssh_host_keys() {
-                    Ok(()) => format!("IDENTITY-SET {value}"),
-                    Err(error) => format!("ERROR SSH host key rotation: {error}"),
+            ["identity-set", value] => match identity_preparation_allowed(prepared) {
+                Err(error) => format!("ERROR {error}"),
+                Ok(()) => match set_identity(value) {
+                    Ok(()) => match rotate_ssh_host_keys() {
+                        Ok(()) => format!("IDENTITY-SET {value}"),
+                        Err(error) => format!("ERROR SSH host key rotation: {error}"),
+                    },
+                    Err(error) => format!("ERROR identity set: {error}"),
                 },
-                Err(error) => format!("ERROR identity set: {error}"),
             },
             ["identity-read"] => match read_identity(prepared) {
                 Ok(value) => value,
@@ -626,7 +822,8 @@ fn main() {
                 Err(error) => format!("ERROR SSH identity read: {error}"),
             },
             ["dhcp-identity-read"] => {
-                "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest".to_string()
+                "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest"
+                    .to_string()
             }
             ["mac-read"] => {
                 let mut address = None;
@@ -641,7 +838,7 @@ fn main() {
                     Some(value) => format!("MAC {}", value.trim()),
                     None => "ERROR NIC did not appear".to_string(),
                 }
-            },
+            }
             _ => "ERROR unknown command".to_string(),
         };
         writeln!(serial_out, "DENSEVM {result}").unwrap();

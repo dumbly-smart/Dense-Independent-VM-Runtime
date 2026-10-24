@@ -58,7 +58,7 @@
 - Consumes: per-clone metadata and existing vmgenid/MAC assignment.
 - Produces: a pre-network identity preparation protocol with explicit supported identity fields and failure status.
 
-- [ ] Add tests proving cloned identity requests differ and network attachment is rejected until preparation succeeds.
+- [x] Add tests for distinct clone identities and guest rejection of identity/network setup before entropy preparation.
 - [x] Define guest-side machine-id and OpenSSH host-key actions; DHCP remains explicitly UNKNOWN because the fixture has no DHCP client.
 - [x] Implement the protocol with fresh host-kernel entropy credited/reseeded in the guest before key generation and NIC hotplug.
 - [ ] Validate with a disposable supported Linux guest image; compare machine-id, SSH host keys, vmgenid reaction, and DHCP client identity before enabling network access.
