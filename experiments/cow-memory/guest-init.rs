@@ -188,6 +188,133 @@ fn reboot_guest() -> ! {
     panic!("reboot syscall failed: {result}");
 }
 
+fn guest_oom_kill_count() -> Option<u64> {
+    fs::read_to_string("/proc/vmstat")
+        .ok()?
+        .lines()
+        .find_map(|line| line.strip_prefix("oom_kill "))
+        .and_then(|value| value.parse().ok())
+}
+
+fn memory_pressure_worker() -> ! {
+    let allocation_bytes = std::env::args()
+        .nth(2)
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(0);
+    if !(1..=128 * 1024 * 1024).contains(&allocation_bytes) {
+        std::process::exit(43);
+    }
+    // Avoid reserving the whole range against the guest's commit limit. The
+    // pages become real guest memory only as the worker touches them below.
+    let memory = unsafe {
+        mmap(
+            std::ptr::null_mut(),
+            allocation_bytes,
+            0x1 | 0x2,
+            0x02 | 0x20 | 0x4000,
+            -1,
+            0,
+        )
+    };
+    if memory as isize == -1 {
+        std::process::exit(42);
+    }
+    for offset in (0..allocation_bytes).step_by(4096) {
+        unsafe { std::ptr::write_volatile(memory.cast::<u8>().add(offset), 0x5a) };
+    }
+    loop {
+        std::hint::black_box(&memory);
+        thread::sleep(Duration::from_secs(1));
+    }
+}
+
+unsafe extern "C" {
+    fn mmap(
+        address: *mut std::ffi::c_void,
+        length: usize,
+        protection: i32,
+        flags: i32,
+        fd: i32,
+        offset: i64,
+    ) -> *mut std::ffi::c_void;
+}
+
+fn memory_pressure_probe() -> std::io::Result<String> {
+    use std::os::unix::process::ExitStatusExt;
+
+    let oom_before = guest_oom_kill_count();
+    const WORKERS: usize = 8;
+    const WORKER_BYTES: usize = 64 * 1024 * 1024;
+    let executable = std::env::current_exe()?;
+    let mut children = Vec::with_capacity(WORKERS);
+    let mut spawn_failures = 0usize;
+    for _ in 0..WORKERS {
+        match std::process::Command::new(&executable)
+            .args(["--memory-pressure-worker", &WORKER_BYTES.to_string()])
+            .spawn()
+        {
+            Ok(child) => children.push(child),
+            Err(_) => spawn_failures += 1,
+        }
+    }
+    let deadline = Instant::now() + Duration::from_secs(8);
+    let mut oom_killed_workers = 0usize;
+    let mut allocation_failures = 0usize;
+    let mut completed = vec![false; children.len()];
+    loop {
+        let mut live = 0usize;
+        for (index, child) in children.iter_mut().enumerate() {
+            if completed[index] {
+                continue;
+            }
+            if let Some(status) = child.try_wait()? {
+                completed[index] = true;
+                if status.signal() == Some(9) {
+                    oom_killed_workers += 1;
+                } else if status.code() == Some(42) {
+                    allocation_failures += 1;
+                }
+            } else {
+                live += 1;
+            }
+        }
+        let oom_delta = oom_before
+            .zip(guest_oom_kill_count())
+            .map(|(before, after)| after.saturating_sub(before));
+        if oom_killed_workers > 0 && oom_delta.is_some_and(|delta| delta > 0) {
+            for child in &mut children {
+                if child.try_wait()?.is_none() {
+                    let _ = child.kill();
+                }
+                let _ = child.wait();
+            }
+            return Ok(format!(
+                "PRESSURE-OOM workers_killed={oom_killed_workers} oom_kill_delta={} allocation_failures={allocation_failures} spawn_failures={spawn_failures}",
+                oom_delta.unwrap_or_default()
+            ));
+        }
+        if live == 0 {
+            return Ok(format!(
+                "PRESSURE-NO-OOM oom_kill_delta={} allocation_failures={allocation_failures} spawn_failures={spawn_failures}",
+                oom_delta.unwrap_or_default()
+            ));
+        }
+        if Instant::now() >= deadline {
+            for child in &mut children {
+                if child.try_wait()?.is_none() {
+                    let _ = child.kill();
+                }
+                let _ = child.wait();
+            }
+            return Ok(format!(
+                "PRESSURE-TIMEOUT oom_kill_delta={} workers_killed={oom_killed_workers} allocation_failures={allocation_failures} spawn_failures={spawn_failures}",
+                oom_delta.unwrap_or_default()
+            ));
+        }
+        thread::sleep(Duration::from_millis(50));
+    }
+}
+
 fn valid_identity(value: &str) -> bool {
     value.len() == 32 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
@@ -264,6 +391,9 @@ fn random_ram_pages(region: &mut [u8], pages: usize, value: u8) -> std::io::Resu
 }
 
 fn main() {
+    if std::env::args().nth(1).as_deref() == Some("--memory-pressure-worker") {
+        memory_pressure_worker();
+    }
     if !std::path::Path::new("/dev/null").exists() { mount_fs("devtmpfs", "/dev", "devtmpfs"); }
     if !std::path::Path::new("/sys/class").exists() { mount_fs("sysfs", "/sys", "sysfs"); }
     if !std::path::Path::new("/proc/self").exists() { mount_fs("proc", "/proc", "proc"); }
@@ -307,6 +437,10 @@ fn main() {
                 Err(e) => format!("ERROR process: {e}"),
             },
             ["process-count"] => match process_count() { Ok(n) => format!("PROCESS-COUNT {n}"), Err(e) => format!("ERROR process: {e}") },
+            ["memory-pressure"] => match memory_pressure_probe() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR memory pressure: {error}"),
+            },
             ["cpu-burn", millis] => match millis.parse::<u64>() {
                 Ok(millis) if (1..=10_000).contains(&millis) => {
                     let deadline = Instant::now() + Duration::from_millis(millis);

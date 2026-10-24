@@ -460,6 +460,23 @@ mod login_tests {
             "dropping the VM affected an unrelated child"
         );
     }
+
+    #[test]
+    fn parses_guest_oom_kill_counter_delta_without_confusing_other_termination() {
+        assert_eq!(
+            parse_oom_kill_delta(
+                "PRESSURE-OOM workers_killed=1 oom_kill_delta=1 allocation_failures=0 spawn_failures=0"
+            ),
+            Ok(1)
+        );
+        assert_eq!(
+            parse_oom_kill_delta(
+                "PRESSURE-NO-OOM oom_kill_delta=0 allocation_failures=8 spawn_failures=0"
+            ),
+            Ok(0)
+        );
+        assert!(parse_oom_kill_delta("PRESSURE-TIMEOUT").is_err());
+    }
 }
 
 fn launch(
@@ -674,6 +691,20 @@ fn parse_disk_benchmark(line: &str) -> Result<Value, String> {
         "p50_us":parse("p50_us")?,
         "p95_us":parse("p95_us")?,
     }))
+}
+
+fn parse_oom_kill_delta(response: &str) -> Result<u64, String> {
+    if !response.starts_with("PRESSURE-") {
+        return Err(format!(
+            "invalid guest memory-pressure response {response:?}"
+        ));
+    }
+    response
+        .split_whitespace()
+        .find_map(|field| field.strip_prefix("oom_kill_delta="))
+        .ok_or_else(|| "guest memory-pressure response omitted oom_kill_delta".to_string())?
+        .parse::<u64>()
+        .map_err(|error| format!("invalid guest oom_kill_delta: {error}"))
 }
 
 fn run_disk_benchmark(serials: &mut [&mut Serial]) -> Result<Vec<Value>, String> {
@@ -1314,6 +1345,16 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     } else {
         true
     };
+    let guest_oom_response = aserial.command("memory-pressure", "PRESSURE-")?;
+    let guest_oom_kill_delta = parse_oom_kill_delta(&guest_oom_response)?;
+    let guest_oom_killed_worker =
+        guest_oom_response.starts_with("PRESSURE-OOM ") && guest_oom_kill_delta > 0;
+    let mut guests_survive_oom_pressure =
+        expect_value(&mut aserial, "ping", "PONG")? && expect_value(&mut bserial, "ping", "PONG")?;
+    for (_, _, serial, _, _, _, _) in &mut extra_clones {
+        guests_survive_oom_pressure &= expect_value(serial, "ping", "PONG")?;
+    }
+    let guest_oom_isolation_verified = guest_oom_killed_worker && guests_survive_oom_pressure;
     let mut extra_guest_isolation = true;
     for (_, _, serial, index, _, _, _) in &mut extra_clones {
         let ram_value = 100 + *index as u8;
@@ -1630,6 +1671,15 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     };
     result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified,"network_benchmark":range_network_benchmark});
     result["process_isolation"] = json!(process_isolation);
+    result["guest_oom"] = json!({
+        "requested":true,
+        "total_worker_allocation_bytes":8 * 64 * 1024 * 1024u64,
+        "response":guest_oom_response,
+        "oom_kill_delta":guest_oom_kill_delta,
+        "worker_oom_killed":guest_oom_killed_worker,
+        "all_guests_survived":guests_survive_oom_pressure,
+        "isolation_verified":guest_oom_isolation_verified
+    });
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
     result["a_guest_reboot_observed"] = json!(a_reboot_observed);
     result["a_reboot_process_exited"] = json!(a_reboot_process_status.is_some());
@@ -1653,6 +1703,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && parking_verified
         && divergence_all_verified
         && process_isolation
+        && guest_oom_isolation_verified
         && surviving_clones_verified
         && a_reboot_observed
         && range_before_verified
