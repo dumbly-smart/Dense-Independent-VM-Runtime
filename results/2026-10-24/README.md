@@ -114,8 +114,22 @@ between the pre-pause and post-resume reads. Each result also verifies zero
 QEMU CPU ticks while parked, successful resume, and RAM/disk isolation. The
 post-resume counts include guest and serial-command execution after resume;
 they do not establish whether expirations occurred during the pause or measure
-APIC interrupt counts. Hardware RTC behavior remains unmeasured. The OOM
+APIC interrupt counts. RTC alarm behavior remains unmeasured. The OOM
 workload was explicitly skipped in these timing-focused runs.
+
+## Cgroup-v2 memory accounting
+
+[`cgroup-memory-summary.json`](cgroup-memory-summary.json) aggregates two
+two-VM runs made with `experiments/cgroup/run-probe.sh`. The result separately
+reports process PSS and cgroup-charged `memory.current`/`memory.stat` at
+baseline measurement and clone snapshots. Baseline process PSS was 406,919–424,456
+KiB versus clone PSS of 112,826–114,462 KiB. Baseline cgroup current memory was
+427–457 MB versus 301–384 MB for clones before divergence. Cgroup `kernel`
+charges were 3.4–4.0 MB in the baseline and about 7.8 MB in the clone phase;
+`sec_pagetables` varied from 123–745 KiB baseline and was 400 KiB for clones.
+These are cgroup charges,
+not complete host physical-memory totals; the clone measurements include shared
+RAM-file and disk page cache. See [`docs/cgroup-memory-accounting.md`](../../docs/cgroup-memory-accounting.md).
 
 ## Local timer interrupt and RTC samples
 
@@ -130,17 +144,3 @@ were taken after resume, so these samples do not show which interrupts were
 delivered while paused. They establish the behavior of these counters for this
 QEMU/kernel configuration, not independent RTC alarm delivery or exact APIC
 timing.
-
-## Timerfd samples around parking
-
-[`parking-timerfd-2-run1.json`](parking-timerfd-2-run1.json) and
-[`parking-timerfd-2-run2.json`](parking-timerfd-2-run2.json) are repeated
-two-clone synthetic probes with a one-second QMP pause. Across the four guest
-samples, realtime advanced 7–15 ms and `/proc/uptime` advanced 0–20 ms. A
-10 ms-period guest `CLOCK_MONOTONIC` timerfd accumulated 1–3 expirations
-between the pre-pause and post-resume reads. Each result also verifies zero
-QEMU CPU ticks while parked, successful resume, and RAM/disk isolation. The
-post-resume counts include guest and serial-command execution after resume;
-they do not establish whether expirations occurred during the pause or measure
-APIC interrupt counts. Hardware RTC behavior remains unmeasured. The OOM
-workload was explicitly skipped in these timing-focused runs.
