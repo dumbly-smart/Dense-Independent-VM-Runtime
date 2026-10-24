@@ -24,6 +24,7 @@ fn main() {
             divergence_all,
             guest_dir,
             range,
+            skip_guest_oom,
         } => densevm::probe::run_options(
             &out,
             densevm::probe::ProbeOptions {
@@ -34,6 +35,7 @@ fn main() {
                 divergence_all,
                 guest_dir: guest_dir.as_deref(),
                 range,
+                skip_guest_oom,
             },
         ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),

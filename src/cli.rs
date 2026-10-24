@@ -15,6 +15,7 @@ pub enum Command {
         divergence_all: bool,
         guest_dir: Option<PathBuf>,
         range: bool,
+        skip_guest_oom: bool,
     },
     BenchmarkBaseline {
         out: PathBuf,
@@ -72,6 +73,7 @@ where
     let mut divergence_all = false;
     let mut guest_dir = None;
     let mut range = false;
+    let mut skip_guest_oom = false;
     let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -89,6 +91,7 @@ where
             "--divergence-all" => divergence_all = true,
             "--guest" => guest_dir = Some(PathBuf::from(value(args, "--guest")?)),
             "--range" => range = true,
+            "--skip-guest-oom" => skip_guest_oom = true,
             "--divergence-mib" => {
                 let divergence_mib = value(args, "--divergence-mib")?
                     .parse::<u32>()
@@ -121,6 +124,7 @@ where
         divergence_all,
         guest_dir,
         range,
+        skip_guest_oom,
     })
 }
 

@@ -13,7 +13,8 @@ fn parses_probe_with_count_and_output() {
             park_idle: false,
             divergence_all: false,
             guest_dir: None,
-            range: false
+            range: false,
+            skip_guest_oom: false
         }
     );
     assert_eq!(
@@ -34,9 +35,30 @@ fn parses_probe_with_count_and_output() {
             park_idle: false,
             divergence_all: false,
             guest_dir: None,
-            range: false
+            range: false,
+            skip_guest_oom: false
         }
     );
+}
+
+#[test]
+fn supports_skipping_the_guest_oom_workload_for_targeted_identity_validation() {
+    let result = parse_args([
+        "densevm",
+        "probe",
+        "--out",
+        "/tmp/run",
+        "--count",
+        "2",
+        "--skip-guest-oom",
+    ]);
+    assert!(matches!(
+        result,
+        Ok(Command::Probe {
+            skip_guest_oom: true,
+            ..
+        })
+    ));
 }
 
 #[test]

@@ -542,6 +542,34 @@ mod login_tests {
             Some("DHCP-IDENTITY UNKNOWN")
         );
     }
+
+    #[test]
+    fn accepts_only_distinct_dhcp_client_identifiers() {
+        let distinct = vec![
+            "DHCP-IDENTITY VERIFIED 0000112233445566778899aabbccddeeff".to_string(),
+            "DHCP-IDENTITY VERIFIED 0000ffeeddccbbaa998877665544332211".to_string(),
+        ];
+        assert!(dhcp_identities_are_unique(&distinct));
+        assert!(!dhcp_identities_are_unique(&[
+            distinct[0].clone(),
+            distinct[0].clone()
+        ]));
+        assert!(!dhcp_identities_are_unique(&[
+            distinct[0].clone(),
+            "DHCP-IDENTITY UNKNOWN".to_string()
+        ]));
+    }
+
+    #[test]
+    fn recognizes_vmgenid_rng_reactions_only_with_a_positive_event_delta() {
+        assert!(vmgenid_reactions_verified(&[
+            "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN | VMGENID-REACTION VERIFIED event_delta=1".to_string(),
+            "IDENTITY b densevm-b RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN | VMGENID-REACTION VERIFIED event_delta=2".to_string(),
+        ]));
+        assert!(!vmgenid_reactions_verified(&[
+            "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN | VMGENID-REACTION UNKNOWN event_delta=0".to_string(),
+        ]));
+    }
 }
 
 fn launch(
@@ -1031,6 +1059,7 @@ pub fn run_experiment(
             divergence_all,
             guest_dir: None,
             range: false,
+            skip_guest_oom: false,
         },
     )
 }
@@ -1044,6 +1073,7 @@ pub struct ProbeOptions<'a> {
     pub divergence_all: bool,
     pub guest_dir: Option<&'a Path>,
     pub range: bool,
+    pub skip_guest_oom: bool,
 }
 
 pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
@@ -1087,6 +1117,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         divergence_all,
         guest_dir,
         range,
+        skip_guest_oom,
     } = options;
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
@@ -1130,6 +1161,13 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let out = out.canonicalize().map_err(|e| e.to_string())?;
     let mut guest = prepare_guest(&out, guest_dir)?;
     guest.merge = ksm;
+    let identity_validation = guest.metadata["identity_validation"] == true;
+    if identity_validation && range {
+        return Err(
+            "the identity-validation fixture uses QEMU user-mode DHCP and cannot run as a range"
+                .into(),
+        );
+    }
     let base = out.join("base.qcow2");
     create_base(&base, &guest)?;
 
@@ -1407,14 +1445,31 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         .any(|reply| ssh_identity_value(reply).is_some_and(|value| value != "ABSENT"));
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
+    let mut dhcp_identity_responses = Vec::new();
     let mut range_before_verified = !range;
     let mut range_network_benchmark = None;
-    if range {
+    if range || identity_validation {
         aserial.command("network-set 10.77.0.10", "NETWORK ")?;
         bserial.command("network-set 10.77.0.11", "NETWORK ")?;
         for (_, _, serial, index, _, _, _) in &mut extra_clones {
             serial.command(&format!("network-set 10.77.0.{}", *index + 10), "NETWORK ")?;
         }
+    }
+    if identity_validation {
+        dhcp_identity_responses
+            .push(aserial.command("dhcp-identity-probe", "DHCP-IDENTITY VERIFIED ")?);
+        dhcp_identity_responses
+            .push(bserial.command("dhcp-identity-probe", "DHCP-IDENTITY VERIFIED ")?);
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            dhcp_identity_responses
+                .push(serial.command("dhcp-identity-probe", "DHCP-IDENTITY VERIFIED ")?);
+        }
+    }
+    let dhcp_identity_unique =
+        identity_validation && dhcp_identities_are_unique(&dhcp_identity_responses);
+    let identity_validation_verified = !identity_validation
+        || (ssh_host_keys_present && ssh_host_keys_unique && dhcp_identity_unique);
+    if range {
         let attacker = &mut extra_clones.last_mut().ok_or("missing attacker")?.2;
         range_before_verified = true;
         for index in 0..count - 1 {
@@ -1434,16 +1489,31 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     } else {
         true
     };
-    let guest_oom_response = aserial.command("memory-pressure", "PRESSURE-")?;
-    let guest_oom_kill_delta = parse_oom_kill_delta(&guest_oom_response)?;
-    let guest_oom_killed_worker =
-        guest_oom_response.starts_with("PRESSURE-OOM ") && guest_oom_kill_delta > 0;
-    let mut guests_survive_oom_pressure =
-        expect_value(&mut aserial, "ping", "PONG")? && expect_value(&mut bserial, "ping", "PONG")?;
-    for (_, _, serial, _, _, _, _) in &mut extra_clones {
-        guests_survive_oom_pressure &= expect_value(serial, "ping", "PONG")?;
-    }
+    let guest_oom_response = if skip_guest_oom {
+        "PRESSURE-SKIPPED".to_string()
+    } else {
+        aserial.command("memory-pressure", "PRESSURE-")?
+    };
+    let guest_oom_kill_delta = if skip_guest_oom {
+        0
+    } else {
+        parse_oom_kill_delta(&guest_oom_response)?
+    };
+    let guest_oom_killed_worker = !skip_guest_oom
+        && guest_oom_response.starts_with("PRESSURE-OOM ")
+        && guest_oom_kill_delta > 0;
+    let guests_survive_oom_pressure = if skip_guest_oom {
+        false
+    } else {
+        let mut survived = expect_value(&mut aserial, "ping", "PONG")?
+            && expect_value(&mut bserial, "ping", "PONG")?;
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            survived &= expect_value(serial, "ping", "PONG")?;
+        }
+        survived
+    };
     let guest_oom_isolation_verified = guest_oom_killed_worker && guests_survive_oom_pressure;
+    let guest_oom_check_passed = skip_guest_oom || guest_oom_isolation_verified;
     let mut extra_guest_isolation = true;
     for (_, _, serial, index, _, _, _) in &mut extra_clones {
         let ram_value = 100 + *index as u8;
@@ -1828,13 +1898,14 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     result["range"] = json!({"enabled":range,"backend":guest.netdev,"attacker_index":if range {Some(count-1)} else {None},"target_count":if range {Some(count-1)} else {None},"connectivity_before":range_before_verified,"connectivity_after_target_kill":range_after_verified,"network_benchmark":range_network_benchmark});
     result["process_isolation"] = json!(process_isolation);
     result["guest_oom"] = json!({
-        "requested":true,
+        "requested":!skip_guest_oom,
+        "status":if skip_guest_oom {"skipped"} else if guest_oom_isolation_verified {"verified"} else {"failed"},
         "total_worker_allocation_bytes":8 * 64 * 1024 * 1024u64,
         "response":guest_oom_response,
         "oom_kill_delta":guest_oom_kill_delta,
-        "worker_oom_killed":guest_oom_killed_worker,
-        "all_guests_survived":guests_survive_oom_pressure,
-        "isolation_verified":guest_oom_isolation_verified
+        "worker_oom_killed":(!skip_guest_oom).then_some(guest_oom_killed_worker),
+        "all_guests_survived":(!skip_guest_oom).then_some(guests_survive_oom_pressure),
+        "isolation_verified":(!skip_guest_oom).then_some(guest_oom_isolation_verified)
     });
     result["ssh_host_keys"] = json!({
         "present":ssh_host_keys_present,
@@ -1842,9 +1913,18 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "identity_responses":all_ssh_identity_guests
     });
     result["dhcp_identity"] = json!({
-        "status":"UNKNOWN",
-        "guest_responses":all_ssh_identity_guests.iter().filter_map(|reply| dhcp_identity_value(reply)).collect::<Vec<_>>(),
-        "reason":"the tested guest does not run a DHCP client; unique MAC and static IP values do not prove DHCP client identity"
+        "status":if identity_validation {if dhcp_identity_unique {"VERIFIED"} else {"FAILED"}} else {"UNKNOWN"},
+        "unique":identity_validation.then_some(dhcp_identity_unique),
+        "method":if identity_validation {"BusyBox udhcpc lease plus AF_PACKET observation of DHCP option 61"} else {"not measured"},
+        "guest_responses":if identity_validation {dhcp_identity_responses} else {all_ssh_identity_guests.iter().filter_map(|reply| dhcp_identity_value(reply)).map(str::to_string).collect()},
+        "reason":if identity_validation {"each clone sent its machine-id-derived option 61 and received a DHCP lease"} else {"the tested guest does not run a DHCP client; unique MAC and static IP values do not prove DHCP client identity"}
+    });
+    result["identity_validation_verified"] = json!(identity_validation_verified);
+    let vmgenid_guest_reaction_verified = vmgenid_reactions_verified(&clone_identity_guests);
+    result["vmgenid_guest_reaction"] = json!({
+        "status":if vmgenid_guest_reaction_verified {"VERIFIED"} else {"UNKNOWN"},
+        "measurement":"positive delta in the Linux kernel log message emitted by add_vmfork_randomness before host entropy injection",
+        "clone_responses":clone_identity_guests.iter().filter_map(|reply| reply.split(" | ").nth(3)).collect::<Vec<_>>()
     });
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
     result["a_guest_reboot_observed"] = json!(a_reboot_observed);
@@ -1862,6 +1942,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && all_macs_unique
         && identity_unique
         && ssh_host_keys_unique
+        && identity_validation_verified
         && vmgenid_unique
         && extra_guest_isolation
         && full_disk_isolation
@@ -1870,7 +1951,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && parking_verified
         && divergence_all_verified
         && process_isolation
-        && guest_oom_isolation_verified
+        && guest_oom_check_passed
         && (!guest_crash_requested || guest_crash_isolation_verified)
         && surviving_clones_verified
         && a_reboot_observed
@@ -1883,6 +1964,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
 }
 
 fn prepare_identity(serial: &mut Serial, identity: &CloneIdentity) -> Result<String, String> {
+    let vmgenid_reaction = serial.command("vmgenid-reaction-read", "VMGENID-REACTION ")?;
     serial.command(
         &format!("entropy-add {}", identity.entropy_hex()),
         "RNG-RESEEDED",
@@ -1895,7 +1977,7 @@ fn prepare_identity(serial: &mut Serial, identity: &CloneIdentity) -> Result<Str
     let ssh_identity = serial.command("ssh-identity-read", "SSH-IDENTITY ")?;
     let dhcp_identity = serial.command("dhcp-identity-read", "DHCP-IDENTITY ")?;
     Ok(format!(
-        "{guest_identity} | {ssh_identity} | {dhcp_identity}"
+        "{guest_identity} | {ssh_identity} | {dhcp_identity} | {vmgenid_reaction}"
     ))
 }
 
@@ -1951,6 +2033,31 @@ fn ssh_identities_are_unique(replies: &[String]) -> bool {
         }
     }
     true
+}
+
+fn dhcp_identities_are_unique(replies: &[String]) -> bool {
+    let mut identifiers = std::collections::HashSet::new();
+    !replies.is_empty()
+        && replies.iter().all(|reply| {
+            let Some(identifier) = reply.strip_prefix("DHCP-IDENTITY VERIFIED ") else {
+                return false;
+            };
+            identifier.len() == 34
+                && identifier.bytes().all(|byte| byte.is_ascii_hexdigit())
+                && identifiers.insert(identifier.to_ascii_lowercase())
+        })
+}
+
+fn vmgenid_reactions_verified(replies: &[String]) -> bool {
+    !replies.is_empty()
+        && replies.iter().all(|reply| {
+            reply
+                .split(" | ")
+                .nth(3)
+                .and_then(|field| field.strip_prefix("VMGENID-REACTION VERIFIED event_delta="))
+                .and_then(|delta| delta.parse::<u64>().ok())
+                .is_some_and(|delta| delta > 0)
+        })
 }
 
 pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {

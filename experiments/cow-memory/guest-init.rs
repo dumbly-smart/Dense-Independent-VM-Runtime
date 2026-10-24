@@ -4,6 +4,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::os::fd::AsRawFd;
 use std::os::raw::{c_char, c_int, c_long, c_ulong, c_void};
+use std::os::unix::fs::PermissionsExt;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -18,6 +19,30 @@ unsafe extern "C" {
     fn syscall(number: c_long, ...) -> c_long;
     fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
     fn sethostname(name: *const c_char, len: usize) -> c_int;
+    fn socket(domain: c_int, socket_type: c_int, protocol: c_int) -> c_int;
+    fn bind(fd: c_int, address: *const c_void, address_len: u32) -> c_int;
+    fn poll(fds: *mut PollFd, count: usize, timeout_ms: c_int) -> c_int;
+    fn recv(fd: c_int, buffer: *mut c_void, length: usize, flags: c_int) -> isize;
+    fn close(fd: c_int) -> c_int;
+    fn if_nametoindex(name: *const c_char) -> u32;
+}
+
+#[repr(C)]
+struct SockAddrLl {
+    family: u16,
+    protocol: u16,
+    interface_index: i32,
+    hardware_type: u16,
+    packet_type: u8,
+    address_length: u8,
+    address: [u8; 8],
+}
+
+#[repr(C)]
+struct PollFd {
+    fd: c_int,
+    events: i16,
+    revents: i16,
 }
 
 fn load_module(name: &str) {
@@ -442,6 +467,233 @@ pub(crate) fn identity_preparation_allowed(prepared: bool) -> Result<(), &'stati
     }
 }
 
+pub(crate) fn dhcpv4_client_identifier(frame: &[u8]) -> Option<Vec<u8>> {
+    if frame.len() < 14 || frame.get(12..14)? != [0x08, 0x00] {
+        return None;
+    }
+    let ip = frame.get(14..)?;
+    if ip.len() < 20 || ip[0] >> 4 != 4 || ip[9] != 17 {
+        return None;
+    }
+    let ip_header_bytes = usize::from(ip[0] & 0x0f) * 4;
+    if ip_header_bytes < 20 || ip.len() < ip_header_bytes + 8 {
+        return None;
+    }
+    let fragment = u16::from_be_bytes([ip[6], ip[7]]);
+    if fragment & 0x1fff != 0 {
+        return None;
+    }
+    let udp = ip.get(ip_header_bytes..)?;
+    if udp.get(0..2)? != [0, 68] || udp.get(2..4)? != [0, 67] {
+        return None;
+    }
+    let udp_len = usize::from(u16::from_be_bytes([udp[4], udp[5]]));
+    if udp_len < 8 + 240 || udp.len() < udp_len {
+        return None;
+    }
+    let dhcp = udp.get(8..udp_len)?;
+    if dhcp.first().copied()? != 1 || dhcp.get(236..240)? != [99, 130, 83, 99] {
+        return None;
+    }
+    let options = dhcp.get(240..)?;
+    let mut offset = 0;
+    while offset < options.len() {
+        let option = options[offset];
+        offset += 1;
+        match option {
+            0 => continue,
+            255 => break,
+            _ => {
+                let length = usize::from(*options.get(offset)?);
+                offset += 1;
+                let value = options.get(offset..offset.checked_add(length)?)?;
+                if option == 61 {
+                    return Some(value.to_vec());
+                }
+                offset += length;
+            }
+        }
+    }
+    None
+}
+
+pub(crate) fn machine_id_client_identifier(value: &str) -> Result<Vec<u8>, &'static str> {
+    if !valid_identity(value) {
+        return Err("machine-id must contain 32 hexadecimal characters");
+    }
+    let mut identifier = Vec::with_capacity(17);
+    identifier.push(0);
+    for pair in value.as_bytes().chunks_exact(2) {
+        let hex = std::str::from_utf8(pair).map_err(|_| "invalid machine-id hex")?;
+        identifier.push(u8::from_str_radix(hex, 16).map_err(|_| "invalid machine-id hex")?);
+    }
+    Ok(identifier)
+}
+
+pub(crate) fn vmgenid_reseed_event_count(kernel_log: &str) -> usize {
+    kernel_log
+        .lines()
+        .filter(|line| line.contains("crng reseeded due to virtual machine fork"))
+        .count()
+}
+
+fn read_vmgenid_reseed_event_count() -> std::io::Result<usize> {
+    let output = std::process::Command::new("/bin/busybox")
+        .arg("dmesg")
+        .output()?;
+    if !output.status.success() {
+        return Err(std::io::Error::other(format!(
+            "dmesg failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    Ok(vmgenid_reseed_event_count(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
+}
+
+fn vmgenid_reaction_read() -> std::io::Result<String> {
+    let baseline_path = "/var/lib/densevm/vmgenid-reseed-baseline";
+    let baseline = match fs::read_to_string(baseline_path) {
+        Ok(value) => value
+            .trim()
+            .parse::<usize>()
+            .map_err(std::io::Error::other)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok("VMGENID-REACTION UNKNOWN template baseline unavailable".to_string());
+        }
+        Err(error) => return Err(error),
+    };
+    let current = read_vmgenid_reseed_event_count()?;
+    let delta = current.saturating_sub(baseline);
+    if delta > 0 {
+        Ok(format!("VMGENID-REACTION VERIFIED event_delta={delta}"))
+    } else {
+        Ok(format!("VMGENID-REACTION UNKNOWN event_delta={delta}"))
+    }
+}
+
+fn dhcp_packet_socket(interface: &str) -> std::io::Result<c_int> {
+    let name = CString::new(interface).unwrap();
+    let interface_index = unsafe { if_nametoindex(name.as_ptr()) };
+    if interface_index == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let protocol = 0x0003u16.to_be();
+    let fd = unsafe { socket(17, 3, c_int::from(protocol)) };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let address = SockAddrLl {
+        family: 17,
+        protocol,
+        interface_index: interface_index as i32,
+        hardware_type: 0,
+        packet_type: 0,
+        address_length: 0,
+        address: [0; 8],
+    };
+    let result = unsafe {
+        bind(
+            fd,
+            (&address as *const SockAddrLl).cast(),
+            std::mem::size_of::<SockAddrLl>() as u32,
+        )
+    };
+    if result < 0 {
+        let error = std::io::Error::last_os_error();
+        unsafe {
+            close(fd);
+        }
+        return Err(error);
+    }
+    Ok(fd)
+}
+
+fn capture_dhcp_client_identifier(
+    fd: c_int,
+    expected: &[u8],
+    timeout: Duration,
+) -> std::io::Result<bool> {
+    let deadline = Instant::now() + timeout;
+    let mut frame = vec![0u8; 2048];
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Ok(false);
+        }
+        let timeout_ms = remaining.as_millis().min(c_int::MAX as u128) as c_int;
+        let mut poll_fd = PollFd {
+            fd,
+            events: 1,
+            revents: 0,
+        };
+        let ready = unsafe { poll(&mut poll_fd, 1, timeout_ms) };
+        if ready == 0 {
+            return Ok(false);
+        }
+        if ready < 0 {
+            let error = std::io::Error::last_os_error();
+            if error.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(error);
+        }
+        let length = unsafe { recv(fd, frame.as_mut_ptr().cast(), frame.len(), 0) };
+        if length < 0 {
+            let error = std::io::Error::last_os_error();
+            if error.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return Err(error);
+        }
+        if dhcpv4_client_identifier(&frame[..length as usize]).as_deref() == Some(expected) {
+            return Ok(true);
+        }
+    }
+}
+
+fn dhcp_identity_probe() -> std::io::Result<String> {
+    if !std::path::Path::new("/etc/densevm-identity-validation").exists() {
+        return Ok("DHCP-IDENTITY UNKNOWN test profile is not installed".to_string());
+    }
+    let machine_id = fs::read_to_string("/etc/machine-id")?;
+    let machine_id = machine_id.trim();
+    let client_id = machine_id_client_identifier(machine_id)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidInput, error))?;
+    let client_id_hex = client_id
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let socket = dhcp_packet_socket("eth0")?;
+    let script = "/var/lib/densevm/dhcp-noop.sh";
+    fs::write(script, "#!/bin/sh\nexit 0\n")?;
+    fs::set_permissions(script, fs::Permissions::from_mode(0o700))?;
+    let option = format!("0x3d:{client_id_hex}");
+    let output = std::process::Command::new("/bin/busybox")
+        .args([
+            "udhcpc", "-i", "eth0", "-f", "-n", "-q", "-t", "1", "-T", "2", "-x", &option, "-s",
+            script,
+        ])
+        .output()?;
+    let captured = capture_dhcp_client_identifier(socket, &client_id, Duration::from_secs(2));
+    unsafe {
+        close(socket);
+    }
+    if !output.status.success() {
+        return Err(std::io::Error::other(format!(
+            "BusyBox udhcpc did not obtain a lease: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    if !captured? {
+        return Err(std::io::Error::other(
+            "DHCP packet did not contain the clone machine-id client identifier",
+        ));
+    }
+    Ok(format!("DHCP-IDENTITY VERIFIED {client_id_hex}"))
+}
+
 fn set_identity(value: &str) -> std::io::Result<()> {
     if !valid_identity(value) {
         return Err(std::io::Error::new(
@@ -649,6 +901,14 @@ fn main() {
         .expect("serial input");
     let mut reader = BufReader::new(serial_in);
     set_identity("00000000000000000000000000000000").expect("initialize template identity");
+    if std::path::Path::new("/etc/alpine-release").exists() {
+        let event_count = read_vmgenid_reseed_event_count().expect("read template VMGenID log");
+        fs::write(
+            "/var/lib/densevm/vmgenid-reseed-baseline",
+            event_count.to_string(),
+        )
+        .expect("save template VMGenID log baseline");
+    }
     let mut region = vec![0u8; 32 * 1024 * 1024];
     for page in region.chunks_mut(4096) {
         page[0] = 0x5a;
@@ -825,6 +1085,14 @@ fn main() {
                 "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest"
                     .to_string()
             }
+            ["dhcp-identity-probe"] => match dhcp_identity_probe() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR DHCP identity: {error}"),
+            },
+            ["vmgenid-reaction-read"] => match vmgenid_reaction_read() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR VMGenID reaction: {error}"),
+            },
             ["mac-read"] => {
                 let mut address = None;
                 for _ in 0..50 {
