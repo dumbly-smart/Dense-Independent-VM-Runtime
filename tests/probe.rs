@@ -211,6 +211,13 @@ fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
                 .as_str()
                 .is_some()
         );
+        if result["rtc_alarm"]["paused"][clone]["alarm_flag_observed"] == false {
+            let response = result["rtc_alarm"]["paused"][clone]["response"]
+                .as_str()
+                .unwrap();
+            assert!(response.contains("rtc_now="));
+            assert!(response.contains("rtc_alarm="));
+        }
     }
     if status.success() {
         assert_eq!(result["rtc_alarm_verified"], true);

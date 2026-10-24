@@ -79,6 +79,11 @@ fn rolls_rtc_alarm_time_forward_across_minute_and_day_boundaries() {
     assert_eq!(guest_init::rtc_alarm_time_after(23, 59, 58, 5), (0, 0, 3));
 }
 
+#[test]
+fn formats_guest_rtc_time_for_alarm_diagnostics() {
+    assert_eq!(guest_init::rtc_time_of_day(7, 3, 9), "07:03:09");
+}
+
 fn dhcp_frame(source_port: u16, destination_port: u16, client_id: Option<&[u8]>) -> Vec<u8> {
     let mut dhcp = vec![0u8; 240];
     dhcp[0] = 1;

@@ -111,6 +111,10 @@ pub fn rtc_alarm_time_after(hour: i32, minute: i32, second: i32, delay: u32) -> 
     )
 }
 
+pub fn rtc_time_of_day(hour: i32, minute: i32, second: i32) -> String {
+    format!("{hour:02}:{minute:02}:{second:02}")
+}
+
 fn mount_fs(source: &str, target: &str, kind: &str) {
     fs::create_dir_all(target).expect("create mount point");
     let source = CString::new(source).unwrap();
@@ -546,6 +550,31 @@ fn rtc_alarm_disable(file: &File) -> std::io::Result<()> {
     } else {
         Ok(())
     }
+}
+
+fn rtc_alarm_diagnostics(file: &File) -> String {
+    let mut now = RtcTime {
+        second: 0,
+        minute: 0,
+        hour: 0,
+        month_day: 0,
+        month: 0,
+        year: 0,
+        week_day: 0,
+        year_day: 0,
+        is_dst: 0,
+    };
+    let now_result = unsafe { ioctl(file.as_raw_fd(), 0x8024_7009, &mut now as *mut RtcTime) };
+    let mut alarm = now;
+    let alarm_result = unsafe { ioctl(file.as_raw_fd(), 0x8024_7008, &mut alarm as *mut RtcTime) };
+    if now_result < 0 || alarm_result < 0 {
+        return format!("diagnostic_error={}", std::io::Error::last_os_error());
+    }
+    format!(
+        "rtc_now={} rtc_alarm={}",
+        rtc_time_of_day(now.hour, now.minute, now.second),
+        rtc_time_of_day(alarm.hour, alarm.minute, alarm.second)
+    )
 }
 
 fn rtc_alarm_wait(file: &mut File, timeout: Duration) -> std::io::Result<(u64, u8)> {
@@ -1182,12 +1211,15 @@ fn main() {
                         .unwrap();
                         serial_out.flush().unwrap();
                         let result = rtc_alarm_wait(&mut rtc, Duration::from_secs(20));
+                        let diagnostics = rtc_alarm_diagnostics(&rtc);
                         let disable = rtc_alarm_disable(&rtc);
                         match (result, disable) {
                             (Ok((events, flags)), Ok(())) => {
                                 format!("RTC-ALARM-FIRED events={events} flags={flags}")
                             }
-                            (Err(error), _) => format!("RTC-ALARM-MISSED {error}"),
+                            (Err(error), _) => {
+                                format!("RTC-ALARM-MISSED {error} {diagnostics}")
+                            }
                             (Ok(_), Err(error)) => {
                                 format!("RTC-ALARM-FIRED disable_error={error}")
                             }
