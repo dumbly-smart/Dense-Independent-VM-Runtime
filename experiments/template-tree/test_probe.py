@@ -85,9 +85,19 @@ class GenerationManifestTests(unittest.TestCase):
             written = json.loads((output / "generation.json").read_text())
 
             self.assertEqual(manifest, written)
-            self.assertEqual(manifest["schema_version"], 1)
-            self.assertEqual(manifest["generation_id"], "child-template")
+            self.assertEqual(manifest["schema_version"], 2)
+            child_artifacts = [
+                sha256(b"child ram").hexdigest(),
+                sha256(b"child state").hexdigest(),
+                sha256(b"parent disk").hexdigest(),
+            ]
+            expected_generation_id = sha256(
+                json.dumps(child_artifacts, separators=(",", ":")).encode()
+            ).hexdigest()
+            self.assertEqual(manifest["generation_id"], f"sha256:{expected_generation_id}")
             self.assertEqual(manifest["parent"]["result_sha256"], sha256(b"source result").hexdigest())
+            self.assertEqual(manifest["parent"]["ram_sha256"], sha256(b"root ram").hexdigest())
+            self.assertEqual(manifest["parent"]["machine_state_sha256"], sha256(b"root state").hexdigest())
             self.assertEqual(manifest["ram"]["path"], "child-memory.img")
             self.assertEqual(manifest["ram"]["sha256"], sha256(b"child ram").hexdigest())
             self.assertEqual(manifest["ram"]["logical_size_bytes"], 256 * 1024 * 1024)

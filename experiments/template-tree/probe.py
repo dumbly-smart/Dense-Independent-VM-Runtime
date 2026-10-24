@@ -287,38 +287,46 @@ def build_child_generation_manifest(
     source_dir = source_dir.resolve()
     output_dir = output_dir.resolve()
     source_result = source_dir / "result.json"
+    source_ram = source_dir / "memory.img"
+    source_state = source_dir / "machine-state"
     source_disk = source_dir / "base.qcow2"
     child_ram = output_dir / "child-memory.img"
     child_state = output_dir / "child-machine-state"
     child_disk = output_dir / "parent.qcow2"
-    required = (source_result, source_disk, child_ram, child_state, child_disk)
+    required = (source_result, source_ram, source_state, source_disk, child_ram, child_state, child_disk)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise ValueError(f"cannot write generation manifest; artifacts are missing: {missing}")
 
+    child_artifact_hashes = [sha256(child_ram), sha256(child_state), sha256(child_disk)]
+    generation_digest = hashlib.sha256(
+        json.dumps(child_artifact_hashes, separators=(",", ":")).encode()
+    ).hexdigest()
     manifest = {
-        "schema_version": 1,
-        "generation_id": "child-template",
+        "schema_version": 2,
+        "generation_id": f"sha256:{generation_digest}",
         "parent": {
             "template_dir": str(source_dir),
             "result_sha256": sha256(source_result),
+            "ram_sha256": sha256(source_ram),
+            "machine_state_sha256": sha256(source_state),
             "base_disk_sha256": sha256(source_disk),
         },
         "qemu_version": qemu_version,
         "qemu_command": qemu_command,
         "ram": {
             "path": child_ram.name,
-            "sha256": sha256(child_ram),
+            "sha256": child_artifact_hashes[0],
             "logical_size_bytes": memory_size_bytes,
             "readonly_for_descendants": True,
         },
         "machine_state": {
             "path": child_state.name,
-            "sha256": sha256(child_state),
+            "sha256": child_artifact_hashes[1],
         },
         "disk": {
             "path": child_disk.name,
-            "sha256": sha256(child_disk),
+            "sha256": child_artifact_hashes[2],
             "readonly_for_descendants": True,
             "backing_path": str(source_disk),
             "backing_sha256": sha256(source_disk),
