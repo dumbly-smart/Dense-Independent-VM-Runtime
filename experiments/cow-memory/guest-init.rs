@@ -196,6 +196,20 @@ fn guest_oom_kill_count() -> Option<u64> {
         .and_then(|value| value.parse().ok())
 }
 
+fn guest_clock() -> std::io::Result<String> {
+    let realtime_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(std::io::Error::other)?
+        .as_millis();
+    let uptime_seconds = fs::read_to_string("/proc/uptime")?
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| std::io::Error::other("/proc/uptime has no value"))?
+        .parse::<f64>()
+        .map_err(std::io::Error::other)?;
+    Ok(format!("CLOCK realtime_ms={realtime_ms} uptime_ms={:.0}", uptime_seconds * 1000.0))
+}
+
 fn memory_pressure_worker() -> ! {
     let allocation_bytes = std::env::args()
         .nth(2)
@@ -426,6 +440,7 @@ fn main() {
         let fields: Vec<_> = line.split_whitespace().collect();
         let result = match fields.as_slice() {
             ["ping"] => "PONG".to_string(),
+            ["clock-read"] => match guest_clock() { Ok(value) => value, Err(error) => format!("ERROR guest clock: {error}") },
             ["sync"] => { unsafe { syscall(162); } "SYNCED".to_string() },
             ["services-read"] => match services() { Ok(value) => value, Err(e) => format!("ERROR services: {e}") },
             ["network-set", _] if !prepared => "ERROR identity preparation required before networking".to_string(),

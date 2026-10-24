@@ -494,6 +494,15 @@ mod login_tests {
         );
         assert!(parse_oom_kill_delta("PRESSURE-TIMEOUT").is_err());
     }
+
+    #[test]
+    fn parses_guest_wall_and_monotonic_clock_samples() {
+        assert_eq!(
+            parse_guest_clock("CLOCK realtime_ms=1792843200123 uptime_ms=481234"),
+            Ok((1_792_843_200_123, 481_234))
+        );
+        assert!(parse_guest_clock("CLOCK realtime_ms=1").is_err());
+    }
 }
 
 fn launch(
@@ -722,6 +731,21 @@ fn parse_oom_kill_delta(response: &str) -> Result<u64, String> {
         .ok_or_else(|| "guest memory-pressure response omitted oom_kill_delta".to_string())?
         .parse::<u64>()
         .map_err(|error| format!("invalid guest oom_kill_delta: {error}"))
+}
+
+fn parse_guest_clock(response: &str) -> Result<(u64, u64), String> {
+    if !response.starts_with("CLOCK ") {
+        return Err(format!("invalid guest clock response {response:?}"));
+    }
+    let field = |name: &str| {
+        response
+            .split_whitespace()
+            .find_map(|part| part.strip_prefix(&format!("{name}=")))
+            .ok_or_else(|| format!("guest clock response omitted {name}"))?
+            .parse::<u64>()
+            .map_err(|error| format!("invalid guest clock {name}: {error}"))
+    };
+    Ok((field("realtime_ms")?, field("uptime_ms")?))
 }
 
 fn run_disk_benchmark(serials: &mut [&mut Serial]) -> Result<Vec<Value>, String> {
@@ -1486,6 +1510,13 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut parking_verified = !park_idle;
     let mut parking_details = json!({"requested":park_idle});
     if park_idle {
+        let mut guest_clock_before = vec![
+            aserial.command("clock-read", "CLOCK ")?,
+            bserial.command("clock-read", "CLOCK ")?,
+        ];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guest_clock_before.push(serial.command("clock-read", "CLOCK ")?);
+        }
         let mut paused_statuses = Vec::new();
         let mut resumed_statuses = Vec::new();
         paused_statuses.push(stop_and_verify(&mut aq)?);
@@ -1504,6 +1535,31 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             resumed_statuses.push(resume_and_verify(qmp)?);
         }
         let resume_qmp_elapsed_ms = resume_started.elapsed().as_millis();
+        let mut guest_clock_after = vec![
+            aserial.command("clock-read", "CLOCK ")?,
+            bserial.command("clock-read", "CLOCK ")?,
+        ];
+        for (_, _, serial, _, _, _, _) in &mut extra_clones {
+            guest_clock_after.push(serial.command("clock-read", "CLOCK ")?);
+        }
+        let guest_clock_deltas = guest_clock_before
+            .iter()
+            .zip(&guest_clock_after)
+            .enumerate()
+            .map(|(index, (before, after))| {
+                let before = parse_guest_clock(before)?;
+                let after = parse_guest_clock(after)?;
+                Ok(json!({
+                    "clone_index":index,
+                    "realtime_before_ms":before.0,
+                    "realtime_after_ms":after.0,
+                    "realtime_delta_ms":after.0 as i128 - before.0 as i128,
+                    "uptime_before_ms":before.1,
+                    "uptime_after_ms":after.1,
+                    "uptime_delta_ms":after.1 as i128 - before.1 as i128
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
         let mut guests_responsive_after_resume = expect_value(&mut aserial, "ping", "PONG")?
             && expect_value(&mut bserial, "ping", "PONG")?;
         for (_, _, serial, _, _, _, _) in &mut extra_clones {
@@ -1519,8 +1575,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             "cpu_sample_interval_ms":parked_cpu_sample_interval_ms,
             "qemu_process_cpu_ticks":parked_cpu_ticks,
             "resume_qmp_elapsed_ms":resume_qmp_elapsed_ms,
+            "guest_clock_samples":guest_clock_deltas,
             "guests_responsive_after_resume":guests_responsive_after_resume,
-            "guest_clock_semantics":"not measured; QMP stop pauses guest execution, but timer and RTC catch-up behavior is unknown"
+            "guest_clock_scope":"wall time and /proc/uptime sampled around a QMP pause; timer interrupt delivery and hardware RTC behavior remain unmeasured"
         });
     }
     // `-no-reboot` turns a guest reboot into QEMU shutdown. The guest may reset
