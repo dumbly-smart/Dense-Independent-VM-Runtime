@@ -25,6 +25,7 @@ fn main() {
             guest_dir,
             range,
             skip_guest_oom,
+            vcpu_register_state,
         } => densevm::probe::run_options(
             &out,
             densevm::probe::ProbeOptions {
@@ -36,6 +37,7 @@ fn main() {
                 guest_dir: guest_dir.as_deref(),
                 range,
                 skip_guest_oom,
+                vcpu_register_state,
             },
         ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),

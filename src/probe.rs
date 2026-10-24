@@ -381,6 +381,21 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_x86_general_purpose_registers_from_qemu_monitor_output() {
+        let registers = parse_qemu_gprs(
+            "CPU#0\nRAX=00000000000000aa RBX=00000000000000bb RCX=00000000000000cc\nR8 = 0x8 R9=0000000000000009\nRIP=ffffffff81000000 RFLAGS=00000246",
+        )
+        .unwrap();
+        assert_eq!(registers["RAX"], 0xaa);
+        assert_eq!(registers["RBX"], 0xbb);
+        assert_eq!(registers["RCX"], 0xcc);
+        assert_eq!(registers["R8"], 0x8);
+        assert_eq!(registers["R9"], 0x9);
+        assert!(!registers.contains_key("RIP"));
+        assert!(parse_qemu_gprs("no register dump").is_err());
+    }
+
+    #[test]
     fn parses_disk_io_benchmark_fields_as_numbers() {
         let result = parse_disk_benchmark(
             "DISK-BENCH iterations=16 block_bytes=4096 mean_us=120 p50_us=100 p95_us=301",
@@ -1126,6 +1141,72 @@ fn resume_and_verify(qmp: &mut Qmp) -> Result<bool, String> {
     Ok(true)
 }
 
+fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u64>, String> {
+    const GPRS: [&str; 16] = [
+        "RAX", "RBX", "RCX", "RDX", "RSI", "RDI", "RSP", "RBP", "R8", "R9", "R10", "R11", "R12",
+        "R13", "R14", "R15",
+    ];
+    let fields: Vec<_> = output.split_ascii_whitespace().collect();
+    let mut registers = std::collections::BTreeMap::new();
+    let mut index = 0;
+    while index < fields.len() {
+        let field = fields[index];
+        let register = if let Some((name, value)) = field.split_once('=') {
+            index += 1;
+            Some((name, value))
+        } else if GPRS.contains(&field) {
+            match fields.get(index + 1).copied() {
+                Some("=") => {
+                    index += 3;
+                    fields
+                        .get(index.saturating_sub(1))
+                        .copied()
+                        .map(|value| (field, value))
+                }
+                Some(value) if value.starts_with('=') => {
+                    index += 2;
+                    Some((field, value.trim_start_matches('=')))
+                }
+                _ => {
+                    index += 1;
+                    None
+                }
+            }
+        } else {
+            index += 1;
+            None
+        };
+        let Some((name, value)) = register else {
+            continue;
+        };
+        if !GPRS.contains(&name) {
+            continue;
+        }
+        let value = value
+            .strip_prefix("0x")
+            .or_else(|| value.strip_prefix("0X"))
+            .unwrap_or(value);
+        let value = u64::from_str_radix(value, 16)
+            .map_err(|error| format!("invalid QEMU {name} register value: {error}"))?;
+        registers.insert(name.to_string(), value);
+    }
+    if registers.is_empty() {
+        return Err("QEMU monitor output contained no x86-64 general-purpose registers".into());
+    }
+    Ok(registers)
+}
+
+fn qemu_gprs(qmp: &mut Qmp) -> Result<std::collections::BTreeMap<String, u64>, String> {
+    let output = qmp.execute(
+        "human-monitor-command",
+        Some(json!({"command-line":"info registers"})),
+    )?;
+    let output = output
+        .as_str()
+        .ok_or("QMP human-monitor-command returned non-text register output")?;
+    parse_qemu_gprs(output)
+}
+
 fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool, String> {
     Ok(serial.command(command, wanted)? == wanted)
 }
@@ -1180,6 +1261,7 @@ pub fn run_experiment(
             guest_dir: None,
             range: false,
             skip_guest_oom: false,
+            vcpu_register_state: false,
         },
     )
 }
@@ -1194,6 +1276,7 @@ pub struct ProbeOptions<'a> {
     pub guest_dir: Option<&'a Path>,
     pub range: bool,
     pub skip_guest_oom: bool,
+    pub vcpu_register_state: bool,
 }
 
 pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
@@ -1238,6 +1321,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         guest_dir,
         range,
         skip_guest_oom,
+        vcpu_register_state: capture_vcpu_register_state,
     } = options;
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
@@ -1539,6 +1623,58 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let b_identity_guest = prepare_identity(&mut bserial, &clone_identities[1])?;
     add_nic(&mut aq, &clone_identities[0].mac)?;
     add_nic(&mut bq, &clone_identities[1].mac)?;
+    let (vcpu_register_state_verified, vcpu_register_state) = if capture_vcpu_register_state {
+        let a_register_seed = 0x0a11_ce55_d15c_a11u64;
+        let b_register_seed = 0x0b0b_5eed_c0de_22u64;
+        aserial.send(&format!("cpu-state-burn {a_register_seed} 5000"))?;
+        let a_register_workload_armed = aserial.expect(
+            &format!("CPU-STATE-ARMED {a_register_seed}"),
+            Duration::from_secs(3),
+        )?;
+        bserial.send(&format!("cpu-state-burn {b_register_seed} 5000"))?;
+        let b_register_workload_armed = bserial.expect(
+            &format!("CPU-STATE-ARMED {b_register_seed}"),
+            Duration::from_secs(3),
+        )?;
+        stop_and_verify(&mut aq)?;
+        stop_and_verify(&mut bq)?;
+        let a_vcpu_registers = qemu_gprs(&mut aq)?;
+        let b_vcpu_registers = qemu_gprs(&mut bq)?;
+        let differing_vcpu_registers: Vec<_> = a_vcpu_registers
+            .iter()
+            .filter_map(|(name, a_value)| {
+                b_vcpu_registers
+                    .get(name)
+                    .filter(|b_value| *b_value != a_value)
+                    .map(|_| name.clone())
+            })
+            .collect();
+        resume_and_verify(&mut aq)?;
+        resume_and_verify(&mut bq)?;
+        let a_register_workload_done = aserial.expect("CPU-STATE-DONE", Duration::from_secs(8))?;
+        let b_register_workload_done = bserial.expect("CPU-STATE-DONE", Duration::from_secs(8))?;
+        let verified = a_register_workload_armed.starts_with("CPU-STATE-ARMED")
+            && b_register_workload_armed.starts_with("CPU-STATE-ARMED")
+            && a_register_workload_done.contains(&format!("seed={a_register_seed}"))
+            && b_register_workload_done.contains(&format!("seed={b_register_seed}"))
+            && !differing_vcpu_registers.is_empty();
+        (
+            Some(verified),
+            json!({
+                "status":if verified {"verified"} else {"failed"},
+                "capture":"QMP human-monitor-command info registers while each clone was paused",
+                "workload":"guest CPU arithmetic with clone-specific seed, stopped after both workloads announced readiness",
+                "a":{"seed":a_register_seed,"registers":a_vcpu_registers,"workload_done":a_register_workload_done},
+                "b":{"seed":b_register_seed,"registers":b_vcpu_registers,"workload_done":b_register_workload_done},
+                "differing_general_purpose_registers":differing_vcpu_registers
+            }),
+        )
+    } else {
+        (
+            None,
+            json!({"status":"not-requested","how_to_enable":"densevm probe --vcpu-register-state"}),
+        )
+    };
     let mut guest_identities = vec![a_identity_guest.clone(), b_identity_guest.clone()];
     let mut clone_identity_guests = vec![a_identity_guest.clone(), b_identity_guest.clone()];
     let mut identity_unique = identity_matches(&a_identity_guest, &a_identity)
@@ -2059,7 +2195,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                   "extra":extra_measurements,
                   "time_to_count_resumed_ms":clone_elapsed_ms},
         "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details,
-        "guest_crash":guest_crash_result
+        "guest_crash":guest_crash_result,
+        "vcpu_register_state":vcpu_register_state,
+        "vcpu_register_state_verified":vcpu_register_state_verified
     });
     result["clones"]["active_cpu_sample_interval_ms"] = json!(clone_active_cpu_sample_interval_ms);
     result["clones"]["a"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[0]);
@@ -2151,7 +2289,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && surviving_clones_verified
         && a_reboot_observed
         && range_before_verified
-        && range_after_verified)
+        && range_after_verified
+        && vcpu_register_state_verified != Some(false))
     {
         return Err("one or more isolation checks failed; see result.json".into());
     }

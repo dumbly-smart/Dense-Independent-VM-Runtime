@@ -14,7 +14,8 @@ fn parses_probe_with_count_and_output() {
             divergence_all: false,
             guest_dir: None,
             range: false,
-            skip_guest_oom: false
+            skip_guest_oom: false,
+            vcpu_register_state: false
         }
     );
     assert_eq!(
@@ -36,7 +37,8 @@ fn parses_probe_with_count_and_output() {
             divergence_all: false,
             guest_dir: None,
             range: false,
-            skip_guest_oom: false
+            skip_guest_oom: false,
+            vcpu_register_state: false
         }
     );
 }
@@ -56,6 +58,24 @@ fn supports_skipping_the_guest_oom_workload_for_targeted_identity_validation() {
         result,
         Ok(Command::Probe {
             skip_guest_oom: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn enables_vcpu_register_sampling_only_when_requested() {
+    let result = parse_args([
+        "densevm",
+        "probe",
+        "--out",
+        "/tmp/run",
+        "--vcpu-register-state",
+    ]);
+    assert!(matches!(
+        result,
+        Ok(Command::Probe {
+            vcpu_register_state: true,
             ..
         })
     ));

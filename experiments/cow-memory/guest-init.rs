@@ -1126,6 +1126,25 @@ fn main() {
                 }
                 _ => "ERROR cpu-burn duration must be 1..10000 ms".to_string(),
             },
+            ["cpu-state-burn", seed, millis] => {
+                match (seed.parse::<u64>(), millis.parse::<u64>()) {
+                    (Ok(seed), Ok(millis)) if (1..=10_000).contains(&millis) => {
+                        writeln!(serial_out, "DENSEVM CPU-STATE-ARMED {seed}").unwrap();
+                        serial_out.flush().unwrap();
+                        let deadline = Instant::now() + Duration::from_millis(millis);
+                        let mut value = seed;
+                        let mut iterations = 0u64;
+                        while Instant::now() < deadline {
+                            value = value.rotate_left(9).wrapping_mul(0x9e3779b185ebca87);
+                            iterations = iterations.wrapping_add(1);
+                            std::hint::black_box(value);
+                        }
+                        format!("CPU-STATE-DONE seed={seed} value={value} iterations={iterations}")
+                    }
+                    _ => "ERROR cpu-state-burn expects a u64 seed and duration 1..10000 ms"
+                        .to_string(),
+                }
+            }
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {

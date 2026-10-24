@@ -121,6 +121,57 @@ fn parked_clones_report_guest_timerfd_samples() {
 }
 
 #[test]
+#[ignore = "requires local KVM and QEMU; captures guest general-purpose registers with QMP"]
+fn clones_report_independent_vcpu_register_snapshots() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out = std::env::temp_dir().join(format!("densevm-vcpu-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--skip-guest-oom",
+            "--vcpu-register-state",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "probe failed; artifacts at {}",
+        out.display()
+    );
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["vcpu_register_state_verified"], true);
+    assert_eq!(result["vcpu_register_state"]["status"], "verified");
+    assert!(
+        result["vcpu_register_state"]["a"]["registers"]
+            .as_object()
+            .unwrap()
+            .len()
+            >= 14
+    );
+    assert!(
+        result["vcpu_register_state"]["b"]["registers"]
+            .as_object()
+            .unwrap()
+            .len()
+            >= 14
+    );
+    assert!(
+        !result["vcpu_register_state"]["differing_general_purpose_registers"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[test]
 #[ignore = "requires local KVM and three-clone memory budget"]
 fn guest_kernel_crash_does_not_kill_sibling_clones() {
     let stamp = SystemTime::now()
