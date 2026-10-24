@@ -149,6 +149,11 @@ fn clones_report_independent_vcpu_register_snapshots() {
         serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
     assert_eq!(result["vcpu_register_state_verified"], true);
     assert_eq!(result["vcpu_register_state"]["status"], "verified");
+    let a = &result["vcpu_register_state"]["a"];
+    let b = &result["vcpu_register_state"]["b"];
+    assert_eq!(a["gs_base_expected"], a["gs_base_observed"]);
+    assert_eq!(b["gs_base_expected"], b["gs_base_observed"]);
+    assert_ne!(a["gs_base_observed"], b["gs_base_observed"]);
     assert!(
         result["vcpu_register_state"]["a"]["registers"]
             .as_object()

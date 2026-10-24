@@ -396,6 +396,13 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_qemu_segment_base_from_info_registers() {
+        let output = "CPU#0\nGS =0000 0000000000012345 ffffffff 00c00100\n";
+        assert_eq!(parse_qemu_segment_base(output, "GS").unwrap(), 0x12345);
+        assert!(parse_qemu_segment_base(output, "FS").is_err());
+    }
+
+    #[test]
     fn qemu_register_snapshot_preserves_the_full_monitor_text() {
         let monitor_text = "CPU#0\nRAX=00000000000000aa CR0=0000000080010033\n";
         let (mut qmp, server, path) = scripted_qmp(vec![(
@@ -1210,6 +1217,30 @@ fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u6
     Ok(registers)
 }
 
+fn parse_qemu_segment_base(output: &str, segment: &str) -> Result<u64, String> {
+    for line in output.lines() {
+        let Some(rest) = line.trim_start().strip_prefix(segment) else {
+            continue;
+        };
+        let fields: Vec<_> = rest.split_ascii_whitespace().collect();
+        let base_index = match fields.as_slice() {
+            [equals, ..] if *equals == "=" => 2,
+            [selector, ..] if selector.starts_with('=') => 1,
+            [..] => 1,
+        };
+        let Some(value) = fields.get(base_index) else {
+            return Err(format!("QEMU {segment} segment output omitted its base"));
+        };
+        let value = value
+            .strip_prefix("0x")
+            .or_else(|| value.strip_prefix("0X"))
+            .unwrap_or(value);
+        return u64::from_str_radix(value, 16)
+            .map_err(|error| format!("invalid QEMU {segment} segment base: {error}"));
+    }
+    Err(format!("QEMU monitor output omitted the {segment} segment"))
+}
+
 fn qemu_register_snapshot(
     qmp: &mut Qmp,
 ) -> Result<(std::collections::BTreeMap<String, u64>, String), String> {
@@ -1642,20 +1673,28 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let (vcpu_register_state_verified, vcpu_register_state) = if capture_vcpu_register_state {
         let a_register_seed = 0x0a11_ce55_d15c_a11u64;
         let b_register_seed = 0x0b0b_5eed_c0de_22u64;
-        aserial.send(&format!("cpu-state-burn {a_register_seed} 5000"))?;
+        let a_gs_base = 0x1111_0000u64;
+        let b_gs_base = 0x2222_0000u64;
+        aserial.send(&format!(
+            "cpu-register-burn {a_register_seed} 5000 {a_gs_base}"
+        ))?;
         let a_register_workload_armed = aserial.expect(
-            &format!("CPU-STATE-ARMED {a_register_seed}"),
+            &format!("CPU-REGISTER-ARMED {a_gs_base}"),
             Duration::from_secs(3),
         )?;
-        bserial.send(&format!("cpu-state-burn {b_register_seed} 5000"))?;
+        bserial.send(&format!(
+            "cpu-register-burn {b_register_seed} 5000 {b_gs_base}"
+        ))?;
         let b_register_workload_armed = bserial.expect(
-            &format!("CPU-STATE-ARMED {b_register_seed}"),
+            &format!("CPU-REGISTER-ARMED {b_gs_base}"),
             Duration::from_secs(3),
         )?;
         stop_and_verify(&mut aq)?;
         stop_and_verify(&mut bq)?;
         let (a_vcpu_registers, a_vcpu_register_text) = qemu_register_snapshot(&mut aq)?;
         let (b_vcpu_registers, b_vcpu_register_text) = qemu_register_snapshot(&mut bq)?;
+        let a_gs_base_observed = parse_qemu_segment_base(&a_vcpu_register_text, "GS")?;
+        let b_gs_base_observed = parse_qemu_segment_base(&b_vcpu_register_text, "GS")?;
         let differing_vcpu_registers: Vec<_> = a_vcpu_registers
             .iter()
             .filter_map(|(name, a_value)| {
@@ -1667,21 +1706,26 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             .collect();
         resume_and_verify(&mut aq)?;
         resume_and_verify(&mut bq)?;
-        let a_register_workload_done = aserial.expect("CPU-STATE-DONE", Duration::from_secs(8))?;
-        let b_register_workload_done = bserial.expect("CPU-STATE-DONE", Duration::from_secs(8))?;
-        let verified = a_register_workload_armed.starts_with("CPU-STATE-ARMED")
-            && b_register_workload_armed.starts_with("CPU-STATE-ARMED")
+        let a_register_workload_done =
+            aserial.expect("CPU-REGISTER-DONE", Duration::from_secs(8))?;
+        let b_register_workload_done =
+            bserial.expect("CPU-REGISTER-DONE", Duration::from_secs(8))?;
+        let verified = a_register_workload_armed.starts_with("CPU-REGISTER-ARMED")
+            && b_register_workload_armed.starts_with("CPU-REGISTER-ARMED")
             && a_register_workload_done.contains(&format!("seed={a_register_seed}"))
             && b_register_workload_done.contains(&format!("seed={b_register_seed}"))
+            && a_gs_base_observed == a_gs_base
+            && b_gs_base_observed == b_gs_base
+            && a_gs_base_observed != b_gs_base_observed
             && !differing_vcpu_registers.is_empty();
         (
             Some(verified),
             json!({
                 "status":if verified {"verified"} else {"failed"},
                 "capture":"QMP human-monitor-command info registers while each clone was paused",
-                "workload":"guest CPU arithmetic with clone-specific seed, stopped after both workloads announced readiness",
-                "a":{"seed":a_register_seed,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"workload_done":a_register_workload_done},
-                "b":{"seed":b_register_seed,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"workload_done":b_register_workload_done},
+                "workload":"guest CPU arithmetic with clone-specific seed and user GS base, stopped after both workloads announced readiness",
+                "a":{"seed":a_register_seed,"gs_base_expected":a_gs_base,"gs_base_observed":a_gs_base_observed,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"workload_done":a_register_workload_done},
+                "b":{"seed":b_register_seed,"gs_base_expected":b_gs_base,"gs_base_observed":b_gs_base_observed,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"workload_done":b_register_workload_done},
                 "differing_general_purpose_registers":differing_vcpu_registers
             }),
         )

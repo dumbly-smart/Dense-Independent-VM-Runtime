@@ -68,6 +68,25 @@ fn load_module(name: &str) {
     assert_eq!(code, 0, "load {name}: {}", std::io::Error::last_os_error());
 }
 
+pub fn user_gs_base() -> std::io::Result<u64> {
+    let mut base = 0u64;
+    let result = unsafe { syscall(158, 0x1004 as c_int, &mut base as *mut u64) };
+    if result < 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(base)
+    }
+}
+
+pub fn set_user_gs_base(base: u64) -> std::io::Result<()> {
+    let result = unsafe { syscall(158, 0x1001 as c_int, base) };
+    if result < 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
 fn mount_fs(source: &str, target: &str, kind: &str) {
     fs::create_dir_all(target).expect("create mount point");
     let source = CString::new(source).unwrap();
@@ -1143,6 +1162,44 @@ fn main() {
                     }
                     _ => "ERROR cpu-state-burn expects a u64 seed and duration 1..10000 ms"
                         .to_string(),
+                }
+            }
+            ["cpu-register-burn", seed, millis, gs_base] => {
+                match (
+                    seed.parse::<u64>(),
+                    millis.parse::<u64>(),
+                    gs_base.parse::<u64>(),
+                ) {
+                    (Ok(seed), Ok(millis), Ok(gs_base)) if (1..=10_000).contains(&millis) => {
+                        match user_gs_base() {
+                            Err(error) => format!("ERROR read GS base: {error}"),
+                            Ok(previous_gs_base) => match set_user_gs_base(gs_base) {
+                                Err(error) => format!("ERROR set GS base: {error}"),
+                                Ok(()) => {
+                                    writeln!(serial_out, "DENSEVM CPU-REGISTER-ARMED {gs_base}")
+                                        .unwrap();
+                                    serial_out.flush().unwrap();
+                                    let deadline =
+                                        Instant::now() + Duration::from_millis(millis);
+                                    let mut value = seed;
+                                    let mut iterations = 0u64;
+                                    while Instant::now() < deadline {
+                                        value = value
+                                            .rotate_left(9)
+                                            .wrapping_mul(0x9e3779b185ebca87);
+                                        iterations = iterations.wrapping_add(1);
+                                        std::hint::black_box(value);
+                                    }
+                                    if let Err(error) = set_user_gs_base(previous_gs_base) {
+                                        format!("ERROR restore GS base: {error}")
+                                    } else {
+                                        format!("CPU-REGISTER-DONE seed={seed} gs_base={gs_base} value={value} iterations={iterations}")
+                                    }
+                                }
+                            },
+                        }
+                    }
+                    _ => "ERROR cpu-register-burn expects a u64 seed, duration 1..10000 ms, and u64 GS base".to_string(),
                 }
             }
             ["ram-read"] => format!("RAM {}", region[0]),

@@ -63,6 +63,16 @@ fn parses_guest_rtc_epoch_seconds() {
     assert_eq!(guest_init::rtc_epoch_seconds("not available\n"), None);
 }
 
+#[test]
+fn sets_and_restores_the_current_userspace_gs_base() {
+    let original = guest_init::user_gs_base().unwrap();
+    let probe = 0x12345000;
+    guest_init::set_user_gs_base(probe).unwrap();
+    assert_eq!(guest_init::user_gs_base().unwrap(), probe);
+    guest_init::set_user_gs_base(original).unwrap();
+    assert_eq!(guest_init::user_gs_base().unwrap(), original);
+}
+
 fn dhcp_frame(source_port: u16, destination_port: u16, client_id: Option<&[u8]>) -> Vec<u8> {
     let mut dhcp = vec![0u8; 240];
     dhcp[0] = 1;
