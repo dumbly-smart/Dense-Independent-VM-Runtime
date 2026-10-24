@@ -157,5 +157,23 @@ RTC epoch advanced one second; local timer interrupt totals increased by
 18–21, and 10 ms-period timerfd counters increased by two. All counter reads
 were taken after resume, so these samples do not show which interrupts were
 delivered while paused. They establish the behavior of these counters for this
-QEMU/kernel configuration, not independent RTC alarm delivery or exact APIC
-timing.
+QEMU/kernel configuration, not exact APIC timing. Explicit RTC alarm delivery
+is measured below.
+
+## RTC alarm delivery across QMP pause
+
+[`rtc-alarm-pause-2.json`](rtc-alarm-pause-2.json) compares a running control
+against a paused trial on QEMU 11.1.2 / Linux 7.2.11. Each clone's five-second
+RTC alarm fired in the running control, with one event and flags `160`
+(`RTC_IRQF | RTC_AF`). The next alarm was armed in both guests before QMP
+stopped them for seven host seconds. After resume, neither guest received an
+alarm during a 20-second wait. RAM and disk isolation, clone identity, and
+sibling survival still passed. The observed pause-related alarm difference is
+specific to this setup; the cause is unresolved. The probe writes the result
+and exits unsuccessfully when paused alarm delivery is absent. The Linux RTC
+interface documents `RTC_ALM_SET` plus `RTC_AIE_ON` as the alarm setup sequence
+([kernel RTC interface documentation](https://kernel.org/doc/html/latest/admin-guide/abi-testing.html));
+QEMU documents its default RTC clock as host time
+([QEMU invocation documentation](https://www.qemu.org/docs/master/system/invocation.html)).
+This probe does not establish whether another QEMU clock mode or hardware
+timer configuration behaves the same.
