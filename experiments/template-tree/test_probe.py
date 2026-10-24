@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 sys.path.insert(0, str(Path(__file__).parent))
-from probe import parse_ram_mapping
+from probe import build_child_generation_manifest, parse_ram_mapping
 
 
 class RamMappingTests(unittest.TestCase):
@@ -49,6 +49,52 @@ Private_Dirty: 4 kB
     def test_requires_a_matching_ram_mapping(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "no smaps VMA"):
             parse_ram_mapping("00400000-00401000 rw-p 0 00:00 0 [heap]\n", "/tmp/missing.img")
+
+
+class GenerationManifestTests(unittest.TestCase):
+    def test_manifest_records_hashed_artifacts_and_parent_disk_provenance(self) -> None:
+        import json
+        import tempfile
+        from hashlib import sha256
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            output = root / "tree"
+            source.mkdir()
+            output.mkdir()
+            files = {
+                source / "result.json": b"source result",
+                source / "memory.img": b"root ram",
+                source / "machine-state": b"root state",
+                source / "base.qcow2": b"root disk",
+                output / "child-memory.img": b"child ram",
+                output / "child-machine-state": b"child state",
+                output / "parent.qcow2": b"parent disk",
+            }
+            for path, content in files.items():
+                path.write_bytes(content)
+
+            manifest = build_child_generation_manifest(
+                source,
+                output,
+                memory_size_bytes=256 * 1024 * 1024,
+                qemu_version="QEMU emulator version 11.1.2",
+                qemu_command=["-machine", "q35", "-device", "virtio-net-pci"],
+            )
+            written = json.loads((output / "generation.json").read_text())
+
+            self.assertEqual(manifest, written)
+            self.assertEqual(manifest["schema_version"], 1)
+            self.assertEqual(manifest["generation_id"], "child-template")
+            self.assertEqual(manifest["parent"]["result_sha256"], sha256(b"source result").hexdigest())
+            self.assertEqual(manifest["ram"]["path"], "child-memory.img")
+            self.assertEqual(manifest["ram"]["sha256"], sha256(b"child ram").hexdigest())
+            self.assertEqual(manifest["ram"]["logical_size_bytes"], 256 * 1024 * 1024)
+            self.assertEqual(manifest["machine_state"]["sha256"], sha256(b"child state").hexdigest())
+            self.assertEqual(manifest["disk"]["backing_path"], str((source / "base.qcow2").resolve()))
+            self.assertEqual(manifest["disk"]["sha256"], sha256(b"parent disk").hexdigest())
+            self.assertEqual(manifest["qemu_command"], ["-machine", "q35", "-device", "virtio-net-pci"])
 
 
 if __name__ == "__main__":

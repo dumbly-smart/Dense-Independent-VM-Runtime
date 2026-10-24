@@ -276,6 +276,58 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def build_child_generation_manifest(
+    source_dir: Path,
+    output_dir: Path,
+    *,
+    memory_size_bytes: int,
+    qemu_version: str,
+    qemu_command: list[str],
+) -> dict[str, Any]:
+    source_dir = source_dir.resolve()
+    output_dir = output_dir.resolve()
+    source_result = source_dir / "result.json"
+    source_disk = source_dir / "base.qcow2"
+    child_ram = output_dir / "child-memory.img"
+    child_state = output_dir / "child-machine-state"
+    child_disk = output_dir / "parent.qcow2"
+    required = (source_result, source_disk, child_ram, child_state, child_disk)
+    missing = [str(path) for path in required if not path.is_file()]
+    if missing:
+        raise ValueError(f"cannot write generation manifest; artifacts are missing: {missing}")
+
+    manifest = {
+        "schema_version": 1,
+        "generation_id": "child-template",
+        "parent": {
+            "template_dir": str(source_dir),
+            "result_sha256": sha256(source_result),
+            "base_disk_sha256": sha256(source_disk),
+        },
+        "qemu_version": qemu_version,
+        "qemu_command": qemu_command,
+        "ram": {
+            "path": child_ram.name,
+            "sha256": sha256(child_ram),
+            "logical_size_bytes": memory_size_bytes,
+            "readonly_for_descendants": True,
+        },
+        "machine_state": {
+            "path": child_state.name,
+            "sha256": sha256(child_state),
+        },
+        "disk": {
+            "path": child_disk.name,
+            "sha256": sha256(child_disk),
+            "readonly_for_descendants": True,
+            "backing_path": str(source_disk),
+            "backing_sha256": sha256(source_disk),
+        },
+    }
+    (output_dir / "generation.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    return manifest
+
+
 def parse_ram_mapping(text: str, memory_path: str) -> dict[str, int]:
     records: list[dict[str, int]] = []
     fields: dict[str, int] | None = None
@@ -497,6 +549,18 @@ def run(template_dir: Path, out: Path) -> dict[str, Any]:
         "input_hashes_before": original_hashes,
         "input_hashes_unchanged": original_hashes == {str(path): sha256(path) for path in (template_ram, base_disk, machine_state)},
         "allocated_bytes": {path.name: path.stat().st_blocks * 512 for path in (child_ram, parent_disk, out / "descendant-0.qcow2", out / "descendant-1.qcow2")},
+    }
+    generation = build_child_generation_manifest(
+        template_dir,
+        out,
+        memory_size_bytes=memory_size_bytes,
+        qemu_version=result["qemu_version"],
+        qemu_command=qemu_command,
+    )
+    result["generation_manifest"] = {
+        "path": "generation.json",
+        "sha256": sha256(out / "generation.json"),
+        "generation_id": generation["generation_id"],
     }
     result["status"] = "verified" if result["input_hashes_unchanged"] else "failed"
     (out / "result.json").write_text(json.dumps(result, indent=2) + "\n")
