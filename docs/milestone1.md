@@ -24,9 +24,10 @@ The original synthetic reference record is retained below. The current
 eight-clone 0/5/10/25/50/100% buffer-divergence sweep is saved under
 `results/divergence/2026-10-24/`; the percentage is of each 32 MiB test buffer,
 not of all guest RAM. Matched 2/4/8/16 zero-divergence synthetic scale results
-are under `results/scale/2026-10-24/`. Host kernel/KVM memory overhead remains
-unmeasured. A 32-clone request was safely refused by memory preflight before
-QEMU launch, so no 32-clone measurement is claimed.
+are under `results/scale/2026-10-24/`. Two cgroup-v2 runs now report charged
+kernel and KVM secondary page-table memory, but cgroup accounting does not
+cover every host allocation. A 32-clone request was safely refused by memory
+preflight before QEMU launch, so no 32-clone measurement is claimed.
 
 Current raw results are in `results/2026-10-24/`. The combined six-guest run
 measured baseline process PSS of 1,230,793 KiB and clone PSS of 276,596 KiB

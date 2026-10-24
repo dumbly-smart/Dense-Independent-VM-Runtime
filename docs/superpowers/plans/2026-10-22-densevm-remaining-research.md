@@ -176,6 +176,7 @@ tests pass, and side-channel/operational trade-offs are documented.
 - [x] Run matched conventional and DenseVM workloads at safe counts; collect CPU, I/O, network, clone latency, PSS, disk allocation, OOM, crash, reboot, and process-kill results.
 - [x] Add bounded OOM/crash/reboot/network adversarial checks with guest memory capped and sibling liveness checked. Device/register-level coverage remains partial.
 - [x] Publish raw JSON and interpretations without treating configured RAM as physical savings.
+- [x] Add optional delegated cgroup-v2 accounting for `memory.current` and `memory.stat` at baseline and clone snapshots; collect two live runs and document page-cache/kernel-accounting limits. Evidence: `results/2026-10-24/cgroup-memory-summary.json`.
 - [x] Commit workloads, results, and semantic status updates.
 
 ### Task 9: Close project status and defer unsupported research branches honestly
