@@ -61,6 +61,19 @@ parent path is absolute, so the manifest is provenance for this experiment
 and is not yet a relocatable template package. Run 3 preserves the prior v1
 manifest; run 4 demonstrates the v2 content-addressed schema.
 
+To check a complete experiment directory before reusing its child template,
+validate the manifest beside the artifacts:
+
+```sh
+python3 experiments/template-tree/probe.py \
+  --validate-manifest /path/to/new-tree-experiment/generation.json
+```
+
+The validator checks the child artifact hashes, the recorded parent artifacts,
+the backing-image relationship, and the v2 content-derived generation ID. The
+small raw evidence copies under `results/` intentionally omit the large RAM
+and qcow2 artifacts, so validate the original experiment directory.
+
 ## Measurements
 
 Two repeated runs on QEMU 11.1.2 / Linux 7.2.11 used a synthetic 256 MiB KVM
