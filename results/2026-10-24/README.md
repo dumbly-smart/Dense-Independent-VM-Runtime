@@ -102,3 +102,31 @@ is the paired harness's read-only preflight record. It found `/sys/kernel/mm/ksm
 at `0` and not writable by this user, so it stopped before launching either
 probe. No KSM setting changed and no positive KSM merge data is claimed. The
 runner and comparison format are documented in [`docs/ksm-experiment.md`](../../docs/ksm-experiment.md).
+
+## Timerfd samples around parking
+
+[`parking-timerfd-2-run1.json`](parking-timerfd-2-run1.json) and
+[`parking-timerfd-2-run2.json`](parking-timerfd-2-run2.json) are repeated
+two-clone synthetic probes with a one-second QMP pause. Across the four guest
+samples, realtime advanced 7–15 ms and `/proc/uptime` advanced 0–20 ms. A
+10 ms-period guest `CLOCK_MONOTONIC` timerfd accumulated 1–3 expirations
+between the pre-pause and post-resume reads. Each result also verifies zero
+QEMU CPU ticks while parked, successful resume, and RAM/disk isolation. The
+post-resume counts include guest and serial-command execution after resume;
+they do not establish whether expirations occurred during the pause or measure
+APIC interrupt counts. Hardware RTC behavior remains unmeasured. The OOM
+workload was explicitly skipped in these timing-focused runs.
+
+## Timerfd samples around parking
+
+[`parking-timerfd-2-run1.json`](parking-timerfd-2-run1.json) and
+[`parking-timerfd-2-run2.json`](parking-timerfd-2-run2.json) are repeated
+two-clone synthetic probes with a one-second QMP pause. Across the four guest
+samples, realtime advanced 7–15 ms and `/proc/uptime` advanced 0–20 ms. A
+10 ms-period guest `CLOCK_MONOTONIC` timerfd accumulated 1–3 expirations
+between the pre-pause and post-resume reads. Each result also verifies zero
+QEMU CPU ticks while parked, successful resume, and RAM/disk isolation. The
+post-resume counts include guest and serial-command execution after resume;
+they do not establish whether expirations occurred during the pause or measure
+APIC interrupt counts. Hardware RTC behavior remains unmeasured. The OOM
+workload was explicitly skipped in these timing-focused runs.
