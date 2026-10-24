@@ -42,9 +42,12 @@ isolation probe (`results/isolation/2026-10-24/`), matched synthetic
 2/4/8/16-clone scale data, and the controlled six-point divergence sweep. Across
 two approximately one-second QMP pause samples, guest clocks advanced 0–20 ms.
 The timerfd probe observed 1–3 10 ms-period expirations between reads before
-pause and after resume; it does not isolate expiry timing during pause or count
-APIC interrupts. Hardware RTC, broader OpenSSH/DHCP distro behavior, userspace
-random-state refresh, and total kernel memory remain unverified.
+pause and after resume. A follow-up read of Linux's aggregate `LOC` counter
+showed 18–21 local timer interrupts, and `rtc0/since_epoch` advanced one
+second. These reads happen after resume and do not identify which events were
+delivered during the pause; RTC alarm behavior remains unknown. Broader
+OpenSSH/DHCP distro behavior, userspace random-state refresh, and total kernel
+memory remain unverified.
 See `docs/semantic-differences.md` for the status table.
 
 ## Historical synthetic reference
@@ -89,6 +92,7 @@ cryptographic entropy. The current guest path uses fresh host-kernel entropy
 and forces guest CRNG reseeding before identity/network preparation. The
 default Alpine profile has no SSH server or DHCP client; its opt-in identity
 profile covers OpenSSH key rotation, BusyBox DHCP identity, and the tested
-guest kernel's VMGenID response. Timerfd samples are available for pause/resume,
-while direct APIC timer delivery, hardware RTC behavior, and kernel page-table
-accounting remain unverified in `docs/semantic-differences.md`.
+guest kernel's VMGenID response. Timerfd, local-timer interrupt counters, and
+RTC epoch are sampled around pause/resume, while exact in-pause interrupt
+delivery, RTC alarm behavior, and kernel page-table accounting remain
+unverified in `docs/semantic-differences.md`.

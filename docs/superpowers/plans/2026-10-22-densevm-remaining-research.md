@@ -137,8 +137,9 @@ tests pass, and side-channel/operational trade-offs are documented.
 
 - [x] Test failed stop and failed resume states, plus child cleanup that affects only owned QEMU processes.
 - [x] Run state-transition tests and verify unexpected states are surfaced.
-- [x] Measure idle and explicitly parked clones over equal intervals, resume latency, guest wall-clock, and `/proc/uptime` around a pause. Timerfd samples were added separately; hardware RTC and expiration timing within the pause remain unknown.
-- [x] Add a guest `CLOCK_MONOTONIC` timerfd counter and collect pre-pause/post-resume expiration samples in repeated live two-clone runs. The samples do not isolate expiration delivery during the paused interval or count APIC interrupts; hardware RTC remains unknown.
+- [x] Measure idle and explicitly parked clones over equal intervals, resume latency, guest wall-clock, and `/proc/uptime` around a pause. Timerfd and RTC epoch samples were added separately; RTC alarm behavior and expiration timing within the pause remain unknown.
+- [x] Add a guest `CLOCK_MONOTONIC` timerfd counter and collect pre-pause/post-resume expiration samples in repeated live two-clone runs. The samples do not isolate expiration delivery during the paused interval or count APIC interrupts; RTC alarm behavior remains unknown.
+- [x] Record guest `/proc/interrupts` local-timer (`LOC`) totals and RTC `since_epoch` before pause and after resume. The tested QEMU RTC epoch advanced with wall time; exact in-pause interrupt delivery and RTC alarm behavior remain unknown.
 - [x] State clearly that parking is not semantically equivalent to continuous execution; automatic detection and packet wake remain out of scope.
 - [x] Commit code, data, and documentation.
 

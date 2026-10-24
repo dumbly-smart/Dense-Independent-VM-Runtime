@@ -43,8 +43,13 @@ accounted here.
 
 Pass `--park-idle` to stop every restored guest through QMP, sample QEMU
 process CPU ticks while paused, explicitly resume each guest, and check that
-the guests answer again. A measured one-second pause advanced guest wall time
-and `/proc/uptime` by only 8–10 ms on QEMU 11.1.2 / Linux 7.2.11; periodic
-timer interrupt delivery and hardware RTC behavior remain unmeasured. Parking
+the guests answer again. Repeated samples on QEMU 11.1.2 / Linux 7.2.11 record
+guest realtime, uptime, timerfd expirations, aggregate local-timer (`LOC`)
+interrupts, and the RTC epoch around a pause. Realtime advanced 7–8 ms and
+uptime 0–10 ms around a one-second host pause; RTC epoch advanced one second.
+The post-resume reads include activity after the pause and do not reveal when
+timer interrupts were delivered. RTC alarm behavior remains unmeasured. Parking
 changes timing semantics. The control is explicit; there is no automatic idle
-detector or packet-triggered wakeup.
+detector or packet-triggered wakeup. Raw samples:
+`results/2026-10-24/parking-clock-devices-2-run1.json` and
+`parking-clock-devices-2-run2.json`.

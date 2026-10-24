@@ -8,7 +8,7 @@ The tested Alpine kernel logged its VMGenID-triggered CRNG reseed after clone
 restore. Existing userspace PRNG caches, arbitrary service identity caches, and
 userspace random-state caches still require separate tests. Two synthetic
 guests also have timerfd counter samples around pause/resume; they do not
-isolate timer delivery during the pause or establish hardware RTC behavior.
+isolate timer delivery during the pause or establish RTC alarm behavior.
 See `examples/alpine/README.md`.
 
 Update, 2026-10-24: the current synthetic guest receives a fresh host-kernel
@@ -48,7 +48,7 @@ distribution. Current synthetic probes use QEMU/KVM 11.1.2 on Linux 7.2.11.
 | Disk mutations isolated | YES | YES | The six-guest run checked separate overlay writes and filled a bounded test-file region without sibling changes. |
 | Shared disk backing | optional | YES | `qemu-img info --backing-chain` resolved both overlays to one qcow2 base. |
 | Independent vCPU/register state | YES | UNKNOWN | Separate KVM/QEMU instances restore VMState, but no register-level adversarial test yet. |
-| Independent virtual device state | YES | PARTIAL | Separate QMP, serial, block and hotplugged NIC observed; timer/interrupt behavior untested. |
+| Independent virtual device state | YES | PARTIAL | Separate QMP, serial, block and hotplugged NIC observed. Guest timerfd, aggregate `/proc/interrupts` `LOC`, and RTC epoch counters are sampled around pause/resume; exact interrupt timing/state and RTC alarm delivery remain untested. |
 | Unique MAC visible inside guest | YES | YES | Guest sysfs returned distinct MACs after NIC hotplug. Launch-time MAC changes alone failed because migration restored the template MAC. |
 | Unique vmgenid in QEMU | optional | YES | QMP returned distinct GUIDs for template and clones. |
 | Guest VMGenID response | expected | YES for tested Linux kernel | Each Alpine clone logged one `crng reseeded due to virtual machine fork` event after restore, compared with the template baseline and before explicit host entropy injection. This verifies the tested kernel's VMGenID response, not userspace RNG consumers. |
@@ -61,7 +61,7 @@ distribution. Current synthetic probes use QEMU/KVM 11.1.2 on Linux 7.2.11.
 | Shared virtual Ethernet segment | optional | YES | Six separate virtio NICs use a QEMU socket multicast backend bound to host loopback; targets respond before and after T1 is killed. This is a shared range network, not host-user isolation. |
 | Guest network throughput | workload-dependent | PARTIAL | A 64 KiB UDP request burst completed with 0% observed loss in 1,241 µs. This is a short guest-to-guest sample on a local multicast backend, not host NIC line rate. |
 | Guest disk write+sync latency | workload-dependent | PARTIAL | A two-VM Alpine run recorded 16 × 4 KiB ext4 writes with `fdatasync`; p95 values varied from 735 to 3,102 µs across four guests. The small sample is not a performance conclusion. |
-| Independent wall clock/timers | YES | PARTIAL | Two repeated two-clone runs around an approximately one-second QMP pause measured realtime deltas of 7–15 ms and `/proc/uptime` deltas of 0–20 ms. A guest `CLOCK_MONOTONIC` timerfd with a 10 ms period accumulated 1–3 expirations between the pre-pause and post-resume reads. The post-resume counts include serial and guest execution after resume; they do not show when each expiration occurred or directly count APIC interrupts. Hardware RTC behavior remains UNKNOWN. Raw records: `results/2026-10-24/parking-timerfd-2-run1.json` and `parking-timerfd-2-run2.json`. |
+| Independent wall clock/timers | YES | PARTIAL | Two repeated two-clone runs around an approximately one-second QMP pause measured realtime deltas of 7–8 ms and `/proc/uptime` deltas of 0–10 ms. Each guest's RTC `since_epoch` advanced 1 second. The aggregate `LOC` counter advanced 18–21 and a 10 ms guest `CLOCK_MONOTONIC` timerfd accumulated 2 expirations between pre-pause and post-resume reads. Post-resume samples include guest/serial activity and cannot locate when events were delivered during the pause. RTC alarm behavior and per-vCPU interrupt state remain UNKNOWN. Raw records: `results/2026-10-24/parking-clock-devices-2-run1.json` and `parking-clock-devices-2-run2.json`. |
 | Explicit idle parking | optional | PARTIAL | Six paused QEMU processes accumulated zero CPU ticks over one second and resumed in 6 ms total. The guest clock sample shows guest time nearly stops during this interval; parking changes time semantics. |
 | Kernel and KVM memory overhead included in result | applicable | UNKNOWN | Process PSS and template file cache residency are measured; kernel metadata is not isolated. |
 
