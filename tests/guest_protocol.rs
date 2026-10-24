@@ -84,6 +84,16 @@ fn formats_guest_rtc_time_for_alarm_diagnostics() {
     assert_eq!(guest_init::rtc_time_of_day(7, 3, 9), "07:03:09");
 }
 
+#[test]
+fn extracts_rtc_alarm_enabled_and_pending_driver_fields() {
+    assert_eq!(
+        guest_init::rtc_alarm_driver_status(
+            "rtc_time : 07:59:00\nalarm_IRQ : yes\nalrm_pending : no\n24hr : yes\n"
+        ),
+        "alarm_IRQ : yes; alrm_pending : no"
+    );
+}
+
 fn dhcp_frame(source_port: u16, destination_port: u16, client_id: Option<&[u8]>) -> Vec<u8> {
     let mut dhcp = vec![0u8; 240];
     dhcp[0] = 1;

@@ -115,6 +115,15 @@ pub fn rtc_time_of_day(hour: i32, minute: i32, second: i32) -> String {
     format!("{hour:02}:{minute:02}:{second:02}")
 }
 
+pub fn rtc_alarm_driver_status(contents: &str) -> String {
+    contents
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("alarm_IRQ") || line.starts_with("alrm_pending"))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
 fn mount_fs(source: &str, target: &str, kind: &str) {
     fs::create_dir_all(target).expect("create mount point");
     let source = CString::new(source).unwrap();
@@ -570,8 +579,11 @@ fn rtc_alarm_diagnostics(file: &File) -> String {
     if now_result < 0 || alarm_result < 0 {
         return format!("diagnostic_error={}", std::io::Error::last_os_error());
     }
+    let driver_alarm = fs::read_to_string("/proc/driver/rtc")
+        .map(|contents| rtc_alarm_driver_status(&contents))
+        .unwrap_or_else(|error| format!("driver_status_error={error}"));
     format!(
-        "rtc_now={} rtc_alarm={}",
+        "rtc_now={} rtc_alarm={} {driver_alarm}",
         rtc_time_of_day(now.hour, now.minute, now.second),
         rtc_time_of_day(alarm.hour, alarm.minute, alarm.second)
     )

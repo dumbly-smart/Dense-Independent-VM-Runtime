@@ -217,6 +217,8 @@ fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
                 .unwrap();
             assert!(response.contains("rtc_now="));
             assert!(response.contains("rtc_alarm="));
+            assert!(response.contains("alarm_IRQ"));
+            assert!(response.contains("alrm_pending"));
         }
     }
     if status.success() {
