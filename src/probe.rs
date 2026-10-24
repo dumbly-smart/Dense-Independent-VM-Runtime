@@ -396,6 +396,20 @@ mod login_tests {
     }
 
     #[test]
+    fn qemu_register_snapshot_preserves_the_full_monitor_text() {
+        let monitor_text = "CPU#0\nRAX=00000000000000aa CR0=0000000080010033\n";
+        let (mut qmp, server, path) = scripted_qmp(vec![(
+            "human-monitor-command",
+            json!({"return":monitor_text}),
+        )]);
+        let (registers, captured_text) = qemu_register_snapshot(&mut qmp).unwrap();
+        assert_eq!(registers["RAX"], 0xaa);
+        assert_eq!(captured_text, monitor_text);
+        server.join().unwrap();
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn parses_disk_io_benchmark_fields_as_numbers() {
         let result = parse_disk_benchmark(
             "DISK-BENCH iterations=16 block_bytes=4096 mean_us=120 p50_us=100 p95_us=301",
@@ -1196,7 +1210,9 @@ fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u6
     Ok(registers)
 }
 
-fn qemu_gprs(qmp: &mut Qmp) -> Result<std::collections::BTreeMap<String, u64>, String> {
+fn qemu_register_snapshot(
+    qmp: &mut Qmp,
+) -> Result<(std::collections::BTreeMap<String, u64>, String), String> {
     let output = qmp.execute(
         "human-monitor-command",
         Some(json!({"command-line":"info registers"})),
@@ -1204,7 +1220,7 @@ fn qemu_gprs(qmp: &mut Qmp) -> Result<std::collections::BTreeMap<String, u64>, S
     let output = output
         .as_str()
         .ok_or("QMP human-monitor-command returned non-text register output")?;
-    parse_qemu_gprs(output)
+    Ok((parse_qemu_gprs(output)?, output.to_string()))
 }
 
 fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool, String> {
@@ -1638,8 +1654,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         )?;
         stop_and_verify(&mut aq)?;
         stop_and_verify(&mut bq)?;
-        let a_vcpu_registers = qemu_gprs(&mut aq)?;
-        let b_vcpu_registers = qemu_gprs(&mut bq)?;
+        let (a_vcpu_registers, a_vcpu_register_text) = qemu_register_snapshot(&mut aq)?;
+        let (b_vcpu_registers, b_vcpu_register_text) = qemu_register_snapshot(&mut bq)?;
         let differing_vcpu_registers: Vec<_> = a_vcpu_registers
             .iter()
             .filter_map(|(name, a_value)| {
@@ -1664,8 +1680,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                 "status":if verified {"verified"} else {"failed"},
                 "capture":"QMP human-monitor-command info registers while each clone was paused",
                 "workload":"guest CPU arithmetic with clone-specific seed, stopped after both workloads announced readiness",
-                "a":{"seed":a_register_seed,"registers":a_vcpu_registers,"workload_done":a_register_workload_done},
-                "b":{"seed":b_register_seed,"registers":b_vcpu_registers,"workload_done":b_register_workload_done},
+                "a":{"seed":a_register_seed,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"workload_done":a_register_workload_done},
+                "b":{"seed":b_register_seed,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"workload_done":b_register_workload_done},
                 "differing_general_purpose_registers":differing_vcpu_registers
             }),
         )
