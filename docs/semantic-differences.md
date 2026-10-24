@@ -31,9 +31,9 @@ and host crashes cannot run cleanup. Restore errors are reported. Restoring
 the scanner ran. KSM can introduce cross-VM content/timing side channels and
 CPU scanning cost; use only within an appropriate trust boundary.
 
-`YES` below means the named behavior was observed in the synthetic two-clone
-experiment. `UNKNOWN` means the behavior remains untested for an ordinary
-Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
+`YES` below means the named behavior was observed in a recorded DenseVM probe.
+`UNKNOWN` means the behavior remains untested for an ordinary Linux
+distribution. Current synthetic probes use QEMU/KVM 11.1.2 on Linux 7.2.11.
 
 | Property | Conventional VM | DenseVM probe | Evidence or limit |
 | --- | --- | --- | --- |
@@ -51,6 +51,7 @@ Linux distribution. The reference is QEMU/KVM 11.1.1 on Linux 7.2.6.
 | Independent DHCP identity/IP | expected | PARTIAL | Range guests receive unique static IPs and pass client-to-target UDP checks. DHCP identity and lease behavior remain untested. |
 | Separate guest process state | YES | YES | Range starts a process only in T1; every sibling reports zero matching processes. |
 | Guest reboot isolation | YES | YES | Rebooting target A exits its QEMU process under `-no-reboot`; B remains responsive. |
+| Guest kernel crash isolation | YES | YES | A three-clone synthetic run triggered a SysRq kernel panic in one guest, observed the panic on serial and QMP/QEMU survival, and verified the other clones remained responsive. Ordinary distribution crash behavior remains untested. |
 | Shared virtual Ethernet segment | optional | YES | Six separate virtio NICs use a QEMU socket multicast backend bound to host loopback; targets respond before and after T1 is killed. This is a shared range network, not host-user isolation. |
 | Guest network throughput | workload-dependent | PARTIAL | A 64 KiB UDP request burst completed with 0% observed loss in 1,241 µs. This is a short guest-to-guest sample on a local multicast backend, not host NIC line rate. |
 | Guest disk write+sync latency | workload-dependent | PARTIAL | A two-VM Alpine run recorded 16 × 4 KiB ext4 writes with `fdatasync`; p95 values varied from 735 to 3,102 µs across four guests. The small sample is not a performance conclusion. |
