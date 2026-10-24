@@ -503,6 +503,26 @@ mod login_tests {
         );
         assert!(parse_guest_clock("CLOCK realtime_ms=1").is_err());
     }
+
+    #[test]
+    fn accepts_absent_ssh_keys_and_rejects_duplicated_present_keys() {
+        let absent = vec![
+            "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY ABSENT".to_string(),
+            "IDENTITY b densevm-b RNG-RESEEDED | SSH-IDENTITY ABSENT".to_string(),
+        ];
+        assert!(ssh_identities_are_unique(&absent));
+        let unique = vec![
+            "IDENTITY a densevm-a RNG-RESEEDED | SSH-IDENTITY SHA256:first".to_string(),
+            "IDENTITY b densevm-b RNG-RESEEDED | SSH-IDENTITY SHA256:second".to_string(),
+        ];
+        assert!(ssh_identities_are_unique(&unique));
+        let duplicate = vec![unique[0].clone(), unique[0].clone()];
+        assert!(!ssh_identities_are_unique(&duplicate));
+        assert!(!ssh_identities_are_unique(&[
+            unique[0].clone(),
+            absent[1].clone()
+        ]));
+    }
 }
 
 fn launch(
@@ -1096,6 +1116,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
 
     let mut baseline_vms = Vec::new();
     let mut baseline_serials = Vec::new();
+    let mut baseline_identity_guests = Vec::with_capacity(count as usize);
     let baseline_start = Instant::now();
     for index in 0..count {
         let name = format!("baseline-{index:03}");
@@ -1119,7 +1140,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
-        prepare_identity(&mut serial, &baseline_identity)?;
+        baseline_identity_guests.push(prepare_identity(&mut serial, &baseline_identity)?);
         baseline_serials.push(serial);
         baseline_vms.push(vm);
     }
@@ -1138,7 +1159,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut baseline_measurements = Vec::new();
     for (index, vm) in baseline_vms.iter().enumerate() {
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
-        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":baseline_cpu_ticks[index],"active_cpu_ticks":baseline_active_cpu_ticks[index],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(baseline_active_cpu_ticks[index], baseline_active_cpu_sample_interval_ms, ticks_per_second),"disk_benchmark":if guest.disk.is_some(){json!(baseline_disk_benchmark[index])}else{Value::Null},"disk_allocated_bytes":allocated_bytes(&disk)?}));
+        baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"identity_guest":baseline_identity_guests[index],"idle_cpu_ticks":baseline_cpu_ticks[index],"active_cpu_ticks":baseline_active_cpu_ticks[index],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(baseline_active_cpu_ticks[index], baseline_active_cpu_sample_interval_ms, ticks_per_second),"disk_benchmark":if guest.disk.is_some(){json!(baseline_disk_benchmark[index])}else{Value::Null},"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
     drop(baseline_serial_refs);
     drop(baseline_serials);
@@ -1341,6 +1362,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     add_nic(&mut aq, &clone_identities[0].mac)?;
     add_nic(&mut bq, &clone_identities[1].mac)?;
     let mut guest_identities = vec![a_identity_guest.clone(), b_identity_guest.clone()];
+    let mut clone_identity_guests = vec![a_identity_guest.clone(), b_identity_guest.clone()];
     let mut identity_unique = identity_matches(&a_identity_guest, &a_identity)
         && identity_matches(&b_identity_guest, &b_identity)
         && a_identity_guest != b_identity_guest;
@@ -1354,9 +1376,16 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         identity_unique &= identity_matches(identity_guest, &expected_identity)
             && !guest_identities.contains(identity_guest);
         guest_identities.push(identity_guest.clone());
+        clone_identity_guests.push(identity_guest.clone());
         vmgenid_unique &= !all_vmgenids.iter().any(|existing| existing == vmgenid);
         all_vmgenids.push(vmgenid.clone());
     }
+    let mut all_ssh_identity_guests = baseline_identity_guests.clone();
+    all_ssh_identity_guests.extend(clone_identity_guests.iter().cloned());
+    let ssh_host_keys_unique = ssh_identities_are_unique(&all_ssh_identity_guests);
+    let ssh_host_keys_present = all_ssh_identity_guests
+        .iter()
+        .any(|reply| ssh_identity_value(reply).is_some_and(|value| value != "ABSENT"));
     let a_mac_guest = aserial.command("mac-read", "MAC ")?;
     let b_mac_guest = bserial.command("mac-read", "MAC ")?;
     let mut range_before_verified = !range;
@@ -1787,6 +1816,11 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "all_guests_survived":guests_survive_oom_pressure,
         "isolation_verified":guest_oom_isolation_verified
     });
+    result["ssh_host_keys"] = json!({
+        "present":ssh_host_keys_present,
+        "unique":ssh_host_keys_unique,
+        "identity_responses":all_ssh_identity_guests
+    });
     result["surviving_clones_verified"] = json!(surviving_clones_verified);
     result["a_guest_reboot_observed"] = json!(a_reboot_observed);
     result["a_reboot_process_exited"] = json!(a_reboot_process_status.is_some());
@@ -1802,6 +1836,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && template_ram_unchanged
         && all_macs_unique
         && identity_unique
+        && ssh_host_keys_unique
         && vmgenid_unique
         && extra_guest_isolation
         && full_disk_isolation
@@ -1831,15 +1866,43 @@ fn prepare_identity(serial: &mut Serial, identity: &CloneIdentity) -> Result<Str
         &format!("identity-set {}", identity.machine_id),
         "IDENTITY-SET ",
     )?;
-    serial.command("identity-read", "IDENTITY ")
+    let guest_identity = serial.command("identity-read", "IDENTITY ")?;
+    let ssh_identity = serial.command("ssh-identity-read", "SSH-IDENTITY ")?;
+    Ok(format!("{guest_identity} | {ssh_identity}"))
 }
 
 fn identity_matches(reply: &str, identity: &str) -> bool {
-    reply
+    let Some((guest_identity, ssh_identity)) = reply.split_once(" | ") else {
+        return false;
+    };
+    guest_identity
         == format!(
             "IDENTITY {identity} densevm-{} RNG-RESEEDED",
             &identity[..12]
         )
+        && ssh_identity.starts_with("SSH-IDENTITY ")
+}
+
+fn ssh_identity_value(reply: &str) -> Option<&str> {
+    reply.split_once(" | ")?.1.strip_prefix("SSH-IDENTITY ")
+}
+
+fn ssh_identities_are_unique(replies: &[String]) -> bool {
+    let Some(values) = replies
+        .iter()
+        .map(|reply| ssh_identity_value(reply))
+        .collect::<Option<Vec<_>>>()
+    else {
+        return false;
+    };
+    if values.iter().all(|value| *value == "ABSENT") {
+        return true;
+    }
+    if values.iter().any(|value| *value == "ABSENT") {
+        return false;
+    }
+    let unique = values.iter().collect::<std::collections::HashSet<_>>();
+    unique.len() == values.len()
 }
 
 pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {

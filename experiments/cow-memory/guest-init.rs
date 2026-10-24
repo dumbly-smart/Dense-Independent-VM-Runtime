@@ -350,6 +350,72 @@ fn set_identity(value: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+fn ssh_host_key_paths() -> std::io::Result<Vec<std::path::PathBuf>> {
+    let directory = std::path::Path::new("/etc/ssh");
+    if !directory.exists() {
+        return Ok(Vec::new());
+    }
+    Ok(fs::read_dir(directory)?
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
+                name.starts_with("ssh_host_") && (name.ends_with("_key") || name.ends_with("_key.pub"))
+            })
+        })
+        .collect())
+}
+
+fn rotate_ssh_host_keys() -> std::io::Result<()> {
+    let existing = ssh_host_key_paths()?;
+    let server_installed = std::path::Path::new("/usr/sbin/sshd").exists();
+    if existing.is_empty() && !server_installed {
+        return Ok(());
+    }
+    for path in existing {
+        fs::remove_file(path)?;
+    }
+    let output = std::process::Command::new("ssh-keygen").arg("-A").output()?;
+    if !output.status.success() {
+        return Err(std::io::Error::other(format!(
+            "ssh-keygen -A failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    if server_installed && ssh_host_key_paths()?.is_empty() {
+        return Err(std::io::Error::other("sshd is installed but no host keys were regenerated"));
+    }
+    Ok(())
+}
+
+fn ssh_host_key_identity() -> std::io::Result<String> {
+    let paths = ssh_host_key_paths()?
+        .into_iter()
+        .filter(|path| path.extension().is_some_and(|extension| extension == "pub"))
+        .collect::<Vec<_>>();
+    if paths.is_empty() {
+        return Ok("SSH-IDENTITY ABSENT".to_string());
+    }
+    let mut fingerprints = Vec::new();
+    for path in paths {
+        let output = std::process::Command::new("ssh-keygen").args(["-lf"]).arg(path).output()?;
+        if !output.status.success() {
+            return Err(std::io::Error::other(format!(
+                "ssh-keygen fingerprint failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )));
+        }
+        let output = String::from_utf8_lossy(&output.stdout);
+        let fingerprint = output
+            .split_whitespace()
+            .find(|field| field.starts_with("SHA256:"))
+            .ok_or_else(|| std::io::Error::other("ssh-keygen returned no SHA256 fingerprint"))?;
+        fingerprints.push(fingerprint.to_string());
+    }
+    fingerprints.sort();
+    Ok(format!("SSH-IDENTITY {}", fingerprints.join(",")))
+}
+
 fn reseed(value: &str) -> std::io::Result<()> {
     if value.len() != 64 || !value.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "expected 32 bytes of host entropy"));
@@ -545,12 +611,19 @@ fn main() {
             },
             ["identity-set", _] if !prepared => "ERROR reseed required before identity preparation".to_string(),
             ["identity-set", value] => match set_identity(value) {
-                Ok(()) => format!("IDENTITY-SET {value}"),
+                Ok(()) => match rotate_ssh_host_keys() {
+                    Ok(()) => format!("IDENTITY-SET {value}"),
+                    Err(error) => format!("ERROR SSH host key rotation: {error}"),
+                },
                 Err(error) => format!("ERROR identity set: {error}"),
             },
             ["identity-read"] => match read_identity(prepared) {
                 Ok(value) => value,
                 Err(error) => format!("ERROR identity read: {error}"),
+            },
+            ["ssh-identity-read"] => match ssh_host_key_identity() {
+                Ok(value) => value,
+                Err(error) => format!("ERROR SSH identity read: {error}"),
             },
             ["mac-read"] => {
                 let mut address = None;
