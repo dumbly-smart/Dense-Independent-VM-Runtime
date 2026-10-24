@@ -339,6 +339,41 @@ mod login_tests {
         assert_eq!(result["p95_us"], 301);
         assert!(parse_disk_benchmark("DISK-BENCH iterations=bad").is_err());
     }
+
+    #[test]
+    fn rejects_qcow2_overlay_with_stale_backing_path() {
+        let overlay = Path::new("/tmp/densevm/clone-000.qcow2");
+        let base = Path::new("/tmp/densevm/base.qcow2");
+        let chain = json!([
+            {
+                "filename":overlay.display().to_string(),
+                "format":"qcow2",
+                "full-backing-filename":"/tmp/old-template/base.qcow2",
+                "backing-filename-format":"qcow2"
+            },
+            {"filename":base.display().to_string(),"format":"qcow2"}
+        ]);
+        assert!(verify_backing_chain(&chain, overlay, base).is_err());
+    }
+
+    #[test]
+    fn accepts_only_the_requested_overlay_and_base_chain() {
+        let overlay = Path::new("/tmp/densevm/clone-000.qcow2");
+        let base = Path::new("/tmp/densevm/base.qcow2");
+        let chain = json!([
+            {
+                "filename":overlay.display().to_string(),
+                "format":"qcow2",
+                "full-backing-filename":base.display().to_string(),
+                "backing-filename-format":"qcow2"
+            },
+            {"filename":base.display().to_string(),"format":"qcow2"}
+        ]);
+        assert!(verify_backing_chain(&chain, overlay, base).is_ok());
+        assert!(
+            verify_backing_chain(&chain, Path::new("/tmp/densevm/clone-001.qcow2"), base).is_err()
+        );
+    }
 }
 
 fn launch(
@@ -653,7 +688,13 @@ fn verify_backing(overlay: &Path, base: &Path) -> Result<(), String> {
             .arg(overlay),
     )?;
     let chain: Value = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
-    if chain[0]["filename"] != overlay.to_string_lossy().as_ref()
+    verify_backing_chain(&chain, overlay, base)
+}
+
+fn verify_backing_chain(chain: &Value, overlay: &Path, base: &Path) -> Result<(), String> {
+    if !chain.is_array()
+        || chain.as_array().is_none_or(|items| items.len() != 2)
+        || chain[0]["filename"] != overlay.to_string_lossy().as_ref()
         || chain[0]["format"] != "qcow2"
         || chain[0]["full-backing-filename"] != base.to_string_lossy().as_ref()
         || chain[0]["backing-filename-format"] != "qcow2"
