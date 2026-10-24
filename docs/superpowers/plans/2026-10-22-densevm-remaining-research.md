@@ -192,6 +192,6 @@ tests pass, and side-channel/operational trade-offs are documented.
 - Produces: status matrix separating implemented, experimentally demonstrated, unknown, and deferred work.
 
 - [x] Cross-check project requirements against live results, automated tests, or explicit unknown/deferred status.
-- [x] Mark template trees and TCG execution-code sharing deferred; no measurement currently justifies implementation.
+- [x] Measure a bounded two-generation template-tree migration/COW proof after one-level COW passed; defer persistent tree management and TCG execution-code sharing pending broader compatibility evidence.
 - [x] Run formatting, the full unit/integration suite, and all three available safe KVM integration tests; list unavailable host/image prerequisites in the status documents.
 - [x] Commit the final evidence-backed status.

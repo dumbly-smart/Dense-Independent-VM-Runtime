@@ -1,0 +1,100 @@
+# Two-generation template-tree experiment
+
+`experiments/template-tree/probe.py` tests whether a diverged private clone can
+be materialized as a second immutable RAM and disk template using QEMU's
+migration machinery. It consumes a completed DenseVM probe output, creates one
+parent clone, writes one RAM test region and one disk file, migrates that
+stopped clone into a new QEMU process backed by a fresh writable
+`memory-backend-file`, saves the child's non-RAM VMState, then restores two
+descendants from the new RAM file and disk layer.
+
+The experiment keeps the two migration roles distinct:
+
+1. The parent clone is restored with `x-ignore-shared=on`, because its unchanged
+   RAM comes from its parent template.
+2. Before exporting the parent as a new generation, the experiment turns
+   `x-ignore-shared` off. This transfer must carry the parent's complete guest
+   RAM, including pages private to that clone.
+3. The child template is restored into a fresh file-backed RAM image with
+   `share=on,readonly=off`. After it is stopped, `x-ignore-shared=on` writes a
+   compact machine/device state while leaving the now-complete shared RAM in
+   that file.
+4. Descendants map the child RAM file privately and read it with
+   `share=off,readonly=on,rom=off`. Their disk overlays use the parent's
+   read-only qcow2 overlay as backing, which itself points to the original
+   immutable base.
+
+QEMU's migration documentation describes migration as saving and restoring
+device state and requires compatible source and destination machine
+configurations. DenseVM records and reuses the same machine type and device
+graph for this proof. The experiment is therefore a measured migration path,
+not hand-written serialization of QEMU state. See the [QEMU 11.1.2 migration
+framework documentation](https://qemu.readthedocs.io/en/v11.1.2/devel/migration/main.html).
+
+## Reproduce
+
+Build a regular template with `densevm probe`, then pass that output directory
+to the experiment. It refuses an existing output path, less than 2 GiB of
+available host memory, or less than 1 GiB of free disk space. Use a disk-backed
+filesystem for both input and output.
+
+```sh
+cargo build
+cargo run -- probe --count 2 --skip-guest-oom --out /path/to/root-template
+python3 experiments/template-tree/probe.py \
+  --template-dir /path/to/root-template \
+  --out /path/to/new-tree-experiment
+```
+
+The experiment writes its QEMU logs, child RAM file, child machine-state file,
+qcow2 overlays, and a machine-readable `result.json` into the new output
+directory. It checks input template hashes before and after the run, verifies
+the qcow2 backing chain, samples the exact child-RAM VMA from each QEMU
+process's `smaps`, and fails unless the descendants initially map resident
+shared pages and A's RAM write increases A's private dirty pages.
+
+## Measurements
+
+Two repeated runs on QEMU 11.1.2 / Linux 7.2.11 used a synthetic 256 MiB KVM
+template with a 64 MiB virtual disk and two descendants. Both runs observed
+parent RAM and disk markers (`73`) after child-template creation. Descendant A
+then changed both markers to `91`; descendant B continued reading `73` for
+both RAM and disk. The root template's RAM, base disk, and machine-state hashes
+were unchanged.
+
+| Measurement | Run 1 | Run 2 |
+| --- | ---: | ---: |
+| Descendant A RAM-map PSS before → after A's write | 9,220 → 42,942 KiB | 9,154 → 44,688 KiB |
+| Descendant B RAM-map PSS before → after A's write | 8,900 → 9,854 KiB | 8,898 → 9,886 KiB |
+| A private dirty RAM-map pages before → after | 1,260 → 34,268 KiB | 1,192 → 36,104 KiB |
+| B private dirty RAM-map pages before → after A's write | 940 → 1,180 KiB | 936 → 1,308 KiB |
+| Child RAM file allocated storage | 159,383,552 bytes | recorded in raw result |
+| Parent qcow2 overlay allocated storage | 331,776 bytes | recorded in raw result |
+
+The shared dirty page counts in each process's `smaps` describe that process's
+mapping; do not add them as if they were disjoint physical pages. PSS provides
+the per-process proportional measurement. The QEMU migration statistics show
+approximately 136.7 MB transferred when materializing the parent generation
+and about 310 KB for the child's non-RAM machine-state snapshot. `qemu-img
+check` passed on both descendant overlays in the first successful run; each
+overlay's backing chain resolved through the parent overlay to the original
+base image.
+
+Each generation also received a different machine-id and hostname after
+reseed. This synthetic profile has no SSH server, NIC, or DHCP client, so
+identity behavior for those services was not exercised in this tree test.
+
+Raw evidence: [`two-generation-run1.json`](../results/template-tree/2026-10-25/two-generation-run1.json)
+and [`two-generation-run2.json`](../results/template-tree/2026-10-25/two-generation-run2.json).
+
+## Scope and remaining work
+
+This verifies one parent-to-child materialization and two independent
+descendants for the tested synthetic guest and QEMU machine. It does not yet
+provide a persistent Template Manager, generation metadata schema, garbage
+collection, crash-safe publication, migration compatibility checks across
+QEMU versions, network identity behavior across generations, or large
+multi-level tree benchmarks. It does not establish that every machine/device
+configuration supports the same migration sequence. Those require separate
+failure and compatibility tests before hierarchical templates are exposed as
+a general runtime feature.

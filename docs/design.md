@@ -125,5 +125,8 @@ clones, while control-register, MSR, APIC, and interrupt-state checks remain
 open. Remaining gates are broader distribution coverage, exact timer interrupt
 and RTC alarm behavior, positive KSM measurements, and complete kernel-memory
 accounting. KSM measurements are blocked by the current user's
-permissions for host-global sysfs. Template trees and TCG sharing remain
-deferred; explicit parking is measured but changes guest time.
+permissions for host-global sysfs. A two-generation template-tree COW proof
+now materializes one diverged clone into a child RAM/disk template and restores
+two isolated descendants. A persistent manager, crash-safe publication, and
+multi-level compatibility remain deferred; TCG sharing remains deferred too.
+Explicit parking is measured but changes guest time.
