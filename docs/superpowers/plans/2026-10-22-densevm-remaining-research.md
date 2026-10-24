@@ -61,7 +61,8 @@
 - [x] Add tests for distinct clone identities and guest rejection of identity/network setup before entropy preparation.
 - [x] Define guest-side machine-id and OpenSSH host-key actions; DHCP remains explicitly UNKNOWN because the fixture has no DHCP client.
 - [x] Implement the protocol with fresh host-kernel entropy credited/reseeded in the guest before key generation and NIC hotplug.
-- [ ] **Blocked by fixture coverage:** Validate with a disposable supported Linux guest image; compare machine-id, SSH host keys, vmgenid reaction, and DHCP client identity before enabling network access. Current synthetic and prepared Alpine fixtures do not contain OpenSSH host keys or run a DHCP client, so only machine-id/hostname/MAC/vmgenid assignment is measured. The live guest protocol fails closed until reseeding and identity preparation complete.
+- [x] Build an opt-in Alpine identity fixture and validate clone machine-id/hostname, inherited OpenSSH host-key regeneration, and actual DHCP option 61 packet contents and lease acquisition before application traffic. Raw evidence: `results/2026-10-24/identity-validation-2.json`.
+- [x] Directly observe the guest kernel's reaction to a VMGenID change. Both Alpine identity-validation clones logged one VMGenID-triggered CRNG reseed event over the template baseline before explicit host entropy injection. This closes the tested kernel path only; it says nothing about userspace PRNG consumers. Evidence: `results/2026-10-24/identity-validation-2.json`.
 - [x] Document image prerequisites and remaining SSH/DHCP validation gaps.
 
 ### Task 3: Re-run and extend controlled RAM divergence measurements

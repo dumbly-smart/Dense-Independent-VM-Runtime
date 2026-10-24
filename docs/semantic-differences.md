@@ -1,12 +1,13 @@
 # Semantic status after the first probe
 
-Supported distribution update: Alpine 3.24.2 now boots from ext4-backed qcow2
-and reaches BusyBox init, syslogd, crond, and an observed serial login prompt.
-The two-clone run verifies private root-filesystem test-file writes and the
-same RAM/identity/parking checks as the synthetic guest. There is no SSH server
-or DHCP client in this image. Existing application PRNG caches, vmgenid's
-implicit guest response, arbitrary service identity caches, and independent
-timer behavior still require separate tests. See `examples/alpine/README.md`.
+Supported distribution update: Alpine 3.24.2 boots from ext4-backed qcow2 and
+reaches BusyBox init, syslogd, crond, and an observed serial login prompt. The
+default fixture stays minimal. An opt-in identity-validation fixture adds
+OpenSSH and exercises BusyBox DHCP client identity in actual QEMU/KVM clones.
+The tested Alpine kernel logged its VMGenID-triggered CRNG reseed after clone
+restore. Existing userspace PRNG caches, arbitrary service identity caches, and
+independent timer behavior still require separate tests. See
+`examples/alpine/README.md`.
 
 Update, 2026-10-24: the current synthetic guest receives a fresh host-kernel
 entropy payload per clone, credits it with Linux `RNDADDENTROPY`, and forces
@@ -17,10 +18,12 @@ for collisions within the clone batch. The kernel hostname is updated too.
 Entropy payloads are excluded from result metadata; control sockets reside in
 a mode-0700 output directory. This proves the explicit synthetic-kernel reseed
 path, not reseeding of every existing userspace PRNG or application secret.
-The range assigns unique static IPs; it does not exercise DHCP. SSH host keys,
-distribution service caches, and DHCP identity still need their own guest
-integration. Historical table rows below are updated where the range provided
-new evidence; otherwise they describe the original synthetic two-clone run.
+The six-guest range assigns unique static IPs; its socket multicast network
+does not provide DHCP. A separate two-clone identity profile validates actual
+OpenSSH host-key rotation and BusyBox DHCP option 61. Neither run proves how
+arbitrary distro services or DHCP clients behave. Historical table rows below
+are updated where recorded runs provide evidence; otherwise they describe the
+original synthetic two-clone run.
 
 KSM is opt-in and host-global. DenseVM changes only `run`, restores its own
 change with readback verification, preserves concurrent changes to tuning
@@ -45,10 +48,11 @@ distribution. Current synthetic probes use QEMU/KVM 11.1.2 on Linux 7.2.11.
 | Independent vCPU/register state | YES | UNKNOWN | Separate KVM/QEMU instances restore VMState, but no register-level adversarial test yet. |
 | Independent virtual device state | YES | PARTIAL | Separate QMP, serial, block and hotplugged NIC observed; timer/interrupt behavior untested. |
 | Unique MAC visible inside guest | YES | YES | Guest sysfs returned distinct MACs after NIC hotplug. Launch-time MAC changes alone failed because migration restored the template MAC. |
-| Unique vmgenid in QEMU | optional | YES | QMP returned three distinct GUIDs for template, A, and B. Guest reaction to generation change is UNKNOWN. |
-| Independent machine-id, SSH keys, hostname | YES when configured | PARTIAL | Machine-id/hostname are unique. If OpenSSH host keys exist, identity preparation removes and regenerates them after CRNG reseed and the probe checks fingerprints for duplicates. Current Alpine fixture has no SSH keys, so real key regeneration is not yet demonstrated; other SSH daemons remain UNKNOWN. |
+| Unique vmgenid in QEMU | optional | YES | QMP returned distinct GUIDs for template and clones. |
+| Guest VMGenID response | expected | YES for tested Linux kernel | Each Alpine clone logged one `crng reseeded due to virtual machine fork` event after restore, compared with the template baseline and before explicit host entropy injection. This verifies the tested kernel's VMGenID response, not userspace RNG consumers. |
+| Independent machine-id, SSH keys, hostname | YES when configured | YES in identity-validation profile | The prepared Alpine profile generated inherited OpenSSH keys before template freeze. Two clones rotated them after guest RNG reseeding; all three host-key fingerprints per clone were present and distinct. Other SSH implementations remain UNKNOWN. Evidence: `results/2026-10-24/identity-validation-2.json`. |
 | Independent entropy/RNG state | expected | PARTIAL | Synthetic guest receives fresh kernel entropy and forces CRNG reseed before identity/network setup. Existing userspace PRNG state and application secrets remain untested. |
-| Independent DHCP identity/IP | expected | PARTIAL | Range guests receive unique static IPs and pass client-to-target UDP checks. Every probe now emits `DHCP-IDENTITY UNKNOWN`; no DHCP client/lease behavior is claimed or tested. |
+| Independent DHCP identity/IP | expected | YES for tested client; otherwise UNKNOWN | Two identity-validation clones sent distinct machine-id-derived DHCP option 61 values in BusyBox `udhcpc` packets, confirmed by guest `AF_PACKET` capture, and obtained leases. This does not prove how another distribution's DHCP client behaves. Evidence: `results/2026-10-24/identity-validation-2.json`. |
 | Separate guest process state | YES | YES | Range starts a process only in T1; every sibling reports zero matching processes. |
 | Guest reboot isolation | YES | YES | Rebooting target A exits its QEMU process under `-no-reboot`; B remains responsive. |
 | Guest kernel crash isolation | YES | YES | A three-clone synthetic run triggered a SysRq kernel panic in one guest, observed the panic on serial and QMP/QEMU survival, and verified the other clones remained responsive. Ordinary distribution crash behavior remains untested. |
