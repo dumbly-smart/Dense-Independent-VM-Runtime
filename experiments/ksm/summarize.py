@@ -39,6 +39,25 @@ def read_probe(path: Path) -> dict[str, Any]:
         or not isinstance(data.get("divergence_scope"), str)
     ):
         raise ValueError(f"{path} is missing comparable probe configuration")
+    host = data.get("host")
+    guest = data.get("guest")
+    if (
+        not isinstance(guest, dict)
+        or not guest
+        or not isinstance(host, dict)
+        or not isinstance(data.get("qemu_version"), str)
+        or not isinstance(data.get("kernel_version"), str)
+        or not isinstance(host.get("kernel_version"), str)
+        or type(host.get("page_size_bytes")) is not int
+        or not isinstance(host.get("kvm"), dict)
+        or type(host["kvm"].get("accessible")) is not bool
+    ):
+        raise ValueError(f"{path} is missing guest or host provenance")
+    ksm_run = data.get("ksm_run")
+    if isinstance(ksm_run, str) and ksm_run in ("0", "1", "2"):
+        data["ksm_run"] = int(ksm_run)
+    elif type(ksm_run) is not int or ksm_run not in (0, 1, 2):
+        raise ValueError(f"{path} has missing or invalid ksm_run state")
     return data
 
 
@@ -93,14 +112,37 @@ def summarize(control_path: Path, ksm_path: Path) -> dict[str, Any]:
         ("guest RAM MiB", control.get("guest_ram_mib"), with_ksm.get("guest_ram_mib")),
         ("divergence pages", control.get("ram_divergence_pages"), with_ksm.get("ram_divergence_pages")),
         ("divergence scope", control.get("divergence_scope"), with_ksm.get("divergence_scope")),
+        ("guest provenance", control.get("guest"), with_ksm.get("guest")),
+        ("QEMU version", control.get("qemu_version"), with_ksm.get("qemu_version")),
+        ("kernel version", control.get("kernel_version"), with_ksm.get("kernel_version")),
+    )
+    control_host = control["host"]
+    ksm_host = with_ksm["host"]
+    host_fields = (
+        ("kernel version", control_host.get("kernel_version"), ksm_host.get("kernel_version")),
+        ("page size", control_host.get("page_size_bytes"), ksm_host.get("page_size_bytes")),
+        ("KVM accessibility", control_host.get("kvm", {}).get("accessible"), ksm_host.get("kvm", {}).get("accessible")),
     )
     mismatches = [
         f"{name}: control={left!r}, with_ksm={right!r}"
         for name, left, right in comparison_fields
         if left != right
     ]
+    host_mismatches = [
+        f"{name}: control={left!r}, with_ksm={right!r}"
+        for name, left, right in host_fields
+        if left != right
+    ]
+    if host_mismatches:
+        raise ValueError("probe runs have different host configuration: " + "; ".join(host_mismatches))
     if mismatches:
         raise ValueError("probe runs are not comparable: " + "; ".join(mismatches))
+    if control["ksm_run"] != 0 or with_ksm["ksm_run"] != 1:
+        raise ValueError(
+            "probe runs have invalid ksm_run roles: "
+            f"control={control['ksm_run']!r} (expected 0), "
+            f"with_ksm={with_ksm['ksm_run']!r} (expected 1)"
+        )
     return {
         "schema_version": 1,
         "experiment": "template-cow-versus-template-cow-plus-ksm",
@@ -110,6 +152,11 @@ def summarize(control_path: Path, ksm_path: Path) -> dict[str, Any]:
             "guest_ram_mib": control["guest_ram_mib"],
             "divergence_pages": control["ram_divergence_pages"],
             "divergence_scope": control["divergence_scope"],
+            "guest": control["guest"],
+            "qemu_version": control["qemu_version"],
+            "kernel_version": control["kernel_version"],
+            "page_size_bytes": control_host["page_size_bytes"],
+            "kvm_accessible": control_host["kvm"]["accessible"],
         },
         "counter_scope_warning": COUNTER_SCOPE_WARNING,
         "control": _run_summary(control, control_path, False),

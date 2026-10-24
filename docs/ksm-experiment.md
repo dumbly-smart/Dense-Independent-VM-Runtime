@@ -45,7 +45,11 @@ The output directory contains:
 * `run-status.json`: completion/failure stage and KSM restoration check.
 
 The summary rejects pairs with different clone counts, guest RAM sizes,
-divergence sizes, or divergence scopes. Missing measurements stay `null`.
+divergence sizes or scopes, guest image provenance, QEMU/kernel versions, or
+host page-size/KVM configuration. It also verifies that the control result
+observed KSM `run=0` and the KSM result observed `run=1`; canonical numeric
+strings from sysfs are normalized to integers. Missing measurements stay
+`null`.
 KSM counters and `ksmd` CPU ticks are host-global; other processes can affect
 them. The PSS values are summed QEMU process measurements and do not include
 all kernel/KVM allocations. A positive `pages_shared` delta alone does not
