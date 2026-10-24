@@ -1,4 +1,6 @@
-use densevm::metrics::{MemoryTotals, parse_smaps_for_path, parse_smaps_rollup};
+use densevm::metrics::{
+    MemoryTotals, parse_cgroup_memory, parse_smaps_for_path, parse_smaps_rollup,
+};
 
 #[test]
 fn parses_resident_shared_and_private_kib() {
@@ -63,4 +65,24 @@ fn supports_paths_with_spaces_and_rejects_shared_or_readonly_clone_mappings() {
         )
         .is_err()
     );
+}
+
+#[test]
+fn parses_cgroup_v2_current_and_kernel_memory_breakdown() {
+    let memory = parse_cgroup_memory(
+        "1048576\n",
+        "anon 500000\nfile 300000\nkernel 248576\npagetables 32768\nsec_pagetables 8192\nkernel_stack 4096\nslab 8192\n",
+    )
+    .unwrap();
+    assert_eq!(memory["current_bytes"], 1_048_576);
+    assert_eq!(memory["memory_stat_bytes"]["kernel"], 248_576);
+    assert_eq!(memory["memory_stat_bytes"]["pagetables"], 32_768);
+    assert_eq!(memory["memory_stat_bytes"]["sec_pagetables"], 8_192);
+}
+
+#[test]
+fn rejects_incomplete_or_malformed_cgroup_memory_samples() {
+    assert!(parse_cgroup_memory("not a number", "kernel 1\n").is_err());
+    assert!(parse_cgroup_memory("1", "kernel invalid\n").is_err());
+    assert!(parse_cgroup_memory("1", "").is_err());
 }

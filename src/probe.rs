@@ -923,9 +923,54 @@ fn snapshot(pids: &[u32], ram: &Path) -> Result<Value, String> {
             json!({"pid":pid,"memory":measure(*pid)?,"ram_mapping":measure_mapping(*pid, ram)?}),
         );
     }
-    Ok(
-        json!({"clones":clones,"template_file_resident_bytes":resident_file_bytes(ram)?,"sampling":"sequential procfs reads while all clones are alive"}),
-    )
+    Ok(json!({
+        "clones":clones,
+        "template_file_resident_bytes":resident_file_bytes(ram)?,
+        "cgroup_memory":cgroup_memory_snapshot(),
+        "sampling":"sequential procfs reads while all clones are alive"
+    }))
+}
+
+fn cgroup_memory_snapshot() -> Value {
+    let Some(path) = std::env::var_os("DENSEVM_CGROUP_PATH") else {
+        return json!({"status":"not-requested"});
+    };
+    let path = PathBuf::from(path);
+    let current = match fs::read_to_string(path.join("memory.current")) {
+        Ok(value) => value,
+        Err(error) => {
+            return json!({
+                "status":"unavailable",
+                "path":path,
+                "reason":format!("read memory.current: {error}")
+            });
+        }
+    };
+    let stat = match fs::read_to_string(path.join("memory.stat")) {
+        Ok(value) => value,
+        Err(error) => {
+            return json!({
+                "status":"unavailable",
+                "path":path,
+                "reason":format!("read memory.stat: {error}")
+            });
+        }
+    };
+    match crate::metrics::parse_cgroup_memory(&current, &stat) {
+        Ok(mut sample) => {
+            sample["status"] = json!("measured");
+            sample["path"] = json!(path);
+            sample["scope"] = json!(
+                "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory"
+            );
+            sample
+        }
+        Err(error) => json!({
+            "status":"unavailable",
+            "path":path,
+            "reason":error
+        }),
+    }
 }
 
 fn allocated_bytes(path: &Path) -> Result<u64, String> {
@@ -1293,6 +1338,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
         baseline_measurements.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"identity_guest":baseline_identity_guests[index],"idle_cpu_ticks":baseline_cpu_ticks[index],"active_cpu_ticks":baseline_active_cpu_ticks[index],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(baseline_active_cpu_ticks[index], baseline_active_cpu_sample_interval_ms, ticks_per_second),"disk_benchmark":if guest.disk.is_some(){json!(baseline_disk_benchmark[index])}else{Value::Null},"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
+    let baseline_cgroup_memory = cgroup_memory_snapshot();
     drop(baseline_serial_refs);
     drop(baseline_serials);
     drop(baseline_vms);
@@ -2005,7 +2051,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "host_mem_required_kib":required_available_kib,
         "ksm_run":fs::read_to_string("/sys/kernel/mm/ksm/run").unwrap_or_default().trim(),
         "ksm_telemetry":{"scope":"host-global counters; other KSM workloads may affect deltas","counters_before":ksm_counters_before,"counters_after":ksm_counters_after,"ksmd_cpu_ticks_before":ksmd_cpu_ticks_before,"ksmd_cpu_ticks_after":ksmd_cpu_ticks_after,"ksmd_cpu_ticks_delta":ksmd_cpu_ticks_delta},
-        "baseline":{"count":count,"vms":baseline_measurements,"time_to_count_ready_ms":baseline_elapsed_ms,"idle_cpu_sample_interval_ms":baseline_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":baseline_active_cpu_sample_interval_ms},
+        "baseline":{"count":count,"vms":baseline_measurements,"cgroup_memory_at_measurement":baseline_cgroup_memory,"time_to_count_ready_ms":baseline_elapsed_ms,"idle_cpu_sample_interval_ms":baseline_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":baseline_active_cpu_sample_interval_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
         "disk_storage":{"base_allocated_bytes":allocated_bytes(&base)?,"total_clone_overlay_allocated_bytes":total_overlay_allocated_bytes},
         "clones":{"count":count,"idle_cpu_sample_interval_ms":clone_cpu_sample_interval_ms,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"idle_cpu_ticks":clone_idle_cpu_ticks[0],"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},

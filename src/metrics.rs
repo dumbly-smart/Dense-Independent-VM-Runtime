@@ -1,4 +1,6 @@
 use serde::Serialize;
+use serde_json::{Value, json};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct MemoryTotals {
@@ -8,6 +10,38 @@ pub struct MemoryTotals {
     pub shared_dirty_kib: u64,
     pub private_clean_kib: u64,
     pub private_dirty_kib: u64,
+}
+
+pub fn parse_cgroup_memory(current: &str, stat: &str) -> Result<Value, String> {
+    let current_bytes = current
+        .trim()
+        .parse::<u64>()
+        .map_err(|error| format!("invalid cgroup memory.current: {error}"))?;
+    let mut memory_stat = BTreeMap::new();
+    for line in stat.lines() {
+        let mut fields = line.split_whitespace();
+        let key = fields
+            .next()
+            .ok_or_else(|| "empty cgroup memory.stat line".to_string())?;
+        let value = fields
+            .next()
+            .ok_or_else(|| format!("cgroup memory.stat omitted value for {key}"))?
+            .parse::<u64>()
+            .map_err(|error| format!("invalid cgroup memory.stat {key}: {error}"))?;
+        if fields.next().is_some() {
+            return Err(format!("cgroup memory.stat has extra fields for {key}"));
+        }
+        if memory_stat.insert(key.to_string(), value).is_some() {
+            return Err(format!("duplicate cgroup memory.stat key {key}"));
+        }
+    }
+    if memory_stat.is_empty() {
+        return Err("cgroup memory.stat was empty".to_string());
+    }
+    Ok(json!({
+        "current_bytes":current_bytes,
+        "memory_stat_bytes":memory_stat
+    }))
 }
 
 impl MemoryTotals {
