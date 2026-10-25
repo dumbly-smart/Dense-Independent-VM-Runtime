@@ -96,6 +96,19 @@ cargo run -- inspect template /path/to/new-tree-experiment/generation.json
 That output is marked `metadata-only` with `integrity_verified: false`. Use the
 validator above when artifact integrity must be checked.
 
+To discover nested generation manifests and connect parents found inside the
+same directory tree:
+
+```sh
+cargo run -- template tree /path/to/template-store
+```
+
+The catalog walks directories without following symlinks and matches a
+generation's absolute parent directory to another manifest directory. Parents
+outside the catalog are shown with `parent_generation_id: null`. The catalog
+is metadata-only and does not verify artifact contents or maintain a separate
+index; each `generation.json` remains the source of truth.
+
 ## Measurements
 
 Two repeated runs on QEMU 11.1.2 / Linux 7.2.11 used a synthetic 256 MiB KVM
