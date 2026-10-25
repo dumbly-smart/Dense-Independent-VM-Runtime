@@ -1,0 +1,188 @@
+{
+  "experiment": "recursive-template-tree-relocation",
+  "status": "verified",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "kernel": "7.2.11-arch1-1",
+  "page_size_bytes": 4096,
+  "guest": {
+    "kind": "synthetic-initramfs",
+    "logical_ram_bytes": 268435456
+  },
+  "relocated_tree": "/home/xtrmn8/dvm-resources/tree-relocated-v4",
+  "relocation_method": "copied the root source template and two v4 generations as a unit, then created a third generation from the moved tree",
+  "checks": {
+    "python_manifest_validation": "all three v4 generations verified after relocation",
+    "rust_manifest_validation": "all three v4 generations verified after relocation",
+    "qcow2_backing_chain": "qemu-img opened all four images after relocation",
+    "qemu_restore_after_relocation": "third generation booted, restored, passed RAM COW, and verified disk isolation from the relocated source"
+  },
+  "runs": [
+    {
+      "directory": "tree-reloc-run19",
+      "schema_version": 4,
+      "generation_id": "sha256:8ea00b17eb5311f9b5eb74382be3cae8fd955cb57899b5ffc54507938fbb764e",
+      "parent_relative_path": "../cgroup-probe-run4",
+      "disk_backing_relative_path": "../cgroup-probe-run4/base.qcow2",
+      "artifacts_sha256_after_relocation": {
+        "ram": "43b4002a1896209ca42e0fd1a2b8bbd0698f2b0370b6532bc01b6f5b8c82d656",
+        "machine_state": "3685fc60d400b9b1512b3f94c1f301fe43ea1e837b4ed1bf541eb1bb93f2f2b2",
+        "disk": "228eba022ffc5900da4b56236d425eafcf95d85b95040e3afe50e0d4b65cf4b1"
+      },
+      "ram_mapping_before_divergence": [
+        {
+          "pss_kib": 9126,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 16108,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 1072
+        },
+        {
+          "pss_kib": 8998,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 16108,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 944
+        }
+      ],
+      "ram_mapping_after_divergence": [
+        {
+          "pss_kib": 44648,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 16856,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 36220
+        },
+        {
+          "pss_kib": 10164,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 16856,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 1736
+        }
+      ],
+      "disk_isolation": {
+        "ram": "RAM 73",
+        "disk": "DISK 73"
+      }
+    },
+    {
+      "directory": "tree-reloc-run20",
+      "schema_version": 4,
+      "generation_id": "sha256:1d8bb71214d54e76812cb43dc1c07379616625df3bcd39ccc97e2f50ff3715ad",
+      "parent_relative_path": "../tree-reloc-run19",
+      "disk_backing_relative_path": "../tree-reloc-run19/parent.qcow2",
+      "artifacts_sha256_after_relocation": {
+        "ram": "8a3f50ed987b8fb5a80dcc151889ddb05fe78b3aa72e62fc667a3e495ad2acee",
+        "machine_state": "c9b382dd98c48d6eac9b59e5408b0461966e34f07f334c97e1a5f4fd1de882fd",
+        "disk": "577feeb71e80f44469621e91d291ff94f77b93a5501e44bbade27a20d3d3c5ed"
+      },
+      "ram_mapping_before_divergence": [
+        {
+          "pss_kib": 12170,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 15852,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 4244
+        },
+        {
+          "pss_kib": 8994,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 15852,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 1068
+        }
+      ],
+      "ram_mapping_after_divergence": [
+        {
+          "pss_kib": 45028,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 17200,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 36428
+        },
+        {
+          "pss_kib": 9960,
+          "shared_clean_kib": 0,
+          "shared_dirty_kib": 17264,
+          "private_clean_kib": 0,
+          "private_dirty_kib": 1328
+        }
+      ],
+      "disk_isolation": {
+        "ram": "RAM 73",
+        "disk": "DISK 73"
+      }
+    },
+    {
+      "directory": "tree-reloc-run21",
+      "schema_version": 4,
+      "generation_id": "sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926",
+      "parent_relative_path": "../tree-reloc-run20",
+      "disk_backing_relative_path": "../tree-reloc-run20/parent.qcow2",
+      "artifacts_sha256_after_relocation": {
+        "ram": "b942d33b8905a3f1679ed4f60470a263c8d77d2b00a365eeef63d0326f796df2",
+        "machine_state": "b7cc850f22c3f75453e6e38a0947cc97cae7f93123f5975c114b76eeb9866d54",
+        "disk": "1016469dd85f528f65f2c034c607f1c445630ff54885c7d895417393d75c1b87"
+      },
+      "ram_mapping_before_divergence": [
+        {
+          "pss_kib": 11950,
+          "shared_clean_kib": 15916,
+          "shared_dirty_kib": 0,
+          "private_clean_kib": 2792,
+          "private_dirty_kib": 1200
+        },
+        {
+          "pss_kib": 9038,
+          "shared_clean_kib": 15916,
+          "shared_dirty_kib": 0,
+          "private_clean_kib": 164,
+          "private_dirty_kib": 916
+        }
+      ],
+      "ram_mapping_after_divergence": [
+        {
+          "pss_kib": 44902,
+          "shared_clean_kib": 17212,
+          "shared_dirty_kib": 0,
+          "private_clean_kib": 2208,
+          "private_dirty_kib": 34088
+        },
+        {
+          "pss_kib": 9934,
+          "shared_clean_kib": 17212,
+          "shared_dirty_kib": 0,
+          "private_clean_kib": 360,
+          "private_dirty_kib": 968
+        }
+      ],
+      "disk_isolation": {
+        "ram": "RAM 73",
+        "disk": "DISK 73"
+      }
+    }
+  ],
+  "qcow2_chain_after_relocation": [
+    {
+      "filename": "tree-reloc-run21/parent.qcow2",
+      "backing_filename": "../tree-reloc-run20/parent.qcow2"
+    },
+    {
+      "filename": "tree-reloc-run21/../tree-reloc-run20/parent.qcow2",
+      "backing_filename": "../tree-reloc-run19/parent.qcow2"
+    },
+    {
+      "filename": "tree-reloc-run21/../tree-reloc-run20/../tree-reloc-run19/parent.qcow2",
+      "backing_filename": "../cgroup-probe-run4/base.qcow2"
+    },
+    {
+      "filename": "tree-reloc-run21/../tree-reloc-run20/../tree-reloc-run19/../cgroup-probe-run4/base.qcow2",
+      "backing_filename": null
+    }
+  ],
+  "limitations": [
+    "Synthetic 256 MiB guest only; this does not establish broad distribution or device compatibility.",
+    "The test moves a complete dependency tree while preserving relative paths; arbitrary partial moves are unsupported.",
+    "Earlier schema v1-v3 manifests and qcow2 files may contain absolute paths and are not made relocatable by v4 descendants."
+  ]
+}

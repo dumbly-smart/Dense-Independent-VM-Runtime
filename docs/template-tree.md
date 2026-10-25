@@ -61,16 +61,18 @@ qcow2 overlays, and a machine-readable `result.json` into the new output
 directory. It checks input template hashes before and after the run, verifies
 the qcow2 backing chain, samples the exact child-RAM VMA from each QEMU
 process's `smaps`, and fails unless the descendants initially map resident
-shared pages and A's RAM write increases A's private dirty pages. A successful
-run writes `generation.json` (schema version 3) with hashes and actual
+shared pages and A's RAM write increases A's private dirty pages. Earlier
+successful runs wrote `generation.json` (schema versions 1-3) with hashes and actual
 filenames for the parent result, RAM, machine state, and disk. This lets a
 generation become the next generation's parent even when its artifacts are
 named `child-memory.img`, `child-machine-state`, and `parent.qcow2`. The
 generation ID is a SHA-256 content address over the child RAM, machine-state,
-and disk hashes. `result.json` records the manifest hash. The parent path is
-absolute, so the manifest is provenance for this experiment and is not yet a
-relocatable template package. Archived 2025 outputs preserve schema v1/v2;
-the 2026-10-26 runs demonstrate v3 recursive lineage.
+and disk hashes. `result.json` records the manifest hash. New runs write schema
+version 4, with parent directories and qcow2 backing references relative to the
+child generation. This makes a v4 dependency tree relocatable as a unit when
+its relative directory structure is preserved. Older v1-v3 manifests remain
+readable and retain their absolute-path behavior; a v4 child of a legacy
+generation cannot repair absolute paths embedded in the older files.
 
 To check a complete experiment directory before reusing its child template,
 validate the manifest beside the artifacts:
@@ -82,7 +84,7 @@ python3 experiments/template-tree/probe.py \
 
 The Python validator checks the child artifact hashes, the recorded parent
 artifacts, the backing-image relationship, and the content-derived generation
-ID across schema versions 1-3. DenseVM exposes the same read-only integrity
+ID across schema versions 1-4. DenseVM exposes the same read-only integrity
 check:
 
 ```sh
@@ -91,8 +93,9 @@ cargo run -- validate template /path/to/new-tree-experiment/generation.json
 
 The Rust validator uses the host `sha256sum` utility. The small raw evidence
 copies under `results/` intentionally omit the large RAM and qcow2 artifacts,
-so validate the original experiment directory. Both validators check v3
-manifests against the parent generation's actual artifact names.
+so validate the original experiment directory. Both validators check v3/v4
+manifests against the parent generation's actual artifact names. V4 resolves
+relative paths from the manifest directory.
 
 The Rust runtime can print the manifest's metadata without running the Python
 experiment:
@@ -112,10 +115,24 @@ cargo run -- template tree /path/to/template-store
 ```
 
 The catalog walks directories without following symlinks and matches a
-generation's absolute parent directory to another manifest directory. Parents
+generation's resolved parent directory to another manifest directory. Parents
 outside the catalog are shown with `parent_generation_id: null`. The catalog
 is metadata-only and does not verify artifact contents or maintain a separate
 index; each `generation.json` remains the source of truth.
+
+### Relocation proof
+
+Three successive schema-v4 generations were created from a 256 MiB synthetic
+KVM template. The first two generations and their root source were copied to a
+new directory while preserving the tree layout. Python and Rust validated the
+manifests there, and `qemu-img info --backing-chain` opened the full disk chain.
+A third generation then booted and restored from the moved files, passed the
+RAM COW and disk-isolation checks, and emitted another v4 manifest. The full
+record, including hashes and per-clone RAM mapping samples, is
+[`results/template-tree/2026-10-26/relocation-proof.json`](../results/template-tree/2026-10-26/relocation-proof.json).
+This proves relocation for that complete tree and QEMU version; it does not
+support moving only a subset of the dependencies or establish other device and
+distribution combinations.
 
 ## Measurements
 
