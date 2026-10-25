@@ -248,6 +248,24 @@ def make_overlay(path: Path, backing: Path) -> None:
     )
 
 
+def extend_backing_chain(overlay: Path, parent_chain: list[Path]) -> list[Path]:
+    return [overlay, *parent_chain]
+
+
+def backing_chain(path: Path) -> list[Path]:
+    info = subprocess.run(
+        ["qemu-img", "info", "--backing-chain", "--output=json", str(path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    data = json.loads(info.stdout)
+    chain = [Path(item["filename"]).resolve() for item in data]
+    if not chain or chain[0] != path.resolve():
+        raise RuntimeError(f"qemu-img returned an unexpected backing chain for {path}: {chain}")
+    return chain
+
+
 def check_disk_chain(path: Path, expected: list[Path]) -> dict[str, Any]:
     info = subprocess.run(
         ["qemu-img", "info", "--backing-chain", "--output=json", str(path)],
@@ -288,9 +306,16 @@ def build_child_generation_manifest(
     source_dir = source_dir.resolve()
     output_dir = output_dir.resolve()
     source_result = source_dir / "result.json"
-    source_ram = source_dir / "memory.img"
-    source_state = source_dir / "machine-state"
-    source_disk = source_dir / "base.qcow2"
+    parent_manifest_path = source_dir / "generation.json"
+    if parent_manifest_path.is_file():
+        parent_manifest = json.loads(parent_manifest_path.read_text())
+        source_ram = source_dir / parent_manifest["ram"]["path"]
+        source_state = source_dir / parent_manifest["machine_state"]["path"]
+        source_disk = source_dir / parent_manifest["disk"]["path"]
+    else:
+        source_ram = source_dir / "memory.img"
+        source_state = source_dir / "machine-state"
+        source_disk = source_dir / "base.qcow2"
     child_ram = output_dir / "child-memory.img"
     child_state = output_dir / "child-machine-state"
     child_disk = output_dir / "parent.qcow2"
@@ -299,19 +324,22 @@ def build_child_generation_manifest(
     if missing:
         raise ValueError(f"cannot write generation manifest; artifacts are missing: {missing}")
 
+    parent_artifacts = {
+        "result": {"path": source_result.name, "sha256": sha256(source_result)},
+        "ram": {"path": source_ram.name, "sha256": sha256(source_ram)},
+        "machine_state": {"path": source_state.name, "sha256": sha256(source_state)},
+        "disk": {"path": source_disk.name, "sha256": sha256(source_disk)},
+    }
     child_artifact_hashes = [sha256(child_ram), sha256(child_state), sha256(child_disk)]
     generation_digest = hashlib.sha256(
         json.dumps(child_artifact_hashes, separators=(",", ":")).encode()
     ).hexdigest()
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generation_id": f"sha256:{generation_digest}",
         "parent": {
             "template_dir": str(source_dir),
-            "result_sha256": sha256(source_result),
-            "ram_sha256": sha256(source_ram),
-            "machine_state_sha256": sha256(source_state),
-            "base_disk_sha256": sha256(source_disk),
+            "artifacts": parent_artifacts,
         },
         "qemu_version": qemu_version,
         "qemu_command": qemu_command,
@@ -343,7 +371,7 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         manifest = json.loads(manifest_path.read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"cannot read generation manifest {manifest_path}: {error}") from error
-    if not isinstance(manifest, dict) or manifest.get("schema_version") not in (1, 2):
+    if not isinstance(manifest, dict) or manifest.get("schema_version") not in (1, 2, 3):
         raise ValueError("unsupported generation manifest schema")
 
     parent = manifest.get("parent")
@@ -372,18 +400,41 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         return manifest_path.parent / relative, value
 
     checked = 0
-    parent_artifacts = {
-        "result.json": "result_sha256",
-        "memory.img": "ram_sha256",
-        "machine-state": "machine_state_sha256",
-        "base.qcow2": "base_disk_sha256",
-    }
-    for filename, key in parent_artifacts.items():
-        expected = parent.get(key)
-        if expected is None and manifest["schema_version"] == 1 and key in ("ram_sha256", "machine_state_sha256"):
-            continue
-        checked_hash(parent_dir / filename, expected, f"parent.{key}")
-        checked += 1
+    if manifest["schema_version"] == 3:
+        artifacts = parent.get("artifacts")
+        if not isinstance(artifacts, dict):
+            raise ValueError("generation v3 manifest has no parent.artifacts")
+        for key in ("result", "ram", "machine_state", "disk"):
+            artifact = artifacts.get(key)
+            if not isinstance(artifact, dict) or not isinstance(artifact.get("path"), str):
+                raise ValueError(f"generation manifest has invalid parent.artifacts.{key}")
+            filename = artifact["path"]
+            if Path(filename).name != filename or filename in (".", ".."):
+                raise ValueError(f"parent artifact path must be a local filename: {filename!r}")
+            checked_hash(parent_dir / filename, artifact.get("sha256"), f"parent.{key}")
+            checked += 1
+        parent_disk = artifacts["disk"]
+        child_disk = manifest.get("disk")
+        if not isinstance(child_disk, dict):
+            raise ValueError("generation v3 manifest has no disk artifact")
+        backing_path = child_disk.get("backing_path")
+        if not isinstance(backing_path, str) or Path(backing_path).resolve() != (parent_dir / parent_disk["path"]).resolve():
+            raise ValueError("disk backing path does not match the recorded parent disk")
+        if child_disk.get("backing_sha256") != parent_disk.get("sha256"):
+            raise ValueError("disk backing hash does not match the parent disk hash")
+    else:
+        parent_artifacts = {
+            "result.json": "result_sha256",
+            "memory.img": "ram_sha256",
+            "machine-state": "machine_state_sha256",
+            "base.qcow2": "base_disk_sha256",
+        }
+        for filename, key in parent_artifacts.items():
+            expected = parent.get(key)
+            if expected is None and manifest["schema_version"] == 1 and key in ("ram_sha256", "machine_state_sha256"):
+                continue
+            checked_hash(parent_dir / filename, expected, f"parent.{key}")
+            checked += 1
 
     ram_path, ram = local_artifact("ram")
     state_path, state = local_artifact("machine_state")
@@ -396,13 +447,14 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         checked_hash(path, value.get("sha256"), label)
         checked += 1
 
-    backing_path = disk.get("backing_path")
-    if not isinstance(backing_path, str) or Path(backing_path).resolve() != (parent_dir / "base.qcow2").resolve():
-        raise ValueError("disk backing path does not match the recorded parent base image")
-    if disk.get("backing_sha256") != parent.get("base_disk_sha256"):
-        raise ValueError("disk backing hash does not match the parent base image hash")
+    if manifest["schema_version"] in (1, 2):
+        backing_path = disk.get("backing_path")
+        if not isinstance(backing_path, str) or Path(backing_path).resolve() != (parent_dir / "base.qcow2").resolve():
+            raise ValueError("disk backing path does not match the recorded parent base image")
+        if disk.get("backing_sha256") != parent.get("base_disk_sha256"):
+            raise ValueError("disk backing hash does not match the parent base image hash")
 
-    if manifest["schema_version"] == 2:
+    if manifest["schema_version"] in (2, 3):
         artifact_hashes = [ram["sha256"], state["sha256"], disk["sha256"]]
         expected_id = hashlib.sha256(json.dumps(artifact_hashes, separators=(",", ":")).encode()).hexdigest()
         if manifest.get("generation_id") != f"sha256:{expected_id}":
@@ -501,11 +553,31 @@ def prepare_identity(serial: GuestSerial) -> dict[str, str]:
     }
 
 
-def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
+def load_template_artifacts(template_dir: Path) -> dict[str, Any]:
     metadata = json.loads((template_dir / "result.json").read_text())
-    template_ram = template_dir / "memory.img"
-    base_disk = template_dir / "base.qcow2"
-    machine_state = template_dir / "machine-state"
+    generation_path = template_dir / "generation.json"
+    if generation_path.is_file():
+        validate_generation_manifest(generation_path)
+        generation = json.loads(generation_path.read_text())
+        qemu_command = generation.get("qemu_command")
+        memory_size_bytes = generation.get("ram", {}).get("logical_size_bytes")
+        if not isinstance(qemu_command, list) or not all(isinstance(item, str) for item in qemu_command):
+            raise ValueError("generation manifest has no QEMU command")
+        if type(memory_size_bytes) is not int or memory_size_bytes <= 0:
+            raise ValueError("generation manifest has invalid logical RAM size")
+        return {
+            "metadata": metadata,
+            "ram": template_dir / generation["ram"]["path"],
+            "machine_state": template_dir / generation["machine_state"]["path"],
+            "disk": template_dir / generation["disk"]["path"],
+            "qemu_command": qemu_command,
+            "template_qemu_command": metadata.get("source_template_qemu_command", qemu_command),
+            "memory_size": str(memory_size_bytes),
+            "memory_size_bytes": memory_size_bytes,
+            "initial_ram": metadata.get("parent_ram", "RAM 90"),
+            "initial_disk": metadata.get("parent_disk", "DISK 0"),
+        }
+
     qemu_command = metadata["clones"]["a"]["qemu_command"]
     template_qemu_command = metadata["template"]["qemu_command"]
     memory_backend = next(
@@ -518,6 +590,32 @@ def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
     memory_size_bytes = metadata["template"].get("memory_file_bytes")
     if not isinstance(memory_size, str) or type(memory_size_bytes) is not int:
         raise ValueError("template result does not describe its RAM backend size")
+    return {
+        "metadata": metadata,
+        "ram": template_dir / "memory.img",
+        "machine_state": template_dir / "machine-state",
+        "disk": template_dir / "base.qcow2",
+        "qemu_command": qemu_command,
+        "template_qemu_command": template_qemu_command,
+        "memory_size": memory_size,
+        "memory_size_bytes": memory_size_bytes,
+        "initial_ram": metadata.get("parent_ram", "RAM 90"),
+        "initial_disk": metadata.get("parent_disk", "DISK 0"),
+    }
+
+
+def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
+    source = load_template_artifacts(template_dir)
+    metadata = source["metadata"]
+    template_ram = source["ram"]
+    base_disk = source["disk"]
+    machine_state = source["machine_state"]
+    qemu_command = source["qemu_command"]
+    template_qemu_command = source["template_qemu_command"]
+    memory_size = source["memory_size"]
+    memory_size_bytes = source["memory_size_bytes"]
+    expected_initial_ram = source["initial_ram"]
+    expected_initial_disk = source["initial_disk"]
     for path in (template_ram, base_disk, machine_state):
         if not path.is_file():
             raise ValueError(f"template artifact is missing: {path}")
@@ -548,8 +646,8 @@ def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
         parent_identity = prepare_identity(parent.serial)
         initial_ram = parent.serial.command("ram-read", "RAM ")
         initial_disk = parent.serial.command("disk-read", "DISK ")
-        require(initial_ram == "RAM 90", f"parent initial RAM differs: {initial_ram!r}")
-        require(initial_disk.endswith("0"), f"parent initial disk differs: {initial_disk!r}")
+        require(initial_ram == expected_initial_ram, f"parent initial RAM differs: {initial_ram!r}")
+        require(initial_disk == expected_initial_disk, f"parent initial disk differs: {initial_disk!r}")
         parent.serial.command("ram-write 73", "RAM-WROTE 73")
         parent.serial.command("disk-write 73", "DISK-WROTE 73")
         parent_expected_ram = parent.serial.command("ram-read", "RAM ")
@@ -633,18 +731,21 @@ def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
         for vm in descendants:
             vm.close()
 
+    parent_backing_chain = backing_chain(base_disk)
     disk_checks = {
-        "parent": check_disk_chain(parent_disk, [parent_disk, base_disk]),
+        "parent": check_disk_chain(parent_disk, extend_backing_chain(parent_disk, parent_backing_chain)),
         "descendant_0": check_disk_chain(
-            out / "descendant-0.qcow2", [out / "descendant-0.qcow2", parent_disk, base_disk]
+            out / "descendant-0.qcow2",
+            extend_backing_chain(out / "descendant-0.qcow2", [parent_disk, *parent_backing_chain]),
         ),
         "descendant_1": check_disk_chain(
-            out / "descendant-1.qcow2", [out / "descendant-1.qcow2", parent_disk, base_disk]
+            out / "descendant-1.qcow2",
+            extend_backing_chain(out / "descendant-1.qcow2", [parent_disk, *parent_backing_chain]),
         ),
     }
 
     result = {
-        "experiment": "two-generation-template-tree-cow",
+        "experiment": "multi-generation-template-tree-cow",
         "status": "verified",
         "host": {"kernel": os.uname().release, "page_size_bytes": os.sysconf("SC_PAGE_SIZE")},
         "qemu_version": subprocess.run(["qemu-system-x86_64", "--version"], capture_output=True, text=True, check=True).stdout.splitlines()[0],

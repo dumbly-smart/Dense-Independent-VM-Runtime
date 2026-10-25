@@ -6,6 +6,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from probe import (
     build_child_generation_manifest,
+    extend_backing_chain,
+    load_template_artifacts,
     parse_ram_mapping,
     publish_atomically,
     validate_generation_manifest,
@@ -90,7 +92,7 @@ class GenerationManifestTests(unittest.TestCase):
             written = json.loads((output / "generation.json").read_text())
 
             self.assertEqual(manifest, written)
-            self.assertEqual(manifest["schema_version"], 2)
+            self.assertEqual(manifest["schema_version"], 3)
             child_artifacts = [
                 sha256(b"child ram").hexdigest(),
                 sha256(b"child state").hexdigest(),
@@ -100,9 +102,9 @@ class GenerationManifestTests(unittest.TestCase):
                 json.dumps(child_artifacts, separators=(",", ":")).encode()
             ).hexdigest()
             self.assertEqual(manifest["generation_id"], f"sha256:{expected_generation_id}")
-            self.assertEqual(manifest["parent"]["result_sha256"], sha256(b"source result").hexdigest())
-            self.assertEqual(manifest["parent"]["ram_sha256"], sha256(b"root ram").hexdigest())
-            self.assertEqual(manifest["parent"]["machine_state_sha256"], sha256(b"root state").hexdigest())
+            self.assertEqual(manifest["parent"]["artifacts"]["result"]["sha256"], sha256(b"source result").hexdigest())
+            self.assertEqual(manifest["parent"]["artifacts"]["ram"]["sha256"], sha256(b"root ram").hexdigest())
+            self.assertEqual(manifest["parent"]["artifacts"]["machine_state"]["sha256"], sha256(b"root state").hexdigest())
             self.assertEqual(manifest["ram"]["path"], "child-memory.img")
             self.assertEqual(manifest["ram"]["sha256"], sha256(b"child ram").hexdigest())
             self.assertEqual(manifest["ram"]["logical_size_bytes"], 256 * 1024 * 1024)
@@ -118,6 +120,82 @@ class GenerationManifestTests(unittest.TestCase):
             (output / "child-memory.img").write_bytes(b"modified ram")
             with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
                 validate_generation_manifest(output / "generation.json")
+
+    def test_child_generation_manifest_tracks_parent_generation_artifact_names(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "generation-a"
+            output = root / "generation-b"
+            source.mkdir()
+            output.mkdir()
+            (source / "result.json").write_text(json.dumps({"guest": {}}))
+            (source / "generation.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "ram": {"path": "child-memory.img"},
+                        "machine_state": {"path": "child-machine-state"},
+                        "disk": {"path": "parent.qcow2"},
+                    }
+                )
+            )
+            for path, contents in (
+                (source / "child-memory.img", b"generation A RAM"),
+                (source / "child-machine-state", b"generation A state"),
+                (source / "parent.qcow2", b"generation A disk"),
+                (output / "child-memory.img", b"generation B RAM"),
+                (output / "child-machine-state", b"generation B state"),
+                (output / "parent.qcow2", b"generation B disk"),
+            ):
+                path.write_bytes(contents)
+
+            manifest = build_child_generation_manifest(
+                source,
+                output,
+                memory_size_bytes=256 * 1024 * 1024,
+                qemu_version="QEMU emulator version 11.1.2",
+                qemu_command=["-machine", "q35"],
+            )
+
+            self.assertEqual(manifest["schema_version"], 3)
+            self.assertEqual(manifest["parent"]["artifacts"]["ram"]["path"], "child-memory.img")
+            self.assertEqual(manifest["parent"]["artifacts"]["machine_state"]["path"], "child-machine-state")
+            self.assertEqual(manifest["parent"]["artifacts"]["disk"]["path"], "parent.qcow2")
+            self.assertEqual(manifest["disk"]["backing_path"], str((source / "parent.qcow2").resolve()))
+            self.assertEqual(validate_generation_manifest(output / "generation.json")["status"], "verified")
+            (output / "result.json").write_text(
+                json.dumps(
+                    {
+                        "guest": {"kind": "synthetic-initramfs"},
+                        "source_template_qemu_command": ["-machine", "q35"],
+                        "parent_ram": "RAM 73",
+                        "parent_disk": "DISK 73",
+                    }
+                )
+            )
+            loaded = load_template_artifacts(output)
+            self.assertEqual(loaded["ram"], output / "child-memory.img")
+            self.assertEqual(loaded["machine_state"], output / "child-machine-state")
+            self.assertEqual(loaded["disk"], output / "parent.qcow2")
+            self.assertEqual(loaded["memory_size_bytes"], 256 * 1024 * 1024)
+            self.assertEqual(loaded["qemu_command"], ["-machine", "q35"])
+            self.assertEqual(loaded["initial_ram"], "RAM 73")
+            self.assertEqual(loaded["initial_disk"], "DISK 73")
+
+
+class DiskLineageTests(unittest.TestCase):
+    def test_new_overlay_extends_the_complete_parent_backing_chain(self) -> None:
+        overlay = Path("generation-c/parent.qcow2")
+        parent_chain = [
+            Path("generation-b/parent.qcow2"),
+            Path("generation-a/parent.qcow2"),
+            Path("root/base.qcow2"),
+        ]
+
+        self.assertEqual(extend_backing_chain(overlay, parent_chain), [overlay, *parent_chain])
 
 
 class AtomicPublicationTests(unittest.TestCase):

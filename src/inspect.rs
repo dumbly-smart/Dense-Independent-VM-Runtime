@@ -41,7 +41,7 @@ pub fn template_generation(manifest_path: &Path) -> Result<Value, String> {
         .get("schema_version")
         .and_then(Value::as_u64)
         .ok_or("template manifest has no numeric schema_version")?;
-    if schema != 1 && schema != 2 {
+    if !(1..=3).contains(&schema) {
         return Err(format!("unsupported template manifest schema {schema}"));
     }
 
@@ -143,7 +143,7 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
         .get("schema_version")
         .and_then(Value::as_u64)
         .ok_or("template manifest has no numeric schema_version")?;
-    if schema != 1 && schema != 2 {
+    if !(1..=3).contains(&schema) {
         return Err(format!("unsupported template manifest schema {schema}"));
     }
 
@@ -194,27 +194,56 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     if !parent_dir.is_absolute() {
         return Err("template parent path must be absolute".to_string());
     }
-    let parent_hashes = [
-        ("result.json", "result_sha256"),
-        ("memory.img", "ram_sha256"),
-        ("machine-state", "machine_state_sha256"),
-        ("base.qcow2", "base_disk_sha256"),
-    ];
     let mut checked = 0;
-    for (filename, key) in parent_hashes {
-        let Some(expected) = parent.get(key).and_then(Value::as_str) else {
-            if schema == 1 && (key == "ram_sha256" || key == "machine_state_sha256") {
-                continue;
+    let parent_disk = if schema == 3 {
+        let artifacts = field(parent, "artifacts", "parent")?;
+        let mut disk_filename = None;
+        for key in ["result", "ram", "machine_state", "disk"] {
+            let artifact = field(artifacts, key, "parent.artifacts")?;
+            let filename = string_field(artifact, "path", &format!("parent.artifacts.{key}"))?;
+            let relative = Path::new(filename);
+            if relative.components().count() != 1
+                || !matches!(relative.components().next(), Some(Component::Normal(_)))
+            {
+                return Err(format!(
+                    "parent artifact path must be a local filename: {filename}"
+                ));
             }
-            return Err(format!("template manifest missing parent.{key}"));
-        };
-        verify_hash(
-            &parent_dir.join(filename),
-            expected,
-            &format!("parent.{key}"),
-        )?;
-        checked += 1;
-    }
+            let expected = string_field(artifact, "sha256", &format!("parent.artifacts.{key}"))?;
+            verify_hash(
+                &parent_dir.join(relative),
+                expected,
+                &format!("parent.artifacts.{key}"),
+            )?;
+            if key == "disk" {
+                disk_filename = Some(filename.to_string());
+            }
+            checked += 1;
+        }
+        disk_filename.ok_or("template manifest parent disk artifact is missing")?
+    } else {
+        let parent_hashes = [
+            ("result.json", "result_sha256"),
+            ("memory.img", "ram_sha256"),
+            ("machine-state", "machine_state_sha256"),
+            ("base.qcow2", "base_disk_sha256"),
+        ];
+        for (filename, key) in parent_hashes {
+            let Some(expected) = parent.get(key).and_then(Value::as_str) else {
+                if schema == 1 && (key == "ram_sha256" || key == "machine_state_sha256") {
+                    continue;
+                }
+                return Err(format!("template manifest missing parent.{key}"));
+            };
+            verify_hash(
+                &parent_dir.join(filename),
+                expected,
+                &format!("parent.{key}"),
+            )?;
+            checked += 1;
+        }
+        "base.qcow2".to_string()
+    };
 
     let ram = field(&manifest, "ram", "root")?;
     let machine_state = field(&manifest, "machine_state", "root")?;
@@ -235,17 +264,22 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     }
 
     let backing_path = Path::new(string_field(disk, "backing_path", "disk")?);
-    let expected_base = parent_dir.join("base.qcow2");
+    let expected_base = parent_dir.join(&parent_disk);
     if backing_path != expected_base {
         return Err("template disk backing path does not match parent base image".to_string());
     }
     let backing_hash = string_field(disk, "backing_sha256", "disk")?;
-    if Some(backing_hash) != parent.get("base_disk_sha256").and_then(Value::as_str) {
+    let expected_backing_hash = if schema == 3 {
+        parent["artifacts"]["disk"]["sha256"].as_str()
+    } else {
+        parent.get("base_disk_sha256").and_then(Value::as_str)
+    };
+    if Some(backing_hash) != expected_backing_hash {
         return Err("template disk backing hash does not match parent base hash".to_string());
     }
 
     let generation_id = string_field(&manifest, "generation_id", "root")?;
-    if schema == 2 {
+    if schema == 2 || schema == 3 {
         let hashes = [ram_hash, state_hash, disk_hash];
         let encoded = serde_json::to_vec(&hashes).map_err(|error| error.to_string())?;
         let expected_id = format!("sha256:{}", sha256_bytes(&encoded)?);
@@ -488,14 +522,16 @@ mod template_tests {
         fs::write(
             &manifest_path,
             serde_json::to_vec(&serde_json::json!({
-                "schema_version": 2,
+                "schema_version": 3,
                 "generation_id": generation_id,
                 "parent": {
                     "template_dir": parent,
-                    "result_sha256": source_hashes[0],
-                    "ram_sha256": source_hashes[1],
-                    "machine_state_sha256": source_hashes[2],
-                    "base_disk_sha256": source_hashes[3],
+                    "artifacts": {
+                        "result": {"path": "result.json", "sha256": source_hashes[0]},
+                        "ram": {"path": "memory.img", "sha256": source_hashes[1]},
+                        "machine_state": {"path": "machine-state", "sha256": source_hashes[2]},
+                        "disk": {"path": "base.qcow2", "sha256": source_hashes[3]},
+                    },
                 },
                 "ram": {"path": "child-memory.img", "sha256": child_hashes[0], "logical_size_bytes": 12},
                 "machine_state": {"path": "child-machine-state", "sha256": child_hashes[1]},
