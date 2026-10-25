@@ -79,6 +79,16 @@ the backing-image relationship, and the v2 content-derived generation ID. The
 small raw evidence copies under `results/` intentionally omit the large RAM
 and qcow2 artifacts, so validate the original experiment directory.
 
+The Rust runtime can print the manifest's metadata without running the Python
+experiment:
+
+```sh
+cargo run -- inspect template /path/to/new-tree-experiment/generation.json
+```
+
+That output is marked `metadata-only` with `integrity_verified: false`. Use the
+validator above when artifact integrity must be checked.
+
 ## Measurements
 
 Two repeated runs on QEMU 11.1.2 / Linux 7.2.11 used a synthetic 256 MiB KVM
