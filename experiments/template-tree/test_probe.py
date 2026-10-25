@@ -117,6 +117,17 @@ class GenerationManifestTests(unittest.TestCase):
             self.assertEqual(manifest["qemu_command"], ["-machine", "q35", "-device", "virtio-net-pci"])
             validation = validate_generation_manifest(output / "generation.json")
             self.assertEqual(validation["status"], "verified")
+            manifest["parent"]["template_dir"] = str(source.resolve())
+            (output / "generation.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "v4 parent path must be relative"):
+                validate_generation_manifest(output / "generation.json")
+            manifest["parent"]["template_dir"] = "../source"
+            manifest["disk"]["backing_path"] = str((source / "base.qcow2").resolve())
+            (output / "generation.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "v4 disk backing path must be relative"):
+                validate_generation_manifest(output / "generation.json")
+            manifest["disk"]["backing_path"] = "../source/base.qcow2"
+            (output / "generation.json").write_text(json.dumps(manifest))
             relocated = root / "relocated"
             import shutil
             shutil.copytree(root, relocated, ignore=shutil.ignore_patterns("relocated"))

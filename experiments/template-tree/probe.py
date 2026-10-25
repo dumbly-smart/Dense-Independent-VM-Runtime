@@ -380,6 +380,8 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         raise ValueError("generation manifest has no parent template path")
     parent_dir = Path(parent["template_dir"])
     if manifest["schema_version"] == 4:
+        if parent_dir.is_absolute():
+            raise ValueError("v4 parent path must be relative")
         parent_dir = (manifest_path.parent / parent_dir).resolve()
     elif not parent_dir.is_absolute():
         raise ValueError("parent template path must be absolute")
@@ -424,6 +426,8 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         if not isinstance(backing_path, str):
             raise ValueError("disk backing path does not match the recorded parent disk")
         resolved_backing = Path(backing_path)
+        if manifest["schema_version"] == 4 and resolved_backing.is_absolute():
+            raise ValueError("v4 disk backing path must be relative")
         if not resolved_backing.is_absolute():
             resolved_backing = manifest_path.parent / resolved_backing
         if resolved_backing.resolve() != (parent_dir / parent_disk["path"]).resolve():

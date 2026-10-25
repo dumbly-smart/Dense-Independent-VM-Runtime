@@ -207,6 +207,9 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     let parent = field(&manifest, "parent", "root")?;
     let parent_path = Path::new(string_field(parent, "template_dir", "parent")?);
     let parent_dir = if schema == 4 {
+        if parent_path.is_absolute() {
+            return Err("v4 parent path must be relative".to_string());
+        }
         let manifest_dir = manifest_path
             .parent()
             .ok_or("template manifest has no parent directory")?;
@@ -293,6 +296,9 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     }
 
     let backing_path = Path::new(string_field(disk, "backing_path", "disk")?);
+    if schema == 4 && backing_path.is_absolute() {
+        return Err("v4 disk backing path must be relative".to_string());
+    }
     let backing_path = if schema == 4 && !backing_path.is_absolute() {
         manifest_path
             .parent()
@@ -660,6 +666,24 @@ mod template_tests {
             validate_template_generation(&manifest_path).unwrap()["status"],
             "verified"
         );
+        let original = fs::read(&manifest_path).unwrap();
+        let mut value: serde_json::Value = serde_json::from_slice(&original).unwrap();
+        value["parent"]["template_dir"] = serde_json::json!(parent.to_string_lossy());
+        fs::write(&manifest_path, serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(
+            validate_template_generation(&manifest_path)
+                .unwrap_err()
+                .contains("v4 parent path must be relative")
+        );
+        value = serde_json::from_slice(&original).unwrap();
+        value["disk"]["backing_path"] = serde_json::json!(parent.join("base.qcow2"));
+        fs::write(&manifest_path, serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(
+            validate_template_generation(&manifest_path)
+                .unwrap_err()
+                .contains("v4 disk backing path must be relative")
+        );
+        fs::write(&manifest_path, original).unwrap();
         let relocated = root.with_file_name(format!(
             "{}-relocated",
             root.file_name().unwrap().to_string_lossy()
