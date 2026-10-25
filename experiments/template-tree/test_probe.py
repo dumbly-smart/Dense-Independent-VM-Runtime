@@ -6,8 +6,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from probe import (
     build_child_generation_manifest,
+    backing_chain,
     extend_backing_chain,
     load_template_artifacts,
+    make_overlay,
     parse_ram_mapping,
     publish_atomically,
     validate_generation_manifest,
@@ -92,7 +94,8 @@ class GenerationManifestTests(unittest.TestCase):
             written = json.loads((output / "generation.json").read_text())
 
             self.assertEqual(manifest, written)
-            self.assertEqual(manifest["schema_version"], 3)
+            self.assertEqual(manifest["schema_version"], 4)
+            self.assertEqual(manifest["parent"]["template_dir"], "../source")
             child_artifacts = [
                 sha256(b"child ram").hexdigest(),
                 sha256(b"child state").hexdigest(),
@@ -109,11 +112,16 @@ class GenerationManifestTests(unittest.TestCase):
             self.assertEqual(manifest["ram"]["sha256"], sha256(b"child ram").hexdigest())
             self.assertEqual(manifest["ram"]["logical_size_bytes"], 256 * 1024 * 1024)
             self.assertEqual(manifest["machine_state"]["sha256"], sha256(b"child state").hexdigest())
-            self.assertEqual(manifest["disk"]["backing_path"], str((source / "base.qcow2").resolve()))
+            self.assertEqual(manifest["disk"]["backing_path"], "../source/base.qcow2")
             self.assertEqual(manifest["disk"]["sha256"], sha256(b"parent disk").hexdigest())
             self.assertEqual(manifest["qemu_command"], ["-machine", "q35", "-device", "virtio-net-pci"])
             validation = validate_generation_manifest(output / "generation.json")
             self.assertEqual(validation["status"], "verified")
+            relocated = root / "relocated"
+            import shutil
+            shutil.copytree(root, relocated, ignore=shutil.ignore_patterns("relocated"))
+            moved_validation = validate_generation_manifest(relocated / "tree/generation.json")
+            self.assertEqual(moved_validation["status"], "verified")
             self.assertEqual(validation["generation_id"], manifest["generation_id"])
             self.assertEqual(validation["checked_artifacts"], 7)
 
@@ -160,11 +168,11 @@ class GenerationManifestTests(unittest.TestCase):
                 qemu_command=["-machine", "q35"],
             )
 
-            self.assertEqual(manifest["schema_version"], 3)
+            self.assertEqual(manifest["schema_version"], 4)
             self.assertEqual(manifest["parent"]["artifacts"]["ram"]["path"], "child-memory.img")
             self.assertEqual(manifest["parent"]["artifacts"]["machine_state"]["path"], "child-machine-state")
             self.assertEqual(manifest["parent"]["artifacts"]["disk"]["path"], "parent.qcow2")
-            self.assertEqual(manifest["disk"]["backing_path"], str((source / "parent.qcow2").resolve()))
+            self.assertEqual(manifest["disk"]["backing_path"], "../generation-a/parent.qcow2")
             self.assertEqual(validate_generation_manifest(output / "generation.json")["status"], "verified")
             (output / "result.json").write_text(
                 json.dumps(
@@ -187,6 +195,32 @@ class GenerationManifestTests(unittest.TestCase):
 
 
 class DiskLineageTests(unittest.TestCase):
+    def test_qcow2_overlay_backing_reference_survives_relocating_the_tree(self) -> None:
+        import shutil
+        import subprocess
+        import tempfile
+
+        if shutil.which("qemu-img") is None:
+            self.skipTest("qemu-img is unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "templates"
+            parent = root / "generation-a"
+            child = root / "generation-b"
+            parent.mkdir(parents=True)
+            child.mkdir()
+            base = parent / "base.qcow2"
+            subprocess.run(["qemu-img", "create", "-f", "qcow2", str(base), "1M"], check=True, capture_output=True)
+            overlay = child / "parent.qcow2"
+
+            make_overlay(overlay, base)
+            self.assertEqual(backing_chain(overlay), [overlay.resolve(), base.resolve()])
+
+            relocated = root.with_name("templates-moved")
+            root.rename(relocated)
+            moved_overlay = relocated / "generation-b/parent.qcow2"
+            moved_base = relocated / "generation-a/base.qcow2"
+            self.assertEqual(backing_chain(moved_overlay), [moved_overlay.resolve(), moved_base.resolve()])
+
     def test_new_overlay_extends_the_complete_parent_backing_chain(self) -> None:
         overlay = Path("generation-c/parent.qcow2")
         parent_chain = [

@@ -240,8 +240,9 @@ def save_state(qmp: QMP, target: Path, *, ignore_shared: bool) -> dict[str, Any]
 
 
 def make_overlay(path: Path, backing: Path) -> None:
+    relative_backing = os.path.relpath(backing.resolve(), path.parent.resolve())
     subprocess.run(
-        ["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", str(backing), str(path)],
+        ["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", relative_backing, str(path)],
         check=True,
         capture_output=True,
         text=True,
@@ -335,10 +336,10 @@ def build_child_generation_manifest(
         json.dumps(child_artifact_hashes, separators=(",", ":")).encode()
     ).hexdigest()
     manifest = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generation_id": f"sha256:{generation_digest}",
         "parent": {
-            "template_dir": str(source_dir),
+            "template_dir": os.path.relpath(source_dir, output_dir),
             "artifacts": parent_artifacts,
         },
         "qemu_version": qemu_version,
@@ -357,7 +358,7 @@ def build_child_generation_manifest(
             "path": child_disk.name,
             "sha256": child_artifact_hashes[2],
             "readonly_for_descendants": True,
-            "backing_path": str(source_disk),
+            "backing_path": os.path.relpath(source_disk, output_dir),
             "backing_sha256": sha256(source_disk),
         },
     }
@@ -371,14 +372,16 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         manifest = json.loads(manifest_path.read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"cannot read generation manifest {manifest_path}: {error}") from error
-    if not isinstance(manifest, dict) or manifest.get("schema_version") not in (1, 2, 3):
+    if not isinstance(manifest, dict) or manifest.get("schema_version") not in (1, 2, 3, 4):
         raise ValueError("unsupported generation manifest schema")
 
     parent = manifest.get("parent")
     if not isinstance(parent, dict) or not isinstance(parent.get("template_dir"), str):
         raise ValueError("generation manifest has no parent template path")
     parent_dir = Path(parent["template_dir"])
-    if not parent_dir.is_absolute():
+    if manifest["schema_version"] == 4:
+        parent_dir = (manifest_path.parent / parent_dir).resolve()
+    elif not parent_dir.is_absolute():
         raise ValueError("parent template path must be absolute")
 
     def checked_hash(path: Path, expected: Any, label: str) -> None:
@@ -400,7 +403,7 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         return manifest_path.parent / relative, value
 
     checked = 0
-    if manifest["schema_version"] == 3:
+    if manifest["schema_version"] in (3, 4):
         artifacts = parent.get("artifacts")
         if not isinstance(artifacts, dict):
             raise ValueError("generation v3 manifest has no parent.artifacts")
@@ -418,7 +421,12 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         if not isinstance(child_disk, dict):
             raise ValueError("generation v3 manifest has no disk artifact")
         backing_path = child_disk.get("backing_path")
-        if not isinstance(backing_path, str) or Path(backing_path).resolve() != (parent_dir / parent_disk["path"]).resolve():
+        if not isinstance(backing_path, str):
+            raise ValueError("disk backing path does not match the recorded parent disk")
+        resolved_backing = Path(backing_path)
+        if not resolved_backing.is_absolute():
+            resolved_backing = manifest_path.parent / resolved_backing
+        if resolved_backing.resolve() != (parent_dir / parent_disk["path"]).resolve():
             raise ValueError("disk backing path does not match the recorded parent disk")
         if child_disk.get("backing_sha256") != parent_disk.get("sha256"):
             raise ValueError("disk backing hash does not match the parent disk hash")
@@ -454,7 +462,7 @@ def validate_generation_manifest(manifest_path: Path) -> dict[str, Any]:
         if disk.get("backing_sha256") != parent.get("base_disk_sha256"):
             raise ValueError("disk backing hash does not match the parent base image hash")
 
-    if manifest["schema_version"] in (2, 3):
+    if manifest["schema_version"] in (2, 3, 4):
         artifact_hashes = [ram["sha256"], state["sha256"], disk["sha256"]]
         expected_id = hashlib.sha256(json.dumps(artifact_hashes, separators=(",", ":")).encode()).hexdigest()
         if manifest.get("generation_id") != f"sha256:{expected_id}":

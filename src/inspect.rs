@@ -41,7 +41,7 @@ pub fn template_generation(manifest_path: &Path) -> Result<Value, String> {
         .get("schema_version")
         .and_then(Value::as_u64)
         .ok_or("template manifest has no numeric schema_version")?;
-    if !(1..=3).contains(&schema) {
+    if !(1..=4).contains(&schema) {
         return Err(format!("unsupported template manifest schema {schema}"));
     }
 
@@ -60,6 +60,21 @@ pub fn template_generation(manifest_path: &Path) -> Result<Value, String> {
     let generation_id = string_field(&manifest, "generation_id", "root")?;
     let parent = field(&manifest, "parent", "root")?;
     let parent_dir = string_field(parent, "template_dir", "parent")?;
+    let parent_dir = if schema == 4 {
+        let manifest_dir = manifest_path
+            .parent()
+            .ok_or("template manifest has no parent directory")?;
+        let manifest_dir = if manifest_dir.is_absolute() {
+            manifest_dir.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map_err(|error| error.to_string())?
+                .join(manifest_dir)
+        };
+        manifest_dir.join(parent_dir).to_string_lossy().into_owned()
+    } else {
+        parent_dir.to_string()
+    };
     let ram = field(&manifest, "ram", "root")?;
     let machine_state = field(&manifest, "machine_state", "root")?;
     let disk = field(&manifest, "disk", "root")?;
@@ -143,7 +158,7 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
         .get("schema_version")
         .and_then(Value::as_u64)
         .ok_or("template manifest has no numeric schema_version")?;
-    if !(1..=3).contains(&schema) {
+    if !(1..=4).contains(&schema) {
         return Err(format!("unsupported template manifest schema {schema}"));
     }
 
@@ -190,12 +205,26 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     }
 
     let parent = field(&manifest, "parent", "root")?;
-    let parent_dir = Path::new(string_field(parent, "template_dir", "parent")?);
-    if !parent_dir.is_absolute() {
+    let parent_path = Path::new(string_field(parent, "template_dir", "parent")?);
+    let parent_dir = if schema == 4 {
+        let manifest_dir = manifest_path
+            .parent()
+            .ok_or("template manifest has no parent directory")?;
+        let manifest_dir = if manifest_dir.is_absolute() {
+            manifest_dir.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map_err(|error| error.to_string())?
+                .join(manifest_dir)
+        };
+        manifest_dir.join(parent_path)
+    } else if parent_path.is_absolute() {
+        parent_path.to_path_buf()
+    } else {
         return Err("template parent path must be absolute".to_string());
-    }
+    };
     let mut checked = 0;
-    let parent_disk = if schema == 3 {
+    let parent_disk = if schema == 3 || schema == 4 {
         let artifacts = field(parent, "artifacts", "parent")?;
         let mut disk_filename = None;
         for key in ["result", "ram", "machine_state", "disk"] {
@@ -264,12 +293,20 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     }
 
     let backing_path = Path::new(string_field(disk, "backing_path", "disk")?);
+    let backing_path = if schema == 4 && !backing_path.is_absolute() {
+        manifest_path
+            .parent()
+            .ok_or("template manifest has no parent directory")?
+            .join(backing_path)
+    } else {
+        backing_path.to_path_buf()
+    };
     let expected_base = parent_dir.join(&parent_disk);
     if backing_path != expected_base {
         return Err("template disk backing path does not match parent base image".to_string());
     }
     let backing_hash = string_field(disk, "backing_sha256", "disk")?;
-    let expected_backing_hash = if schema == 3 {
+    let expected_backing_hash = if schema == 3 || schema == 4 {
         parent["artifacts"]["disk"]["sha256"].as_str()
     } else {
         parent.get("base_disk_sha256").and_then(Value::as_str)
@@ -279,7 +316,7 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     }
 
     let generation_id = string_field(&manifest, "generation_id", "root")?;
-    if schema == 2 || schema == 3 {
+    if schema == 2 || schema == 3 || schema == 4 {
         let hashes = [ram_hash, state_hash, disk_hash];
         let encoded = serde_json::to_vec(&hashes).map_err(|error| error.to_string())?;
         let expected_id = format!("sha256:{}", sha256_bytes(&encoded)?);
@@ -557,6 +594,82 @@ mod template_tests {
                 .contains("hash mismatch")
         );
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn validates_v4_generation_after_relocating_the_template_tree() {
+        let (root, _) = fixture("{}");
+        let parent = root.join("parent");
+        let child = root.join("child");
+        fs::create_dir_all(&parent).unwrap();
+        fs::create_dir_all(&child).unwrap();
+        for (path, contents) in [
+            (parent.join("result.json"), "parent result"),
+            (parent.join("memory.img"), "parent ram"),
+            (parent.join("machine-state"), "parent state"),
+            (parent.join("base.qcow2"), "base disk"),
+            (child.join("child-memory.img"), "child ram"),
+            (child.join("child-machine-state"), "child state"),
+            (child.join("parent.qcow2"), "parent overlay"),
+        ] {
+            fs::write(path, contents).unwrap();
+        }
+        let parent_hashes = [
+            digest(&parent.join("result.json")),
+            digest(&parent.join("memory.img")),
+            digest(&parent.join("machine-state")),
+            digest(&parent.join("base.qcow2")),
+        ];
+        let child_hashes = [
+            digest(&child.join("child-memory.img")),
+            digest(&child.join("child-machine-state")),
+            digest(&child.join("parent.qcow2")),
+        ];
+        let id_input = root.join("generation-id-input.json");
+        fs::write(&id_input, serde_json::to_vec(&child_hashes).unwrap()).unwrap();
+        let generation_id = format!("sha256:{}", digest(&id_input));
+        let manifest_path = child.join("generation.json");
+        fs::write(
+            &manifest_path,
+            serde_json::to_vec(&serde_json::json!({
+                "schema_version": 4,
+                "generation_id": generation_id,
+                "parent": {
+                    "template_dir": "../parent",
+                    "artifacts": {
+                        "result": {"path": "result.json", "sha256": parent_hashes[0]},
+                        "ram": {"path": "memory.img", "sha256": parent_hashes[1]},
+                        "machine_state": {"path": "machine-state", "sha256": parent_hashes[2]},
+                        "disk": {"path": "base.qcow2", "sha256": parent_hashes[3]},
+                    },
+                },
+                "ram": {"path": "child-memory.img", "sha256": child_hashes[0], "logical_size_bytes": 12},
+                "machine_state": {"path": "child-machine-state", "sha256": child_hashes[1]},
+                "disk": {
+                    "path": "parent.qcow2",
+                    "sha256": child_hashes[2],
+                    "backing_path": "../parent/base.qcow2",
+                    "backing_sha256": parent_hashes[3],
+                },
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            validate_template_generation(&manifest_path).unwrap()["status"],
+            "verified"
+        );
+        let relocated = root.with_file_name(format!(
+            "{}-relocated",
+            root.file_name().unwrap().to_string_lossy()
+        ));
+        fs::rename(&root, &relocated).unwrap();
+        assert_eq!(
+            validate_template_generation(&relocated.join("child/generation.json")).unwrap()["status"],
+            "verified"
+        );
+        fs::remove_dir_all(relocated).unwrap();
     }
 
     #[test]
