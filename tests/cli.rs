@@ -233,6 +233,17 @@ fn parses_template_generation_validation_command() {
 }
 
 #[test]
+fn parses_template_tree_catalog_command() {
+    assert_eq!(
+        parse_args(["densevm", "template", "tree", "/tmp/templates"]),
+        Ok(Command::TemplateTree {
+            root: "/tmp/templates".into(),
+        })
+    );
+    assert!(parse_args(["densevm", "template", "tree"]).is_err());
+}
+
+#[test]
 fn rejects_unknown_commands_and_invalid_counts() {
     assert!(parse_args(["densevm", "unknown"]).is_err());
     for value in ["33", "not-a-number"] {

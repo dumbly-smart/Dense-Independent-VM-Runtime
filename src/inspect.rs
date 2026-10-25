@@ -263,6 +263,94 @@ pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, Strin
     }))
 }
 
+fn collect_generation_manifests(
+    directory: &Path,
+    manifests: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    let entries = fs::read_dir(directory)
+        .map_err(|error| format!("read template directory {}: {error}", directory.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("read template directory entry: {error}"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("inspect {}: {error}", entry.path().display()))?;
+        if file_type.is_symlink() {
+            continue;
+        }
+        if file_type.is_dir() {
+            collect_generation_manifests(&entry.path(), manifests)?;
+        } else if file_type.is_file() && entry.file_name() == "generation.json" {
+            manifests.push(entry.path());
+        }
+    }
+    Ok(())
+}
+
+pub fn template_tree(root: &Path) -> Result<Value, String> {
+    let root = root
+        .canonicalize()
+        .map_err(|error| format!("open template catalog {}: {error}", root.display()))?;
+    if !root.is_dir() {
+        return Err(format!(
+            "template catalog root is not a directory: {}",
+            root.display()
+        ));
+    }
+    let mut manifests = Vec::new();
+    collect_generation_manifests(&root, &mut manifests)?;
+    manifests.sort();
+
+    let mut directories = std::collections::HashMap::new();
+    let mut nodes = Vec::new();
+    for manifest_path in manifests {
+        let manifest_path = manifest_path
+            .canonicalize()
+            .map_err(|error| format!("resolve manifest {}: {error}", manifest_path.display()))?;
+        let metadata = template_generation(&manifest_path)?;
+        let directory = manifest_path
+            .parent()
+            .ok_or("template manifest has no containing directory")?;
+        let generation_id = metadata["generation_id"]
+            .as_str()
+            .ok_or("template manifest has no generation ID")?;
+        let parent_directory = metadata["parent_template_dir"]
+            .as_str()
+            .ok_or("template manifest has no parent directory")?;
+        directories.insert(directory.to_path_buf(), generation_id.to_string());
+        nodes.push((
+            directory.to_path_buf(),
+            manifest_path,
+            generation_id.to_string(),
+            PathBuf::from(parent_directory),
+            metadata["schema_version"].clone(),
+        ));
+    }
+
+    let generations = nodes
+        .into_iter()
+        .map(
+            |(directory, manifest, generation_id, parent_directory, schema)| {
+                let resolved_parent = parent_directory.canonicalize().unwrap_or(parent_directory);
+                json!({
+                    "generation_id": generation_id,
+                    "schema_version": schema,
+                    "manifest_path": manifest,
+                    "directory": directory,
+                    "parent_directory": resolved_parent,
+                    "parent_generation_id": directories.get(&resolved_parent),
+                    "integrity_verified": false,
+                })
+            },
+        )
+        .collect::<Vec<_>>();
+
+    Ok(json!({
+        "catalog_root": root,
+        "integrity_verified": false,
+        "generations": generations,
+    }))
+}
+
 pub fn memory_map(pid: u32, path: &Path) -> Result<Value, String> {
     let smaps = fs::read_to_string(format!("/proc/{pid}/smaps"))
         .map_err(|e| format!("read smaps for {pid}: {e}"))?;
@@ -299,7 +387,7 @@ pub fn ksm_status() -> Result<Value, String> {
 
 #[cfg(test)]
 mod template_tests {
-    use super::{template_generation, validate_template_generation};
+    use super::{template_generation, template_tree, validate_template_generation};
     use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
@@ -431,6 +519,45 @@ mod template_tests {
             validate_template_generation(&manifest_path)
                 .unwrap_err()
                 .contains("hash mismatch")
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn catalog_resolves_parent_links_between_saved_generations() {
+        let (root, _) = fixture("{}");
+        fs::remove_file(root.join("generation.json")).unwrap();
+        let first = root.join("generation-a");
+        let second = root.join("generation-b");
+        fs::create_dir_all(&first).unwrap();
+        fs::create_dir_all(&second).unwrap();
+        let write_generation = |directory: &PathBuf, id: &str, parent_dir: &str| {
+            fs::write(
+                directory.join("generation.json"),
+                serde_json::to_vec(&serde_json::json!({
+                    "schema_version": 2,
+                    "generation_id": id,
+                    "parent": {"template_dir": parent_dir},
+                    "ram": {"path": "ram.img", "sha256": "ram-hash", "logical_size_bytes": 12},
+                    "machine_state": {"path": "state", "sha256": "state-hash"},
+                    "disk": {"path": "disk.qcow2", "sha256": "disk-hash", "backing_path": "/base.qcow2"}
+                }))
+                .unwrap(),
+            )
+            .unwrap();
+        };
+        write_generation(&first, "sha256:first", "/external/root");
+        write_generation(&second, "sha256:second", first.to_str().unwrap());
+
+        let tree = template_tree(&root).unwrap();
+
+        assert_eq!(tree["integrity_verified"], false);
+        assert_eq!(tree["generations"].as_array().unwrap().len(), 2);
+        assert_eq!(tree["generations"][0]["generation_id"], "sha256:first");
+        assert_eq!(tree["generations"][1]["generation_id"], "sha256:second");
+        assert_eq!(
+            tree["generations"][1]["parent_generation_id"],
+            "sha256:first"
         );
         fs::remove_dir_all(root).unwrap();
     }

@@ -52,6 +52,9 @@ fn main() {
         Command::ValidateTemplate { manifest } => {
             densevm::inspect::validate_template_generation(&manifest).and_then(print_json)
         }
+        Command::TemplateTree { root } => {
+            densevm::inspect::template_tree(&root).and_then(print_json)
+        }
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }
