@@ -30,6 +30,9 @@ pub enum Command {
     InspectTemplate {
         manifest: PathBuf,
     },
+    ValidateTemplate {
+        manifest: PathBuf,
+    },
     MemoryMap {
         pid: u32,
         path: PathBuf,
@@ -183,6 +186,13 @@ where
                 Ok(Command::InspectDisk { image })
             }
         }
+        Some("validate") if args.next().as_deref() == Some("template") => {
+            let manifest = PathBuf::from(args.next().ok_or("template manifest path is required")?);
+            if args.next().is_some() {
+                return Err("usage: densevm validate template MANIFEST".to_string());
+            }
+            Ok(Command::ValidateTemplate { manifest })
+        }
         Some("memory-map") => {
             let pid = args.next().ok_or("PID is required")?.parse().map_err(|_| "PID must be an integer")?;
             let path = PathBuf::from(args.next().ok_or("RAM path is required")?);
@@ -192,6 +202,6 @@ where
             Ok(Command::MemoryMap { pid, path })
         }
         Some("ksm") if args.next().as_deref() == Some("status") && args.next().is_none() => Ok(Command::KsmStatus),
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

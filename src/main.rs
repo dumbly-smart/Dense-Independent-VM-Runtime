@@ -49,6 +49,9 @@ fn main() {
         Command::InspectTemplate { manifest } => {
             densevm::inspect::template_generation(&manifest).and_then(print_json)
         }
+        Command::ValidateTemplate { manifest } => {
+            densevm::inspect::validate_template_generation(&manifest).and_then(print_json)
+        }
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }
