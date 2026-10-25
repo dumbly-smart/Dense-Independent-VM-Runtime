@@ -1,10 +1,11 @@
-# Two-generation template-tree experiment
+# Hierarchical template-tree experiment
 
 `experiments/template-tree/probe.py` tests whether a diverged private clone can
-be materialized as a second immutable RAM and disk template using QEMU's
-migration machinery. It consumes a completed DenseVM probe output, creates one
-parent clone, writes one RAM test region and one disk file, migrates that
-stopped clone into a new QEMU process backed by a fresh writable
+be materialized as a child immutable RAM and disk template using QEMU's
+migration machinery. It accepts either a completed DenseVM probe output or a
+previously generated template directory. It creates one parent clone, writes
+one RAM test region and one disk file, migrates that stopped clone into a new
+QEMU process backed by a fresh writable
 `memory-backend-file`, saves the child's non-RAM VMState, then restores two
 descendants from the new RAM file and disk layer.
 
@@ -49,6 +50,10 @@ cargo run -- probe --count 2 --skip-guest-oom --out /path/to/root-template
 python3 experiments/template-tree/probe.py \
   --template-dir /path/to/root-template \
   --out /path/to/new-tree-experiment
+# Later generations can use the prior generation directory as their input.
+python3 experiments/template-tree/probe.py \
+  --template-dir /path/to/new-tree-experiment \
+  --out /path/to/next-generation
 ```
 
 The experiment writes its QEMU logs, child RAM file, child machine-state file,
@@ -57,14 +62,15 @@ directory. It checks input template hashes before and after the run, verifies
 the qcow2 backing chain, samples the exact child-RAM VMA from each QEMU
 process's `smaps`, and fails unless the descendants initially map resident
 shared pages and A's RAM write increases A's private dirty pages. A successful
-run also writes `generation.json` (schema version 2) with hashes for the child
-RAM/state/disk artifacts and the parent result, RAM, machine-state, and base
-disk, plus the QEMU version, source QEMU device command, and qcow2 backing
-path. The generation ID is a SHA-256 content address over the child RAM,
-machine-state, and disk hashes. `result.json` records the manifest hash. The
-parent path is absolute, so the manifest is provenance for this experiment
-and is not yet a relocatable template package. Run 3 preserves the prior v1
-manifest; run 4 demonstrates the v2 content-addressed schema.
+run writes `generation.json` (schema version 3) with hashes and actual
+filenames for the parent result, RAM, machine state, and disk. This lets a
+generation become the next generation's parent even when its artifacts are
+named `child-memory.img`, `child-machine-state`, and `parent.qcow2`. The
+generation ID is a SHA-256 content address over the child RAM, machine-state,
+and disk hashes. `result.json` records the manifest hash. The parent path is
+absolute, so the manifest is provenance for this experiment and is not yet a
+relocatable template package. Archived 2025 outputs preserve schema v1/v2;
+the 2026-10-26 runs demonstrate v3 recursive lineage.
 
 To check a complete experiment directory before reusing its child template,
 validate the manifest beside the artifacts:
@@ -75,8 +81,9 @@ python3 experiments/template-tree/probe.py \
 ```
 
 The Python validator checks the child artifact hashes, the recorded parent
-artifacts, the backing-image relationship, and the v2 content-derived
-generation ID. DenseVM exposes the same read-only integrity check:
+artifacts, the backing-image relationship, and the content-derived generation
+ID across schema versions 1-3. DenseVM exposes the same read-only integrity
+check:
 
 ```sh
 cargo run -- validate template /path/to/new-tree-experiment/generation.json
@@ -84,7 +91,8 @@ cargo run -- validate template /path/to/new-tree-experiment/generation.json
 
 The Rust validator uses the host `sha256sum` utility. The small raw evidence
 copies under `results/` intentionally omit the large RAM and qcow2 artifacts,
-so validate the original experiment directory.
+so validate the original experiment directory. Both validators check v3
+manifests against the parent generation's actual artifact names.
 
 The Rust runtime can print the manifest's metadata without running the Python
 experiment:
@@ -127,6 +135,23 @@ were unchanged.
 | Child RAM file allocated storage | 159,383,552 bytes | recorded in raw result |
 | Parent qcow2 overlay allocated storage | 331,776 bytes | recorded in raw result |
 
+### Recursive generation proof
+
+Two additional live runs used generated templates as input. The first created
+a v3 generation from a v2 parent; the second created another v3 generation
+from that v3 parent. Both resumed from inherited `RAM 73` and `DISK 73`
+markers. In each run A changed both to `91`, while B retained `73`. The full
+qcow2 chain was checked at every generation, including all previous backing
+layers. DenseVM's catalog found five saved manifests and resolved the three
+generated nodes from the latest output back to the original root template.
+
+| Measurement | Recursive run 1 | Recursive run 2 |
+| --- | ---: | ---: |
+| Descendant A RAM-map PSS before → after write | 11,998 → 44,512 KiB | 10,354 → 43,336 KiB |
+| Descendant B RAM-map PSS before → after A's write | 9,150 → 10,352 KiB | 10,218 → 10,432 KiB |
+| A private dirty pages before → after | 3,976 → 36,084 KiB | 1,052 → 33,920 KiB |
+| B private dirty pages before → after A's write | 1,128 → 1,896 KiB | 1,016 → 1,032 KiB |
+
 The shared dirty page counts in each process's `smaps` describe that process's
 mapping; do not add them as if they were disjoint physical pages. PSS provides
 the per-process proportional measurement. The QEMU migration statistics show
@@ -151,12 +176,18 @@ and [`two-generation-run4-generation.json`](../results/template-tree/2026-10-25/
 Run 5 exercises atomic publication and post-publication manifest validation:
 [`two-generation-run5.json`](../results/template-tree/2026-10-25/two-generation-run5.json)
 and [`two-generation-run5-generation.json`](../results/template-tree/2026-10-25/two-generation-run5-generation.json).
+Recursive runs and the catalog snapshot are under
+[`results/template-tree/2026-10-26/`](../results/template-tree/2026-10-26/).
+[`root-compatibility-run1.json`](../results/template-tree/2026-10-26/root-compatibility-run1.json)
+also records the standard probe-output-to-v3 path after recursive support was
+added.
 
 ## Scope and remaining work
 
-This verifies one parent-to-child materialization and two independent
-descendants for the tested synthetic guest and QEMU machine. The v2 generation
-manifest is experimental provenance, not a persistent Template Manager. It
+This verifies three repeated parent-to-child materializations and two
+independent descendants from each generation for the tested synthetic guest
+and QEMU machine. The v3 generation manifest and Rust catalog are experimental
+management tools, not a persistent Template Manager. They
 does not provide artifact relocation, garbage collection or orphan recovery,
 durable publication after power loss, migration compatibility checks across
 QEMU versions, network identity behavior across generations, or large

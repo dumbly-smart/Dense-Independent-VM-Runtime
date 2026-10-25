@@ -1,0 +1,88 @@
+{
+  "schema_version": 3,
+  "generation_id": "sha256:2d977018dd90fb339c62e1b3f642cd1903b17b1fe350b4c758bccaf094688ece",
+  "parent": {
+    "template_dir": "/home/xtrmn8/dvm-resources/tree-spike-20261025-run14",
+    "artifacts": {
+      "result": {
+        "path": "result.json",
+        "sha256": "3e3bb55b7cc9435966c85528b2c35d36095325d8ef329b10b1f096497e93fa7b"
+      },
+      "ram": {
+        "path": "child-memory.img",
+        "sha256": "f02d89bef48b0c5f1e351bf805df8c5c577efc077c287d1146ecb6e0c7a239df"
+      },
+      "machine_state": {
+        "path": "child-machine-state",
+        "sha256": "78292f2b88cb2188f30c90117bc20c7fd3f1bb26f5719cba136f3c4526ff4a8d"
+      },
+      "disk": {
+        "path": "parent.qcow2",
+        "sha256": "28b443ff1f02bd70631aee77ee1f965756ac692d1a63a12b743ace835d6b6d55"
+      }
+    }
+  },
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "qemu_command": [
+    "qemu-system-x86_64",
+    "-machine",
+    "pc-q35-11.1,accel=kvm,mem-merge=off",
+    "-cpu",
+    "host",
+    "-m",
+    "256M",
+    "-smp",
+    "1",
+    "-object",
+    "memory-backend-file,id=ram,mem-path=/home/xtrmn8/dvm-resources/cgroup-probe-run4/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+    "-machine",
+    "memory-backend=ram",
+    "-kernel",
+    "/boot/vmlinuz-linux",
+    "-initrd",
+    "/home/xtrmn8/dvm-resources/cgroup-probe-run4/initramfs.cpio",
+    "-append",
+    "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+    "-display",
+    "none",
+    "-monitor",
+    "none",
+    "-nodefaults",
+    "-no-reboot",
+    "-drive",
+    "if=none,id=disk,file=/home/xtrmn8/dvm-resources/cgroup-probe-run4/clone-000.qcow2,format=qcow2",
+    "-device",
+    "virtio-blk-pci,drive=disk,id=blk0",
+    "-netdev",
+    "user,id=net0,restrict=on",
+    "-device",
+    "pcie-root-port,id=rp1,slot=2,chassis=1",
+    "-device",
+    "vmgenid,guid=auto",
+    "-chardev",
+    "socket,id=serial,path=/home/xtrmn8/dvm-resources/cgroup-probe-run4/clone-000.serial.sock,server=on,wait=off",
+    "-serial",
+    "chardev:serial",
+    "-qmp",
+    "unix:/home/xtrmn8/dvm-resources/cgroup-probe-run4/clone-000.qmp.sock,server=on,wait=off",
+    "-incoming",
+    "defer"
+  ],
+  "ram": {
+    "path": "child-memory.img",
+    "sha256": "80a5f6b59cd5ce952e14bb7cc35160c9ea5cdaee3c584deefa7cd1237518fbef",
+    "logical_size_bytes": 268435456,
+    "readonly_for_descendants": true
+  },
+  "machine_state": {
+    "path": "child-machine-state",
+    "sha256": "680fb4274f8ae02f7ffb2efbcfa0d828da4d461e6d239d28c2d91886c8da4918"
+  },
+  "disk": {
+    "path": "parent.qcow2",
+    "sha256": "973f8cfb22063423649d2ae018e22623984562edbd58791c22c179984a2efdeb",
+    "readonly_for_descendants": true,
+    "backing_path": "/home/xtrmn8/dvm-resources/tree-spike-20261025-run14/parent.qcow2",
+    "backing_sha256": "28b443ff1f02bd70631aee77ee1f965756ac692d1a63a12b743ace835d6b6d55"
+  }
+}
