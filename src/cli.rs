@@ -27,6 +27,9 @@ pub enum Command {
     InspectDisk {
         image: PathBuf,
     },
+    InspectTemplate {
+        manifest: PathBuf,
+    },
     MemoryMap {
         pid: u32,
         path: PathBuf,
@@ -165,11 +168,20 @@ where
             Ok(Command::BenchmarkBaseline { out, count })
         }
         Some("inspect") => {
-            let image = PathBuf::from(args.next().ok_or("image path is required")?);
-            if args.next().as_deref() != Some("disk") || args.next().is_some() {
-                return Err("usage: densevm inspect IMAGE disk".to_string());
+            let first = args.next().ok_or("image path or inspect target is required")?;
+            if first == "template" {
+                let manifest = PathBuf::from(args.next().ok_or("template manifest path is required")?);
+                if args.next().is_some() {
+                    return Err("usage: densevm inspect template MANIFEST".to_string());
+                }
+                Ok(Command::InspectTemplate { manifest })
+            } else {
+                let image = PathBuf::from(first);
+                if args.next().as_deref() != Some("disk") || args.next().is_some() {
+                    return Err("usage: densevm inspect IMAGE disk".to_string());
+                }
+                Ok(Command::InspectDisk { image })
             }
-            Ok(Command::InspectDisk { image })
         }
         Some("memory-map") => {
             let pid = args.next().ok_or("PID is required")?.parse().map_err(|_| "PID must be an integer")?;
@@ -180,6 +192,6 @@ where
             Ok(Command::MemoryMap { pid, path })
         }
         Some("ksm") if args.next().as_deref() == Some("status") && args.next().is_none() => Ok(Command::KsmStatus),
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

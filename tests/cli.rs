@@ -193,6 +193,26 @@ fn parses_inspection_commands() {
 }
 
 #[test]
+fn parses_template_generation_inspection_command() {
+    assert_eq!(
+        parse_args(["densevm", "inspect", "template", "/tmp/generation.json"]),
+        Ok(Command::InspectTemplate {
+            manifest: "/tmp/generation.json".into(),
+        })
+    );
+    assert!(
+        parse_args([
+            "densevm",
+            "inspect",
+            "template",
+            "/tmp/generation.json",
+            "extra"
+        ])
+        .is_err()
+    );
+}
+
+#[test]
 fn rejects_unknown_commands_and_invalid_counts() {
     assert!(parse_args(["densevm", "unknown"]).is_err());
     for value in ["33", "not-a-number"] {

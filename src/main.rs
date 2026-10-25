@@ -46,6 +46,9 @@ fn main() {
         ),
         Command::BenchmarkBaseline { out, count } => densevm::probe::run_baseline(&out, count),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
+        Command::InspectTemplate { manifest } => {
+            densevm::inspect::template_generation(&manifest).and_then(print_json)
+        }
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }
