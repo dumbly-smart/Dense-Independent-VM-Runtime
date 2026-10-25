@@ -74,10 +74,17 @@ python3 experiments/template-tree/probe.py \
   --validate-manifest /path/to/new-tree-experiment/generation.json
 ```
 
-The validator checks the child artifact hashes, the recorded parent artifacts,
-the backing-image relationship, and the v2 content-derived generation ID. The
-small raw evidence copies under `results/` intentionally omit the large RAM
-and qcow2 artifacts, so validate the original experiment directory.
+The Python validator checks the child artifact hashes, the recorded parent
+artifacts, the backing-image relationship, and the v2 content-derived
+generation ID. DenseVM exposes the same read-only integrity check:
+
+```sh
+cargo run -- validate template /path/to/new-tree-experiment/generation.json
+```
+
+The Rust validator uses the host `sha256sum` utility. The small raw evidence
+copies under `results/` intentionally omit the large RAM and qcow2 artifacts,
+so validate the original experiment directory.
 
 The Rust runtime can print the manifest's metadata without running the Python
 experiment:
