@@ -17,11 +17,19 @@ timing as an initial path check, not a controlled CPU-model comparison. Both
 active workloads consumed about one host core per QEMU process, consistent
 with separate guests still executing their own work.
 
-These runs do not enable translation tracing. They establish that the local
-QEMU 11.1.2 TCG path boots this project guest and provide a basic process
-baseline. Translation-block counts, generated-code size, and time spent
-translating remain unmeasured. The KVM PSS values are QEMU process totals and
-do not include KVM or host page-table memory.
+The untraced runs establish that the local QEMU 11.1.2 TCG path boots this
+project guest and provide a basic process baseline. They do not count
+translation-block events. Generated-code size and time spent translating
+remain unmeasured. The KVM PSS values are QEMU process totals and do not
+include KVM or host page-table memory.
+
+An opt-in one-VM trace run is saved in [`trace1/`](trace1/). It recorded
+108,834 `translate_block` events through the active-workload sample in an
+8,759,535-byte trace log. Its ready time was 8,063 ms and process PSS was
+288,175 KiB. The trace is instrumentation, so these timing and memory values
+are not directly comparable to the untraced runs. Event count is not a count
+of unique TBs and does not measure translation duration or generated-code
+size.
 
 Reproduce with:
 

@@ -1,6 +1,14 @@
 use densevm::metrics::{
     MemoryTotals, parse_cgroup_memory, parse_smaps_for_path, parse_smaps_rollup,
+    parse_tcg_translation_events,
 };
+
+#[test]
+fn counts_translation_block_trace_events_and_rejects_missing_events() {
+    let trace = "translate_block tb:0x1, pc:0xfffffff0, tb_code:0x2\nexec_tb tb:0x1\ntranslate_block tb:0x3, pc:0xfe05b, tb_code:0x4\n";
+    assert_eq!(parse_tcg_translation_events(trace).unwrap(), 2);
+    assert!(parse_tcg_translation_events("exec_tb tb:0x1\n").is_err());
+}
 
 #[test]
 fn parses_resident_shared_and_private_kib() {

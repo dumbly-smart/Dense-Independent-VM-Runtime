@@ -30,6 +30,7 @@ pub enum Command {
         out: PathBuf,
         count: u32,
         accelerator: BaselineAccelerator,
+        trace_translations: bool,
     },
     InspectDisk {
         image: PathBuf,
@@ -80,13 +81,14 @@ where
 fn parse_baseline_options<I>(
     args: &mut I,
     default_count: u32,
-) -> Result<(PathBuf, u32, BaselineAccelerator), String>
+) -> Result<(PathBuf, u32, BaselineAccelerator, bool), String>
 where
     I: Iterator<Item = String>,
 {
     let mut out = None;
     let mut count = default_count;
     let mut accelerator = BaselineAccelerator::Kvm;
+    let mut trace_translations = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--out" => out = Some(PathBuf::from(value(args, "--out")?)),
@@ -105,10 +107,19 @@ where
                     _ => return Err("--accel must be kvm or tcg".to_string()),
                 };
             }
+            "--trace-translations" => trace_translations = true,
             flag => return Err(format!("unknown option {flag}")),
         }
     }
-    Ok((out.ok_or("--out is required")?, count, accelerator))
+    if trace_translations && accelerator != BaselineAccelerator::Tcg {
+        return Err("--trace-translations requires --accel tcg".into());
+    }
+    Ok((
+        out.ok_or("--out is required")?,
+        count,
+        accelerator,
+        trace_translations,
+    ))
 }
 
 fn parse_probe<I>(args: &mut I) -> Result<Command, String>
@@ -207,11 +218,13 @@ where
             parse_probe(&mut args)
         }
         Some("benchmark") if args.next().as_deref() == Some("baseline") => {
-            let (out, count, accelerator) = parse_baseline_options(&mut args, 1)?;
+            let (out, count, accelerator, trace_translations) =
+                parse_baseline_options(&mut args, 1)?;
             Ok(Command::BenchmarkBaseline {
                 out,
                 count,
                 accelerator,
+                trace_translations,
             })
         }
         Some("inspect") => {
@@ -326,6 +339,6 @@ where
                 state_dir: state_dir.ok_or("--state-dir is required")?,
             })
         }
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N [--accel kvm|tcg] | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N [--accel kvm|tcg] [--trace-translations] | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

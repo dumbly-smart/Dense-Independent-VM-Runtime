@@ -162,6 +162,15 @@ translations or measure translation time. The samples are single runs, and the
 TCG `max` CPU model differs from KVM's host CPU model. Expected cache savings
 remain unknown.
 
+For bounded event counts, `--trace-translations` enables QEMU's
+`translate_block` trace event and saves the trace log in the run directory.
+This mode is limited to two VMs because the log grows with guest translation
+activity. It reports counts observed through the active CPU sample; it does not
+report translation duration or generated-code size. Startup and CPU metrics
+from a traced run are perturbed and must be compared only with other traced
+runs. A one-VM QEMU 11.1.2 sample recorded 108,834 events in an 8,759,535-byte
+log; the raw result and log are under `results/tcg/2026-10-26/trace1/`.
+
 ## Sources
 
 - [QEMU 11.1.2 Translator Internals](https://qemu.readthedocs.io/en/v11.1.2/devel/tcg.html): CPU-state assumptions in TBs, direct block chaining, code invalidation, exception recovery, and physical TB indexing in system emulation.

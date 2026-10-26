@@ -48,10 +48,12 @@ fn main() {
             out,
             count,
             accelerator,
+            trace_translations,
         } => densevm::probe::run_baseline(
             &out,
             count,
             accelerator == densevm::cli::BaselineAccelerator::Tcg,
+            trace_translations,
         ),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
         Command::InspectTemplate { manifest } => {

@@ -689,6 +689,7 @@ fn launch(
     mac_at_boot: Option<&str>,
     incoming: bool,
     tcg: bool,
+    translation_trace: Option<&Path>,
 ) -> Result<Vm, String> {
     let qmp_path = out.join(format!("{name}.qmp.sock"));
     let serial_path = out.join(format!("{name}.serial.sock"));
@@ -773,6 +774,9 @@ fn launch(
         .arg(format!("unix:{},server=on,wait=off", qmp_path.display()));
     if incoming {
         cmd.args(["-incoming", "defer"]);
+    }
+    if let Some(path) = translation_trace {
+        cmd.args(["-d", "trace:translate_block", "-D"]).arg(path);
     }
     let command = std::iter::once("qemu-system-x86_64".to_string())
         .chain(cmd.get_args().map(|arg| arg.to_string_lossy().into_owned()))
@@ -1631,6 +1635,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             Some(&mac),
             false,
             false,
+            None,
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
@@ -1686,6 +1691,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         None,
         false,
         false,
+        None,
     )?;
     let mut template_serial = template.serial()?;
     template_serial.expect("READY", Duration::from_secs(60))?;
@@ -1785,6 +1791,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         None,
         true,
         false,
+        None,
     )?;
     let b = launch(
         &out,
@@ -1798,6 +1805,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         None,
         true,
         false,
+        None,
     )?;
     let mut aq = a.qmp()?;
     let mut bq = b.qmp()?;
@@ -1828,6 +1836,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             None,
             true,
             false,
+            None,
         )?;
         let mut qmp = vm.qmp()?;
         let migration = restore(&mut qmp, &state)?;
@@ -2799,9 +2808,20 @@ fn vmgenid_reactions_verified(replies: &[String]) -> bool {
         })
 }
 
-pub fn run_baseline(out: &Path, count: u32, tcg: bool) -> Result<(), String> {
+pub fn run_baseline(
+    out: &Path,
+    count: u32,
+    tcg: bool,
+    trace_translations: bool,
+) -> Result<(), String> {
     if count == 0 || count > 32 {
         return Err("baseline count must be between 1 and 32".to_string());
+    }
+    if trace_translations && !tcg {
+        return Err("translation tracing requires the TCG accelerator".into());
+    }
+    if trace_translations && count > 2 {
+        return Err("translation tracing is limited to at most two VMs to bound log size".into());
     }
     let host = crate::capabilities::host_report();
     let available_kib: u64 = fs::read_to_string("/proc/meminfo")
@@ -2831,6 +2851,7 @@ pub fn run_baseline(out: &Path, count: u32, tcg: bool) -> Result<(), String> {
     let start = Instant::now();
     let mut vms = Vec::new();
     let mut serials = Vec::new();
+    let mut translation_logs = Vec::with_capacity(count as usize);
     for index in 0..count {
         let name = format!("baseline-{index:03}");
         let disk = out.join(format!("{name}.qcow2"));
@@ -2841,6 +2862,11 @@ pub fn run_baseline(out: &Path, count: u32, tcg: bool) -> Result<(), String> {
                 .arg(&disk),
         )?;
         let mac = CloneIdentity::generate()?.mac;
+        let translation_log = if trace_translations {
+            Some(out.join(format!("{name}.tcg-trace.log")))
+        } else {
+            None
+        };
         let vm = launch(
             &out,
             &name,
@@ -2850,10 +2876,12 @@ pub fn run_baseline(out: &Path, count: u32, tcg: bool) -> Result<(), String> {
             Some(&mac),
             false,
             tcg,
+            translation_log.as_deref(),
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
         serials.push(serial);
+        translation_logs.push(translation_log);
         vms.push(vm);
     }
     let elapsed = start.elapsed().as_millis();
@@ -2867,9 +2895,21 @@ pub fn run_baseline(out: &Path, count: u32, tcg: bool) -> Result<(), String> {
     for index in 0..count {
         let vm = &vms[index as usize];
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
-        guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"active_cpu_ticks":active_cpu_ticks[index as usize],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(active_cpu_ticks[index as usize], active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?}));
+        let translation = if let Some(path) = &translation_logs[index as usize] {
+            let trace = fs::read_to_string(path)
+                .map_err(|e| format!("read TCG trace {}: {e}", path.display()))?;
+            json!({
+                "event": "translate_block",
+                "events_after_active_sample": crate::metrics::parse_tcg_translation_events(&trace)?,
+                "log_path": path,
+                "log_bytes": fs::metadata(path).map_err(|e| e.to_string())?.len(),
+            })
+        } else {
+            json!({"status":"not-instrumented"})
+        };
+        guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"active_cpu_ticks":active_cpu_ticks[index as usize],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(active_cpu_ticks[index as usize], active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?,"tcg_translation_trace":translation}));
     }
-    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":"not instrumented in this baseline","vms":guests});
+    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":if trace_translations { "translate_block event counts through active workload sample; no translation duration or generated code size" } else { "not instrumented in this baseline" },"translation_trace_perturbs_timing":trace_translations,"vms":guests});
     fs::write(
         out.join("baseline.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,

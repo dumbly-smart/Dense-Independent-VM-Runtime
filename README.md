@@ -41,6 +41,8 @@ experiments/ksm/run.sh --out /tmp/densevm-ksm-pair --count 2
 cargo run -- benchmark baseline --count 8 --out /tmp/densevm-baseline-8
 # Run the conventional baseline under QEMU TCG rather than KVM:
 cargo run -- benchmark baseline --count 2 --accel tcg --out /tmp/densevm-tcg-2
+# Count TCG translation events (trace output perturbs timings; limit two VMs):
+cargo run -- benchmark baseline --count 1 --accel tcg --trace-translations --out /tmp/densevm-tcg-traced-1
 # Inspect saved disk and live RAM metadata:
 cargo run -- inspect /tmp/densevm-my-run/clone-a.qcow2 disk
 cargo run -- memory-map QEMU_PID /tmp/densevm-my-run/memory.img

@@ -72,6 +72,7 @@ fn parses_baseline_accelerator_with_kvm_default_and_tcg_option() {
             out: PathBuf::from("/tmp/base"),
             count: 1,
             accelerator: BaselineAccelerator::Kvm,
+            trace_translations: false,
         })
     );
     assert_eq!(
@@ -90,6 +91,7 @@ fn parses_baseline_accelerator_with_kvm_default_and_tcg_option() {
             out: PathBuf::from("/tmp/tcg"),
             count: 2,
             accelerator: BaselineAccelerator::Tcg,
+            trace_translations: false,
         })
     );
     assert!(
@@ -101,6 +103,39 @@ fn parses_baseline_accelerator_with_kvm_default_and_tcg_option() {
             "/tmp/invalid",
             "--accel",
             "other",
+        ])
+        .is_err()
+    );
+}
+
+#[test]
+fn enables_translation_trace_only_for_tcg_baselines() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "benchmark",
+            "baseline",
+            "--out",
+            "/tmp/tcg-trace",
+            "--accel",
+            "tcg",
+            "--trace-translations",
+        ]),
+        Ok(Command::BenchmarkBaseline {
+            out: PathBuf::from("/tmp/tcg-trace"),
+            count: 1,
+            accelerator: BaselineAccelerator::Tcg,
+            trace_translations: true,
+        })
+    );
+    assert!(
+        parse_args([
+            "densevm",
+            "benchmark",
+            "baseline",
+            "--out",
+            "/tmp/kvm-trace",
+            "--trace-translations",
         ])
         .is_err()
     );

@@ -152,3 +152,14 @@ pub fn verify_private_ram_mapping(input: &str, path: &str) -> Result<(), String>
     }
     Ok(())
 }
+
+pub fn parse_tcg_translation_events(input: &str) -> Result<u64, String> {
+    let count = input
+        .lines()
+        .filter(|line| line.starts_with("translate_block "))
+        .count();
+    if count == 0 {
+        return Err("QEMU trace contains no translate_block events".into());
+    }
+    u64::try_from(count).map_err(|_| "translate_block event count exceeds u64".into())
+}
