@@ -53,3 +53,35 @@ changes timing semantics. The control is explicit; there is no automatic idle
 detector or packet-triggered wakeup. Raw samples:
 `results/2026-10-24/parking-clock-devices-2-run1.json` and
 `parking-clock-devices-2-run2.json`.
+
+## Single-clone divergence and Alpine range measurements
+
+The sweep above uses `--divergence-all`, so every clone dirties the requested
+fraction of its test region. For the control case where only clone A diverges,
+use the sequential driver:
+
+```sh
+python3 experiments/runtime-clone/sweep_driver.py \
+  --densevm target/debug/densevm \
+  --out /tmp/densevm-single-clone-sweep \
+  --count 8
+```
+
+The driver uses 0%, 5%, 10%, 25%, 50%, and 100% divergence by default,
+validates RAM and disk isolation in each raw result, and writes a machine-
+readable `sweep.json` plus a `densevm stats` summary per run. A measured
+QEMU 11.1.2 / Linux 7.2.11 sweep is recorded in
+`results/runtime-clone/2026-10-26/eight-clone-divergence-sweep-run1/`; its
+table shows clone process PSS rising from 462,997 KiB at 0% to 495,980 KiB at
+100%, against per-run conventional baseline PSS values near 1.6 million KiB.
+The six runs are single samples, and the entire 256 MiB template RAM file was
+resident in cache. Kernel/KVM memory is not included.
+
+The larger Alpine range run created 20 targets plus an attacker (21 guests)
+and passed guest RAM/disk isolation, guest OOM, crash, process, reboot, and
+range connectivity checks. The attacker reached all targets before one target
+was killed, then reached a surviving target afterward. Its evidence is in
+`results/runtime-clone/2026-10-26/alpine-twenty-target-range-run1/`. That run
+used a tmpfs output directory because the persistent filesystem was nearly
+full; its `st_blocks` values describe tmpfs allocation and are not a
+persistent-storage benchmark.

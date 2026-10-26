@@ -18,7 +18,13 @@ ax.plot(percent, [row["baseline_process_pss_kib"] / 1024 for row in rows], "o--"
 ax.plot(percent, [row["after_divergence"]["process_pss_kib"] / 1024 for row in rows], "o-", label="Clone process PSS")
 ax.plot(percent, [row["after_divergence"]["process_pss_plus_full_template_cache_kib"] / 1024 for row in rows], "s-", label="Clone PSS + full template cache (overcount)")
 region_mib = rows[0]["divergence_region_bytes"] / (1024 * 1024)
-ax.set(xlabel=f"Divergence within each {region_mib:g} MiB test buffer (%)", ylabel="Measured resident memory (MiB)", title=f"DenseVM: {rows[0]['clone_count']} synthetic Linux clones")
+guest_profile = rows[0].get("guest_profile", "synthetic Linux")
+divergence_scope = rows[0].get("divergence_scope", "each clone")
+ax.set(
+    xlabel=f"Divergence in {divergence_scope} within {region_mib:g} MiB test buffer (%)",
+    ylabel="Measured resident memory (MiB)",
+    title=f"DenseVM: {rows[0]['clone_count']} {guest_profile} clones",
+)
 ax.set_xticks(percent)
 ax.grid(alpha=0.25)
 ax.legend(fontsize=8)
