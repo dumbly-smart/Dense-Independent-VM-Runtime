@@ -681,6 +681,9 @@ fn memory_pressure_worker() -> ! {
     if !(1..=128 * 1024 * 1024).contains(&allocation_bytes) {
         std::process::exit(43);
     }
+    if set_oom_score_adj(std::path::Path::new("/proc/self/oom_score_adj"), 1000).is_err() {
+        std::process::exit(44);
+    }
     // Avoid reserving the whole range against the guest's commit limit. The
     // pages become real guest memory only as the worker touches them below.
     let memory = unsafe {
@@ -705,7 +708,39 @@ fn memory_pressure_worker() -> ! {
     }
 }
 
+fn with_oom_score_adj<T>(
+    path: &std::path::Path,
+    adjustment: i32,
+    operation: impl FnOnce() -> std::io::Result<T>,
+) -> std::io::Result<T> {
+    let original = std::fs::read_to_string(path)?;
+    original
+        .trim()
+        .parse::<i32>()
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error.to_string()))?;
+    std::fs::write(path, format!("{adjustment}\n"))?;
+    let result = operation();
+    let restored = std::fs::write(path, original);
+    match (result, restored) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(error), _) => Err(error),
+        (Ok(_), Err(error)) => Err(error),
+    }
+}
+
+fn set_oom_score_adj(path: &std::path::Path, adjustment: i32) -> std::io::Result<()> {
+    std::fs::write(path, format!("{adjustment}\n"))
+}
+
 fn memory_pressure_probe() -> std::io::Result<String> {
+    with_oom_score_adj(
+        std::path::Path::new("/proc/self/oom_score_adj"),
+        -1000,
+        memory_pressure_probe_inner,
+    )
+}
+
+fn memory_pressure_probe_inner() -> std::io::Result<String> {
     use std::os::unix::process::ExitStatusExt;
 
     let oom_before = guest_oom_kill_count();
@@ -714,6 +749,7 @@ fn memory_pressure_probe() -> std::io::Result<String> {
     let executable = std::env::current_exe()?;
     let mut children = Vec::with_capacity(WORKERS);
     let mut spawn_failures = 0usize;
+    let mut priority_failures = 0usize;
     for _ in 0..WORKERS {
         match std::process::Command::new(&executable)
             .args(["--memory-pressure-worker", &WORKER_BYTES.to_string()])
@@ -739,6 +775,8 @@ fn memory_pressure_probe() -> std::io::Result<String> {
                     oom_killed_workers += 1;
                 } else if status.code() == Some(42) {
                     allocation_failures += 1;
+                } else if status.code() == Some(44) {
+                    priority_failures += 1;
                 }
             } else {
                 live += 1;
@@ -755,13 +793,13 @@ fn memory_pressure_probe() -> std::io::Result<String> {
                 let _ = child.wait();
             }
             return Ok(format!(
-                "PRESSURE-OOM workers_killed={oom_killed_workers} oom_kill_delta={} allocation_failures={allocation_failures} spawn_failures={spawn_failures}",
+                "PRESSURE-OOM workers_killed={oom_killed_workers} oom_kill_delta={} allocation_failures={allocation_failures} spawn_failures={spawn_failures} priority_failures={priority_failures}",
                 oom_delta.unwrap_or_default()
             ));
         }
         if live == 0 {
             return Ok(format!(
-                "PRESSURE-NO-OOM oom_kill_delta={} allocation_failures={allocation_failures} spawn_failures={spawn_failures}",
+                "PRESSURE-NO-OOM oom_kill_delta={} allocation_failures={allocation_failures} spawn_failures={spawn_failures} priority_failures={priority_failures}",
                 oom_delta.unwrap_or_default()
             ));
         }
@@ -773,11 +811,66 @@ fn memory_pressure_probe() -> std::io::Result<String> {
                 let _ = child.wait();
             }
             return Ok(format!(
-                "PRESSURE-TIMEOUT oom_kill_delta={} workers_killed={oom_killed_workers} allocation_failures={allocation_failures} spawn_failures={spawn_failures}",
+                "PRESSURE-TIMEOUT oom_kill_delta={} workers_killed={oom_killed_workers} allocation_failures={allocation_failures} spawn_failures={spawn_failures} priority_failures={priority_failures}",
                 oom_delta.unwrap_or_default()
             ));
         }
         thread::sleep(Duration::from_millis(50));
+    }
+}
+
+#[cfg(test)]
+mod oom_score_adj_tests {
+    use super::{set_oom_score_adj, with_oom_score_adj};
+    use std::io;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn score_path() -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "densevm-oom-score-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    #[test]
+    fn protects_the_probe_coordinator_and_restores_its_score() {
+        let path = score_path();
+        std::fs::write(&path, "0\n").unwrap();
+
+        let observed = with_oom_score_adj(&path, -1000, || std::fs::read_to_string(&path)).unwrap();
+
+        assert_eq!(observed, "-1000\n");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "0\n");
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn assigns_pressure_workers_a_higher_oom_score_than_the_coordinator() {
+        let path = score_path();
+        std::fs::write(&path, "-1000\n").unwrap();
+
+        set_oom_score_adj(&path, 1000).unwrap();
+
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "1000\n");
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn restores_the_score_when_the_pressure_operation_fails() {
+        let path = score_path();
+        std::fs::write(&path, "0\n").unwrap();
+
+        let result: io::Result<()> = with_oom_score_adj(&path, -1000, || {
+            Err(io::Error::other("simulated pressure failure"))
+        });
+
+        assert!(result.is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "0\n");
+        std::fs::remove_file(path).unwrap();
     }
 }
 
