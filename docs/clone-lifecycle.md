@@ -30,19 +30,23 @@ with:
 densevm clone reconcile --state-dir DIR
 ```
 
-The command returns the full registry after checking each `running` record. It
-changes a record to `failed` only when the recorded PID is absent from `/proc`
-and the saved QMP socket is absent or refuses connections. A reachable QMP
-socket is treated as evidence that the VM may still be alive, even if the
-recorded PID is stale, so reconciliation leaves that record unchanged. Other
-inspection errors also stop reconciliation instead of guessing.
+The command returns the full registry after checking `running` and `starting`
+records. Current records preserve each QEMU PID with its Linux boot ID and
+`/proc/<pid>/stat` start-time ticks, so PID reuse does not count as the original
+process. Old records without those fingerprints fall back to checking whether
+the saved PID exists. A reachable QMP socket is treated as evidence that the VM
+may still be alive, even if its PID is stale, so reconciliation leaves that
+record unchanged. Other inspection errors stop reconciliation instead of
+guessing.
 
-`starting` records are deliberately left alone because records do not yet
-contain a start time or boot ID that would let reconciliation distinguish a
-crash from an in-progress launch. A reachable socket is checked only for
-connectability; reconciliation does not adopt a new PID or issue QMP commands.
-This favors avoiding a false failure report over repairing every ambiguous
-orphan.
+Current `starting` records also contain the launcher PID, boot ID, and
+start-time ticks. The QEMU PID fingerprint is written as soon as QEMU starts.
+Reconcile marks a start `failed` only when the original launcher and recorded
+QEMU process are both gone and the saved QMP endpoint is unreachable. If QMP is
+reachable, it does not adopt the process or issue QMP commands; the record
+remains `starting` for manual inspection. Legacy `starting` records without
+launcher fingerprints remain unchanged because their launch state cannot be
+distinguished safely.
 
 The real-QEMU lifecycle check in
 [`persistent-lifecycle-run1`](../results/runtime-clone/2026-10-26/persistent-lifecycle-run1/README.md)

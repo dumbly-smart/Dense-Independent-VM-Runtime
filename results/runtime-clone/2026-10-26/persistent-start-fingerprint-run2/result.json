@@ -1,0 +1,60 @@
+{
+  "experiment": "real-QEMU PID fingerprint crash reconciliation",
+  "status": "verified",
+  "generation_id": "sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357",
+  "recorded_process_identity": {
+    "qemu_pid": 325580,
+    "qemu_start_ticks_present": true,
+    "qemu_boot_id_present": true
+  },
+  "pid_gone_after_sigkill": true,
+  "reconciled_state": "failed",
+  "delete": {
+    "deleted": "fingerprint-crash"
+  },
+  "clone_directory_removed": true,
+  "base_disk_hash_unchanged": true,
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "fingerprint-crash",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+        "--state-dir",
+        "/tmp/densevm-fingerprint-crash-togf9col"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-fingerprint-crash-togf9col/fingerprint-crash/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"fingerprint-crash\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"2a:e6:21:06:be:f5\",\n  \"machine_id\": \"7d37c9d84e96e12dfbce05c76f922cb9\",\n  \"qemu_boot_id\": \"be3605bf-1d82-48d5-b774-d01b7cd0fac7\",\n  \"qemu_pid\": 325580,\n  \"qemu_start_ticks\": 940338,\n  \"qmp_socket\": \"/tmp/densevm-fingerprint-crash-togf9col/fingerprint-crash/fingerprint-crash.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "reconcile",
+        "--state-dir",
+        "/tmp/densevm-fingerprint-crash-togf9col"
+      ],
+      "exit_code": 0,
+      "stdout": "[\n  {\n    \"disk_overlay\": \"/tmp/densevm-fingerprint-crash-togf9col/fingerprint-crash/disk.qcow2\",\n    \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n    \"id\": \"fingerprint-crash\",\n    \"launcher_boot_id\": null,\n    \"launcher_pid\": null,\n    \"launcher_start_ticks\": null,\n    \"mac\": \"2a:e6:21:06:be:f5\",\n    \"machine_id\": \"7d37c9d84e96e12dfbce05c76f922cb9\",\n    \"qemu_boot_id\": null,\n    \"qemu_pid\": null,\n    \"qemu_start_ticks\": null,\n    \"qmp_socket\": \"/tmp/densevm-fingerprint-crash-togf9col/fingerprint-crash/fingerprint-crash.qmp.sock\",\n    \"schema_version\": 1,\n    \"state\": \"failed\"\n  }\n]",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "delete",
+        "fingerprint-crash",
+        "--state-dir",
+        "/tmp/densevm-fingerprint-crash-togf9col"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"deleted\": \"fingerprint-crash\"\n}",
+      "stderr": ""
+    }
+  ],
+  "cleanup_leftover_pids": []
+}

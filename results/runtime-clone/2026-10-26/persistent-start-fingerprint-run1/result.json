@@ -1,0 +1,43 @@
+{
+  "experiment": "real-QEMU process identity in persistent clone lifecycle",
+  "status": "verified",
+  "generation_id": "sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357",
+  "started_state": "running",
+  "running_record_has_qemu_pid": true,
+  "running_record_has_qemu_start_ticks": true,
+  "running_record_has_qemu_boot_id": true,
+  "running_record_cleared_launcher_fingerprint": true,
+  "stopped_state": "stopped",
+  "qemu_pid_gone_on_stop_return": true,
+  "base_disk_hash_unchanged": true,
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "fingerprint-check",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+        "--state-dir",
+        "/tmp/densevm-start-fingerprint-dxv_jcsu"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-start-fingerprint-dxv_jcsu/fingerprint-check/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"fingerprint-check\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"d6:ce:1f:6a:3c:b9\",\n  \"machine_id\": \"274941a3459f0fd6b03d300b8c983fa1\",\n  \"qemu_boot_id\": \"be3605bf-1d82-48d5-b774-d01b7cd0fac7\",\n  \"qemu_pid\": 325038,\n  \"qemu_start_ticks\": 938505,\n  \"qmp_socket\": \"/tmp/densevm-start-fingerprint-dxv_jcsu/fingerprint-check/fingerprint-check.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "fingerprint-check",
+        "--state-dir",
+        "/tmp/densevm-start-fingerprint-dxv_jcsu"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-start-fingerprint-dxv_jcsu/fingerprint-check/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"fingerprint-check\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"d6:ce:1f:6a:3c:b9\",\n  \"machine_id\": \"274941a3459f0fd6b03d300b8c983fa1\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/tmp/densevm-start-fingerprint-dxv_jcsu/fingerprint-check/fingerprint-check.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    }
+  ]
+}
