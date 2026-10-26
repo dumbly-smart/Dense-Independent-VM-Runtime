@@ -1,5 +1,11 @@
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BaselineAccelerator {
+    Kvm,
+    Tcg,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
     Doctor,
@@ -23,6 +29,7 @@ pub enum Command {
     BenchmarkBaseline {
         out: PathBuf,
         count: u32,
+        accelerator: BaselineAccelerator,
     },
     InspectDisk {
         image: PathBuf,
@@ -70,12 +77,16 @@ where
         .ok_or_else(|| format!("missing value for {flag}"))
 }
 
-fn parse_out_count<I>(args: &mut I, default_count: u32) -> Result<(PathBuf, u32), String>
+fn parse_baseline_options<I>(
+    args: &mut I,
+    default_count: u32,
+) -> Result<(PathBuf, u32, BaselineAccelerator), String>
 where
     I: Iterator<Item = String>,
 {
     let mut out = None;
     let mut count = default_count;
+    let mut accelerator = BaselineAccelerator::Kvm;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--out" => out = Some(PathBuf::from(value(args, "--out")?)),
@@ -87,10 +98,17 @@ where
                     return Err("--count must be a positive integer".to_string());
                 }
             }
+            "--accel" => {
+                accelerator = match value(args, "--accel")?.as_str() {
+                    "kvm" => BaselineAccelerator::Kvm,
+                    "tcg" => BaselineAccelerator::Tcg,
+                    _ => return Err("--accel must be kvm or tcg".to_string()),
+                };
+            }
             flag => return Err(format!("unknown option {flag}")),
         }
     }
-    Ok((out.ok_or("--out is required")?, count))
+    Ok((out.ok_or("--out is required")?, count, accelerator))
 }
 
 fn parse_probe<I>(args: &mut I) -> Result<Command, String>
@@ -189,8 +207,12 @@ where
             parse_probe(&mut args)
         }
         Some("benchmark") if args.next().as_deref() == Some("baseline") => {
-            let (out, count) = parse_out_count(&mut args, 1)?;
-            Ok(Command::BenchmarkBaseline { out, count })
+            let (out, count, accelerator) = parse_baseline_options(&mut args, 1)?;
+            Ok(Command::BenchmarkBaseline {
+                out,
+                count,
+                accelerator,
+            })
         }
         Some("inspect") => {
             let first = args.next().ok_or("image path or inspect target is required")?;
@@ -304,6 +326,6 @@ where
                 state_dir: state_dir.ok_or("--state-dir is required")?,
             })
         }
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N [--accel kvm|tcg] | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

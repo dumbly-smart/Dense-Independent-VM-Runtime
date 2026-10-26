@@ -1,4 +1,4 @@
-use densevm::cli::{Command, parse_args};
+use densevm::cli::{BaselineAccelerator, Command, parse_args};
 use std::path::PathBuf;
 
 #[test]
@@ -62,6 +62,48 @@ fn parses_persistent_clone_listing() {
         })
     );
     assert!(parse_args(["densevm", "clone", "list"]).is_err());
+}
+
+#[test]
+fn parses_baseline_accelerator_with_kvm_default_and_tcg_option() {
+    assert_eq!(
+        parse_args(["densevm", "benchmark", "baseline", "--out", "/tmp/base"]),
+        Ok(Command::BenchmarkBaseline {
+            out: PathBuf::from("/tmp/base"),
+            count: 1,
+            accelerator: BaselineAccelerator::Kvm,
+        })
+    );
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "benchmark",
+            "baseline",
+            "--out",
+            "/tmp/tcg",
+            "--count",
+            "2",
+            "--accel",
+            "tcg",
+        ]),
+        Ok(Command::BenchmarkBaseline {
+            out: PathBuf::from("/tmp/tcg"),
+            count: 2,
+            accelerator: BaselineAccelerator::Tcg,
+        })
+    );
+    assert!(
+        parse_args([
+            "densevm",
+            "benchmark",
+            "baseline",
+            "--out",
+            "/tmp/invalid",
+            "--accel",
+            "other",
+        ])
+        .is_err()
+    );
 }
 
 #[test]

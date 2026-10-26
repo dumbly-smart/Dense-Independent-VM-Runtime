@@ -688,20 +688,23 @@ fn launch(
     guest: &GuestArtifacts,
     mac_at_boot: Option<&str>,
     incoming: bool,
+    tcg: bool,
 ) -> Result<Vm, String> {
     let qmp_path = out.join(format!("{name}.qmp.sock"));
     let serial_path = out.join(format!("{name}.serial.sock"));
     let log = File::create(out.join(format!("{name}.qemu.log"))).map_err(|e| e.to_string())?;
     let mut cmd = Command::new("qemu-system-x86_64");
+    let machine = format!(
+        "{},accel={},mem-merge={}",
+        crate::capabilities::MACHINE,
+        if tcg { "tcg" } else { "kvm" },
+        if guest.merge { "on" } else { "off" }
+    );
     cmd.args([
         "-machine",
-        &format!(
-            "{},accel=kvm,mem-merge={}",
-            crate::capabilities::MACHINE,
-            if guest.merge { "on" } else { "off" }
-        ),
+        &machine,
         "-cpu",
-        "host",
+        if tcg { "max" } else { "host" },
         "-m",
         "256M",
         "-smp",
@@ -1627,6 +1630,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             &guest,
             Some(&mac),
             false,
+            false,
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
@@ -1680,6 +1684,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         },
         &guest,
         None,
+        false,
         false,
     )?;
     let mut template_serial = template.serial()?;
@@ -1779,6 +1784,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         &guest,
         None,
         true,
+        false,
     )?;
     let b = launch(
         &out,
@@ -1791,6 +1797,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         &guest,
         None,
         true,
+        false,
     )?;
     let mut aq = a.qmp()?;
     let mut bq = b.qmp()?;
@@ -1820,6 +1827,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             &guest,
             None,
             true,
+            false,
         )?;
         let mut qmp = vm.qmp()?;
         let migration = restore(&mut qmp, &state)?;
@@ -2791,7 +2799,7 @@ fn vmgenid_reactions_verified(replies: &[String]) -> bool {
         })
 }
 
-pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
+pub fn run_baseline(out: &Path, count: u32, tcg: bool) -> Result<(), String> {
     if count == 0 || count > 32 {
         return Err("baseline count must be between 1 and 32".to_string());
     }
@@ -2841,6 +2849,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
             &guest,
             Some(&mac),
             false,
+            tcg,
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
@@ -2860,7 +2869,7 @@ pub fn run_baseline(out: &Path, count: u32) -> Result<(), String> {
         let disk = out.join(format!("baseline-{index:03}.qcow2"));
         guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"active_cpu_ticks":active_cpu_ticks[index as usize],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(active_cpu_ticks[index as usize], active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?}));
     }
-    let result = json!({"experiment":"baseline","host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","vms":guests});
+    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":"not instrumented in this baseline","vms":guests});
     fs::write(
         out.join("baseline.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,
