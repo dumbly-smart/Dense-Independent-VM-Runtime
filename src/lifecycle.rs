@@ -260,22 +260,31 @@ impl CloneRegistry {
         qmp.execute("quit", None)?;
         drop(qmp);
 
+        let pid = record
+            .qemu_pid
+            .ok_or_else(|| format!("running clone {id} has no recorded QEMU PID"))?;
+        let mut qmp_closed = false;
         loop {
-            match UnixStream::connect(&record.qmp_socket) {
-                Ok(stream) => {
-                    let _ = stream.shutdown(Shutdown::Both);
+            if !qmp_closed {
+                match UnixStream::connect(&record.qmp_socket) {
+                    Ok(stream) => {
+                        let _ = stream.shutdown(Shutdown::Both);
+                    }
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
+                        ) =>
+                    {
+                        qmp_closed = true;
+                    }
+                    Err(error) => {
+                        return Err(format!("check QMP endpoint after quit: {error}"));
+                    }
                 }
-                Err(error)
-                    if matches!(
-                        error.kind(),
-                        std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
-                    ) =>
-                {
-                    return self.transition(id, CloneState::Running, CloneState::Stopped, None);
-                }
-                Err(error) => {
-                    return Err(format!("check QMP endpoint after quit: {error}"));
-                }
+            }
+            if qmp_closed && !process_exists(pid)? {
+                return self.transition(id, CloneState::Running, CloneState::Stopped, None);
             }
             if Instant::now() >= deadline {
                 return Err(format!("QEMU for clone {id} did not stop before timeout"));
@@ -371,6 +380,7 @@ mod tests {
     use std::fs;
     use std::io::{BufRead, BufReader};
     use std::os::unix::net::UnixListener;
+    use std::process::Command;
     use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -515,6 +525,43 @@ mod tests {
         assert_eq!(stopped.state, CloneState::Stopped);
         assert_eq!(stopped.qemu_pid, None);
         server.join().unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn stop_waits_for_the_recorded_process_to_exit_after_qmp_closes() {
+        let root = temp_dir("stop-process-exit");
+        let mut clone = record("alpha");
+        clone.qmp_socket = root.join("alpha.qmp");
+        let registry = CloneRegistry::open(&root.join("registry")).unwrap();
+        registry.create(&clone).unwrap();
+        let mut process = Command::new("sleep").arg("30").spawn().unwrap();
+        registry
+            .transition(
+                "alpha",
+                CloneState::Starting,
+                CloneState::Running,
+                Some(process.id()),
+            )
+            .unwrap();
+        let server = qmp_server(&clone.qmp_socket, "alpha", true);
+        let state_dir = root.join("registry");
+        let stop = thread::spawn(move || {
+            CloneRegistry::open(&state_dir)
+                .unwrap()
+                .stop("alpha", Duration::from_secs(2))
+        });
+
+        server.join().unwrap();
+        thread::sleep(Duration::from_millis(50));
+        let stop_waited_for_process = !stop.is_finished();
+        process.kill().unwrap();
+        process.wait().unwrap();
+        let stopped = stop.join().unwrap().unwrap();
+
+        assert!(stop_waited_for_process);
+        assert_eq!(stopped.state, CloneState::Stopped);
+        assert_eq!(stopped.qemu_pid, None);
         fs::remove_dir_all(root).unwrap();
     }
 

@@ -6,6 +6,11 @@ restores the machine state, prepares guest identity, and records the clone as
 `running`. `densevm clone stop ID --state-dir DIR` asks that clone's QMP
 endpoint to quit and waits for it to close.
 
+After QMP closes, stop also waits for the recorded QEMU PID to disappear from
+`/proc` before marking the clone `stopped`. Closing QMP can precede process exit
+briefly while QEMU finishes cleanup. If either signal does not arrive before the
+timeout, the record remains `running` so callers can inspect or reconcile it.
+
 A QEMU crash can leave a durable record saying `running`. Reconcile records
 with:
 
@@ -26,3 +31,10 @@ crash from an in-progress launch. A reachable socket is checked only for
 connectability; reconciliation does not adopt a new PID or issue QMP commands.
 This favors avoiding a false failure report over repairing every ambiguous
 orphan.
+
+The real-QEMU lifecycle check in
+[`persistent-lifecycle-run1`](../results/runtime-clone/2026-10-26/persistent-lifecycle-run1/README.md)
+exercises both a normal stop and a `SIGKILL` followed by reconciliation. The
+normal stop returned only after its PID disappeared; the killed clone was
+marked `failed`. This check verifies process lifecycle and registry behavior,
+not guest-level isolation or memory savings.

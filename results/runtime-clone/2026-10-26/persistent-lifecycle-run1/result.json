@@ -1,0 +1,102 @@
+{
+  "experiment": "persistent clone lifecycle",
+  "manifest": "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+  "state_dir": "/tmp/densevm-lifecycle-8k8dwkyk",
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "lifecycle-stop",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+        "--state-dir",
+        "/tmp/densevm-lifecycle-8k8dwkyk"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"lifecycle-stop\",\n  \"mac\": \"be:d6:0f:d7:e2:57\",\n  \"machine_id\": \"bf01086cfc5ab85d427bee771d0c0988\",\n  \"qemu_pid\": 262985,\n  \"qmp_socket\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/lifecycle-stop.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "lifecycle-stop",
+        "--state-dir",
+        "/tmp/densevm-lifecycle-8k8dwkyk"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"lifecycle-stop\",\n  \"mac\": \"be:d6:0f:d7:e2:57\",\n  \"machine_id\": \"bf01086cfc5ab85d427bee771d0c0988\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/lifecycle-stop.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "lifecycle-crash",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+        "--state-dir",
+        "/tmp/densevm-lifecycle-8k8dwkyk"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-crash/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"lifecycle-crash\",\n  \"mac\": \"b2:f3:0e:49:cf:23\",\n  \"machine_id\": \"bc38245b84b7dbf5d23549b2e5858ed2\",\n  \"qemu_pid\": 263085,\n  \"qmp_socket\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-crash/lifecycle-crash.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "reconcile",
+        "--state-dir",
+        "/tmp/densevm-lifecycle-8k8dwkyk"
+      ],
+      "exit_code": 0,
+      "stdout": "[\n  {\n    \"disk_overlay\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-crash/disk.qcow2\",\n    \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n    \"id\": \"lifecycle-crash\",\n    \"mac\": \"b2:f3:0e:49:cf:23\",\n    \"machine_id\": \"bc38245b84b7dbf5d23549b2e5858ed2\",\n    \"qemu_pid\": null,\n    \"qmp_socket\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-crash/lifecycle-crash.qmp.sock\",\n    \"schema_version\": 1,\n    \"state\": \"failed\"\n  },\n  {\n    \"disk_overlay\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/disk.qcow2\",\n    \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n    \"id\": \"lifecycle-stop\",\n    \"mac\": \"be:d6:0f:d7:e2:57\",\n    \"machine_id\": \"bf01086cfc5ab85d427bee771d0c0988\",\n    \"qemu_pid\": null,\n    \"qmp_socket\": \"/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/lifecycle-stop.qmp.sock\",\n    \"schema_version\": 1,\n    \"state\": \"stopped\"\n  }\n]",
+      "stderr": ""
+    }
+  ],
+  "stop_clone": {
+    "pid": 262985,
+    "mac": "be:d6:0f:d7:e2:57",
+    "machine_id": "bf01086cfc5ab85d427bee771d0c0988",
+    "start_state": "running",
+    "stop_state": "stopped",
+    "pid_gone_when_stop_returned": true
+  },
+  "crash_clone": {
+    "pid": 263085,
+    "mac": "b2:f3:0e:49:cf:23",
+    "machine_id": "bc38245b84b7dbf5d23549b2e5858ed2",
+    "start_state": "running",
+    "pid_gone_before_reconcile": true,
+    "reconciled": [
+      {
+        "disk_overlay": "/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-crash/disk.qcow2",
+        "generation_id": "sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357",
+        "id": "lifecycle-crash",
+        "mac": "b2:f3:0e:49:cf:23",
+        "machine_id": "bc38245b84b7dbf5d23549b2e5858ed2",
+        "qemu_pid": null,
+        "qmp_socket": "/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-crash/lifecycle-crash.qmp.sock",
+        "schema_version": 1,
+        "state": "failed"
+      },
+      {
+        "disk_overlay": "/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/disk.qcow2",
+        "generation_id": "sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357",
+        "id": "lifecycle-stop",
+        "mac": "be:d6:0f:d7:e2:57",
+        "machine_id": "bf01086cfc5ab85d427bee771d0c0988",
+        "qemu_pid": null,
+        "qmp_socket": "/tmp/densevm-lifecycle-8k8dwkyk/lifecycle-stop/lifecycle-stop.qmp.sock",
+        "schema_version": 1,
+        "state": "stopped"
+      }
+    ]
+  },
+  "cleanup_leftover_pids": []
+}
