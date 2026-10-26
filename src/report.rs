@@ -47,18 +47,25 @@ pub fn summarize(result: &Value) -> Result<Value, String> {
         .checked_mul(count)
         .and_then(|v| v.checked_mul(1024))
         .ok_or("configured RAM total overflow")?;
+    let cgroup_memory = json!({
+        "baseline":result["baseline"].get("cgroup_memory_at_measurement").cloned().unwrap_or(json!({"status":"not-recorded"})),
+        "clones_before_divergence":result["snapshots"]["before_divergence"].get("cgroup_memory").cloned().unwrap_or(json!({"status":"not-recorded"})),
+        "clones_after_divergence":result["snapshots"]["after_divergence"].get("cgroup_memory").cloned().unwrap_or(json!({"status":"not-recorded"})),
+        "scope":"cgroup-v2 memory.current includes anonymous memory, file cache, and memory.stat kernel charges in the measured cgroup; it may not include external or uncharged KVM allocations",
+    });
     Ok(json!({
         "clone_count":count,
         "configured_guest_ram_kib":configured,
         "baseline_process_pss_kib":baseline_pss,
         "before_divergence":before,
         "after_divergence":after,
+        "cgroup_memory":cgroup_memory,
         "divergence_percent":result["effective_ram_divergence_percent"],
         "divergence_region_bytes":result["divergence_region_bytes"],
         "divergence_scope":result["divergence_scope"],
         "disk_storage":result["disk_storage"],
         "host":result["host"],
-        "kernel_memory_overhead":"UNKNOWN; KVM metadata and host page tables excluded",
+        "kernel_memory_overhead":"process PSS excludes kernel memory; cgroup.memory_stat reports charges visible to its cgroup; coverage of KVM and external allocations remains UNKNOWN",
         "baseline_cache_accounting":"baseline process PSS excludes unmapped disk/kernel/initramfs file cache",
     }))
 }

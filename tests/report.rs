@@ -24,6 +24,48 @@ fn reports_measured_pss_and_a_separately_labeled_cache_upper_bound() {
     );
     assert_eq!(report["before_divergence"]["process_private_kib"], 40);
     assert_eq!(report["configured_guest_ram_kib"], 512 * 1024);
+    assert_eq!(
+        report["cgroup_memory"]["baseline"]["status"],
+        "not-recorded"
+    );
+}
+
+#[test]
+fn preserves_cgroup_memory_samples_for_baseline_and_clone_snapshots() {
+    let mut data = result();
+    data["baseline"]["cgroup_memory_at_measurement"] = json!({
+        "status":"measured",
+        "current_bytes":1_900_000,
+        "memory_stat":{"anon":1_500_000,"kernel":100_000}
+    });
+    data["snapshots"]["before_divergence"]["cgroup_memory"] = json!({
+        "status":"measured",
+        "current_bytes":900_000,
+        "memory_stat":{"anon":400_000,"file":450_000,"kernel":50_000}
+    });
+    data["snapshots"]["after_divergence"]["cgroup_memory"] = json!({
+        "status":"unavailable",
+        "reason":"scope was removed"
+    });
+
+    let report = summarize(&data).unwrap();
+
+    assert_eq!(
+        report["cgroup_memory"]["baseline"]["current_bytes"],
+        1_900_000
+    );
+    assert_eq!(
+        report["cgroup_memory"]["baseline"]["memory_stat"]["kernel"],
+        100_000
+    );
+    assert_eq!(
+        report["cgroup_memory"]["clones_before_divergence"]["current_bytes"],
+        900_000
+    );
+    assert_eq!(
+        report["cgroup_memory"]["clones_after_divergence"]["status"],
+        "unavailable"
+    );
 }
 
 #[test]

@@ -85,6 +85,13 @@ direction and approximate scale of the COW cost, while also showing several
 MiB of measurement variation. Per-point data and the second chart are in
 `results/runtime-clone/2026-10-26/eight-clone-divergence-sweep-run2/`.
 
+An eight-VM cgroup-v2 sample compares cgroup `memory.current` alongside
+process PSS. The ordinary baseline scope measured 1,956,212,736 bytes and the
+template-clone scope measured 975,228,928 bytes before RAM divergence. This
+includes tmpfs experiment files and memory charged to the user systemd scope;
+the command and scope limitations are documented in
+`results/runtime-clone/2026-10-26/eight-clone-cgroup-accounting-run1/`.
+
 The larger Alpine range run created 20 targets plus an attacker (21 guests)
 and passed guest RAM/disk isolation, guest OOM, crash, process, reboot, and
 range connectivity checks. The attacker reached all targets before one target
