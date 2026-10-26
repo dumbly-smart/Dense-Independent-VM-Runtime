@@ -83,6 +83,27 @@ fn parses_clone_stop_with_an_explicit_state_directory() {
 }
 
 #[test]
+fn parses_clone_start_from_a_verified_template_manifest() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "clone",
+            "start",
+            "alpha",
+            "--template",
+            "/templates/root/generation.json",
+            "--state-dir",
+            "/var/lib/densevm",
+        ]),
+        Ok(Command::CloneStart {
+            id: "alpha".into(),
+            manifest: PathBuf::from("/templates/root/generation.json"),
+            state_dir: PathBuf::from("/var/lib/densevm"),
+        })
+    );
+}
+
+#[test]
 fn supports_skipping_the_guest_oom_workload_for_targeted_identity_validation() {
     let result = parse_args([
         "densevm",

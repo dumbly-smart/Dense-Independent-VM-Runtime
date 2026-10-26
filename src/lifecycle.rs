@@ -224,7 +224,32 @@ impl CloneRegistry {
         let deadline = Instant::now()
             .checked_add(timeout)
             .ok_or("clone stop timeout is too large")?;
-        let mut qmp = crate::qmp::Qmp::connect(&record.qmp_socket, timeout)?;
+        let mut qmp = match crate::qmp::Qmp::connect(&record.qmp_socket, timeout) {
+            Ok(qmp) => qmp,
+            Err(error) => {
+                if let Some(pid) = record.qemu_pid {
+                    match fs::symlink_metadata(format!("/proc/{pid}")) {
+                        Err(process_error)
+                            if process_error.kind() == std::io::ErrorKind::NotFound =>
+                        {
+                            return self.transition(
+                                id,
+                                CloneState::Running,
+                                CloneState::Stopped,
+                                None,
+                            );
+                        }
+                        Err(process_error) => {
+                            return Err(format!(
+                                "inspect recorded QEMU PID {pid}: {process_error}"
+                            ));
+                        }
+                        Ok(_) => {}
+                    }
+                }
+                return Err(error);
+            }
+        };
         let identity = qmp.execute("query-name", None)?;
         if identity["name"].as_str() != Some(id) {
             return Err(format!(
@@ -486,6 +511,28 @@ mod tests {
         assert!(registry.stop("alpha", Duration::from_millis(100)).is_err());
         assert_eq!(registry.get("alpha").unwrap().state, CloneState::Running);
         server.join().unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn stop_reconciles_a_running_record_when_its_process_is_gone() {
+        let root = temp_dir("stale-process");
+        let mut clone = record("alpha");
+        clone.qmp_socket = root.join("missing.qmp");
+        let registry = CloneRegistry::open(&root.join("registry")).unwrap();
+        registry.create(&clone).unwrap();
+        registry
+            .transition(
+                "alpha",
+                CloneState::Starting,
+                CloneState::Running,
+                Some(u32::MAX),
+            )
+            .unwrap();
+
+        let stopped = registry.stop("alpha", Duration::from_millis(100)).unwrap();
+        assert_eq!(stopped.state, CloneState::Stopped);
+        assert_eq!(stopped.qemu_pid, None);
         fs::remove_dir_all(root).unwrap();
     }
 

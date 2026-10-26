@@ -48,6 +48,11 @@ pub enum Command {
         id: String,
         state_dir: PathBuf,
     },
+    CloneStart {
+        id: String,
+        manifest: PathBuf,
+        state_dir: PathBuf,
+    },
 }
 
 fn value<I>(args: &mut I, flag: &str) -> Result<String, String>
@@ -221,6 +226,23 @@ where
         Some("ksm") if args.next().as_deref() == Some("status") && args.next().is_none() => Ok(Command::KsmStatus),
         Some("clone") => {
             let action = args.next().ok_or("clone action is required")?;
+            if action == "start" {
+                let id = args.next().ok_or("clone ID is required")?;
+                let mut manifest = None;
+                let mut state_dir = None;
+                while let Some(arg) = args.next() {
+                    match arg.as_str() {
+                        "--template" => manifest = Some(PathBuf::from(value(&mut args, "--template")?)),
+                        "--state-dir" => state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?)),
+                        flag => return Err(format!("unknown option {flag}")),
+                    }
+                }
+                return Ok(Command::CloneStart {
+                    id,
+                    manifest: manifest.ok_or("--template is required")?,
+                    state_dir: state_dir.ok_or("--state-dir is required")?,
+                });
+            }
             if action == "stop" {
                 let id = args.next().ok_or("clone ID is required")?;
                 let mut state_dir = None;
@@ -236,7 +258,7 @@ where
                 });
             }
             if action != "list" {
-                return Err("usage: densevm clone list --state-dir DIR | densevm clone stop ID --state-dir DIR".into());
+                return Err("usage: densevm clone list --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR".into());
             }
             let mut state_dir = None;
             while let Some(arg) = args.next() {
@@ -249,6 +271,6 @@ where
                 state_dir: state_dir.ok_or("--state-dir is required")?,
             })
         }
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

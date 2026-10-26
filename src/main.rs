@@ -67,6 +67,13 @@ fn main() {
             .and_then(|registry| registry.stop(&id, std::time::Duration::from_secs(10)))
             .and_then(|clone| serde_json::to_value(clone).map_err(|error| error.to_string()))
             .and_then(print_json),
+        Command::CloneStart {
+            id,
+            manifest,
+            state_dir,
+        } => densevm::launcher::start_clone(&manifest, &state_dir, &id)
+            .and_then(|clone| serde_json::to_value(clone).map_err(|error| error.to_string()))
+            .and_then(print_json),
     };
     if let Err(error) = result {
         eprintln!("densevm probe failed: {error}");
