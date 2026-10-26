@@ -4,6 +4,7 @@ pub mod identity;
 pub mod inspect;
 pub mod interrupt;
 pub mod ksm;
+pub mod lifecycle;
 pub mod metrics;
 pub mod probe;
 pub mod qmp;
