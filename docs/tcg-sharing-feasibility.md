@@ -196,10 +196,23 @@ The matching QEMU 11.1.2 source shows that `translate_block` fires before
 `setjmp_gen_code`, while the generated size is stored in `tb->tc.size` after
 code generation. `patches/qemu/0001-trace-tcg-generated-block-size.patch`
 adds a completion trace event at that point, avoiding full assembly output.
-The patch was checked against the upstream v11.1.2 source files, but it has
-not been built or run, so it has produced no measurement. It reports
-cumulative generated block bytes, not resident cache usage, and still does
-not report elapsed translation time. See the [versioned translate-all.c
+The patch was built in an isolated x86_64-softmmu TCG build and run through
+DenseVM's existing trace benchmark. The saved run at
+`results/tcg/2026-10-26/codegen3/` recorded 109,238 translation starts,
+109,218 completion events, and 34,171,065 cumulative generated host-code
+bytes in a 17,577,176-byte trace log. DenseVM stopped the guest after the
+active workload before reading the log; the parsed start and completion event
+counts exactly match the frozen raw trace. The 20-event count difference is
+not correlated to individual TBs and can include restart paths.
+
+This single instrumented sample is not a performance comparison. The byte
+total is cumulative emitted block size, not current TCG cache residency, and
+the event does not measure elapsed translation time. A stock-QEMU trace run is
+also saved at `results/tcg/2026-10-26/stocktrace/`; it correctly reports the
+generated-code metric as unavailable while preserving ordinary translation
+counts. Reproduce the patched run using the QEMU v11.1.2 source and patch, then
+put the custom binary first in `PATH`; the exact build and run commands are in
+`patches/qemu/README.md`. See the [versioned translate-all.c
 source](https://github.com/qemu/qemu/blob/v11.1.2/accel/tcg/translate-all.c)
 and [trace event definitions](https://github.com/qemu/qemu/blob/v11.1.2/accel/tcg/trace-events).
 

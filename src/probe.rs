@@ -680,6 +680,25 @@ mod login_tests {
     }
 }
 
+fn qemu_trace_event_supported(event: &str) -> Result<bool, String> {
+    let output = Command::new("qemu-system-x86_64")
+        .args(["-d", "trace:help"])
+        .output()
+        .map_err(|error| format!("query QEMU trace events: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "query QEMU trace events failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let events = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    Ok(events.lines().any(|line| line.trim() == event))
+}
+
 fn launch(
     out: &Path,
     name: &str,
@@ -689,7 +708,7 @@ fn launch(
     mac_at_boot: Option<&str>,
     incoming: bool,
     tcg: bool,
-    translation_trace: Option<&Path>,
+    translation_trace: Option<(&Path, bool)>,
 ) -> Result<Vm, String> {
     let qmp_path = out.join(format!("{name}.qmp.sock"));
     let serial_path = out.join(format!("{name}.serial.sock"));
@@ -775,8 +794,13 @@ fn launch(
     if incoming {
         cmd.args(["-incoming", "defer"]);
     }
-    if let Some(path) = translation_trace {
-        cmd.args(["-d", "trace:translate_block", "-D"]).arg(path);
+    if let Some((path, trace_codegen_complete)) = translation_trace {
+        let events = if trace_codegen_complete {
+            "trace:translate_block,trace:translate_block_complete"
+        } else {
+            "trace:translate_block"
+        };
+        cmd.args(["-d", events, "-D"]).arg(path);
     }
     let command = std::iter::once("qemu-system-x86_64".to_string())
         .chain(cmd.get_args().map(|arg| arg.to_string_lossy().into_owned()))
@@ -2823,6 +2847,8 @@ pub fn run_baseline(
     if trace_translations && count > 2 {
         return Err("translation tracing is limited to at most two VMs to bound log size".into());
     }
+    let trace_codegen_complete =
+        trace_translations && tcg && qemu_trace_event_supported("translate_block_complete")?;
     let host = crate::capabilities::host_report();
     let available_kib: u64 = fs::read_to_string("/proc/meminfo")
         .map_err(|e| e.to_string())?
@@ -2876,7 +2902,9 @@ pub fn run_baseline(
             Some(&mac),
             false,
             tcg,
-            translation_log.as_deref(),
+            translation_log
+                .as_deref()
+                .map(|path| (path, trace_codegen_complete)),
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
@@ -2890,6 +2918,12 @@ pub fn run_baseline(
     let mut serial_refs: Vec<_> = serials.iter_mut().collect();
     let (active_cpu_sample_interval_ms, active_cpu_ticks) =
         sample_active_cpu_ticks(&pids, &mut serial_refs)?;
+    if trace_translations {
+        for vm in &vms {
+            let mut qmp = vm.qmp()?;
+            stop_and_verify(&mut qmp)?;
+        }
+    }
     let ticks_per_second = host["clock_ticks_per_second"].as_u64().unwrap_or(100);
     let mut guests = Vec::new();
     for index in 0..count {
@@ -2907,6 +2941,10 @@ pub fn run_baseline(
                 "guest_pcs_seen_multiple_times": summary.guest_pcs_seen_multiple_times,
                 "max_events_for_one_guest_pc": summary.max_events_for_one_guest_pc,
                 "guest_pc_metric_interpretation": summary.interpretation,
+                "generated_block_events": summary.generated_block_events,
+                "generated_host_code_bytes_cumulative": summary.generated_host_code_bytes_cumulative,
+                "translation_start_completion_event_count_delta": summary.translation_start_completion_event_count_delta,
+                "generated_code_metric_interpretation": if summary.generated_block_events.is_some() { "cumulative generated TB bytes; not current code-cache residency" } else { "not available: QEMU does not expose translate_block_complete" },
                 "log_path": path,
                 "log_bytes": fs::metadata(path).map_err(|e| e.to_string())?.len(),
             })
@@ -2915,7 +2953,7 @@ pub fn run_baseline(
         };
         guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"active_cpu_ticks":active_cpu_ticks[index as usize],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(active_cpu_ticks[index as usize], active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?,"tcg_translation_trace":translation}));
     }
-    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":if trace_translations { "translate_block event counts through active workload sample; no translation duration or generated code size" } else { "not instrumented in this baseline" },"translation_trace_perturbs_timing":trace_translations,"vms":guests});
+    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":if trace_translations && trace_codegen_complete { "translate_block events, guest-PC reuse, and cumulative generated TB bytes through active workload sample; no translation duration or current cache residency" } else if trace_translations { "translate_block events and guest-PC reuse through active workload sample; generated code size and translation duration unavailable" } else { "not instrumented in this baseline" },"translation_trace_perturbs_timing":trace_translations,"vms":guests});
     fs::write(
         out.join("baseline.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,

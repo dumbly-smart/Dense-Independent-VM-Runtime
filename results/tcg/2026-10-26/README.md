@@ -43,6 +43,25 @@ the observation window. It is not treated as a result. See
 [`tcg-sharing-feasibility.md`](../../../docs/tcg-sharing-feasibility.md) for
 the limits and next measurement gate.
 
+## Patched QEMU code-size trace
+
+[`codegen3/`](codegen3/) contains a one-VM run using QEMU 11.1.2 built with
+[`0001-trace-tcg-generated-block-size.patch`](../../../patches/qemu/0001-trace-tcg-generated-block-size.patch).
+It reached readiness in 10,623 ms and recorded 109,238 translation starts,
+109,218 completed generated blocks, and 34,171,065 cumulative generated
+host-code bytes. The 20-event start/completion count difference is not a
+per-block pairing result. The raw trace log is 17,577,176 bytes. DenseVM stops
+the traced guest after the active CPU sample, then reads the stable log; an
+independent recount matched the JSON values exactly.
+
+The emitted-byte sum is cumulative and may include blocks later discarded;
+it is not TCG code-cache residency. The trace does not measure translation
+duration, and its timing/PSS values are instrumentation-perturbed. The patch
+is not included in the system QEMU binary. `stocktrace/` shows the stock-QEMU
+fallback: baseline tracing works, and generated-code bytes are recorded as
+unavailable. Build and run instructions are in
+[`patches/qemu/README.md`](../../../patches/qemu/README.md).
+
 Reproduce with:
 
 ```sh
