@@ -1,5 +1,7 @@
 use serde_json::Value;
+use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::process::Command;
 
 #[derive(Clone, Debug)]
 pub struct TemplateArtifacts {
@@ -24,6 +26,86 @@ pub fn load_template_artifacts(manifest_path: &Path) -> Result<TemplateArtifacts
     let manifest: Value = serde_json::from_str(&contents)
         .map_err(|error| format!("parse template manifest: {error}"))?;
     parse_template_manifest(&manifest_path, &manifest, &report)
+}
+
+pub fn create_disk_overlay(template_disk: &Path, instance_dir: &Path) -> Result<PathBuf, String> {
+    if !instance_dir.is_dir() {
+        return Err(format!(
+            "clone instance directory does not exist: {}",
+            instance_dir.display()
+        ));
+    }
+    let template_disk = template_disk
+        .canonicalize()
+        .map_err(|error| format!("resolve template disk {}: {error}", template_disk.display()))?;
+    if !template_disk.is_file() {
+        return Err("template disk is not a regular file".into());
+    }
+    let overlay = instance_dir.join("disk.qcow2");
+    if overlay.exists() {
+        return Err(format!(
+            "clone overlay already exists: {}",
+            overlay.display()
+        ));
+    }
+    let created = Command::new("qemu-img")
+        .args(["create", "-f", "qcow2", "-F", "qcow2", "-b"])
+        .arg(&template_disk)
+        .arg(&overlay)
+        .output()
+        .map_err(|error| format!("start qemu-img to create clone overlay: {error}"))?;
+    if !created.status.success() {
+        return Err(format!(
+            "qemu-img failed to create clone overlay: {}",
+            String::from_utf8_lossy(&created.stderr)
+        ));
+    }
+    let result = verify_disk_overlay(&template_disk, &overlay);
+    if result.is_err() {
+        let _ = fs::remove_file(&overlay);
+    }
+    result.map(|()| overlay)
+}
+
+fn verify_disk_overlay(template_disk: &Path, overlay: &Path) -> Result<(), String> {
+    let info = Command::new("qemu-img")
+        .args(["info", "--output=json"])
+        .arg(overlay)
+        .output()
+        .map_err(|error| format!("inspect clone overlay: {error}"))?;
+    if !info.status.success() {
+        return Err(format!(
+            "qemu-img info failed for clone overlay: {}",
+            String::from_utf8_lossy(&info.stderr)
+        ));
+    }
+    let metadata: Value = serde_json::from_slice(&info.stdout)
+        .map_err(|error| format!("parse clone overlay metadata: {error}"))?;
+    let backing = metadata["full-backing-filename"]
+        .as_str()
+        .or_else(|| metadata["backing-filename"].as_str())
+        .ok_or("clone overlay has no backing filename")?;
+    if Path::new(backing).canonicalize().ok().as_deref() != Some(template_disk) {
+        return Err(format!(
+            "clone overlay backing path mismatch: expected {}, found {backing}",
+            template_disk.display()
+        ));
+    }
+    if metadata["format"] != "qcow2" || metadata["virtual-size"].as_u64().unwrap_or(0) == 0 {
+        return Err("clone overlay is not a nonempty qcow2 image".into());
+    }
+    let checked = Command::new("qemu-img")
+        .arg("check")
+        .arg(overlay)
+        .output()
+        .map_err(|error| format!("check clone overlay: {error}"))?;
+    if !checked.status.success() {
+        return Err(format!(
+            "qemu-img check failed for clone overlay: {}",
+            String::from_utf8_lossy(&checked.stderr)
+        ));
+    }
+    Ok(())
 }
 
 fn parse_template_manifest(
@@ -345,6 +427,7 @@ fn is_network_device(value: &str) -> bool {
 mod tests {
     use super::*;
     use serde_json::json;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn source() -> Vec<String> {
         [
@@ -371,6 +454,40 @@ mod tests {
         .into_iter()
         .map(str::to_string)
         .collect()
+    }
+
+    #[test]
+    fn creates_a_small_verified_qcow2_overlay_over_the_template_disk() {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root =
+            std::env::temp_dir().join(format!("densevm-overlay-{}-{nonce}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let base = root.join("base.qcow2");
+        let output = Command::new("qemu-img")
+            .args(["create", "-f", "qcow2"])
+            .arg(&base)
+            .arg("16M")
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let instance = root.join("clone");
+        fs::create_dir(&instance).unwrap();
+
+        let overlay = create_disk_overlay(&base, &instance).unwrap();
+        let info = Command::new("qemu-img")
+            .args(["info", "--output=json"])
+            .arg(&overlay)
+            .output()
+            .unwrap();
+        let info: Value = serde_json::from_slice(&info.stdout).unwrap();
+        assert_eq!(info["format"], "qcow2");
+        assert_eq!(info["virtual-size"], 16 * 1024 * 1024);
+        assert!(info["actual-size"].as_u64().unwrap() < 1024 * 1024);
+        assert!(create_disk_overlay(&base, &instance).is_err());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
