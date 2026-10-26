@@ -131,6 +131,26 @@ def run(args: argparse.Namespace) -> pathlib.Path:
         }
 
         names = [clone["id"] for clone in clones]
+        guest_pages = args.region_mib * 1024 * 1024 // 4096
+        dirty_pages = guest_pages * args.divergence_percent // 100
+        if args.divergence_mode == "all-clones":
+            dirty_names = names if dirty_pages else []
+        else:
+            dirty_names = names[:1] if dirty_pages else []
+        dirty_values = {
+            name: (args.write_marker + index) % 256
+            for index, name in enumerate(names)
+            if name in dirty_names
+        }
+        result["divergence"] = {
+            "mode": args.divergence_mode,
+            "percent_of_guest_probe_region": args.divergence_percent,
+            "probe_region_mib": args.region_mib,
+            "pages_per_dirty_clone": dirty_pages,
+            "targets": dirty_names,
+            "byte_values": dirty_values,
+            "disk_write": "one marker byte per target when divergence is nonzero",
+        }
         result["initial_guest_state"] = {
             name: {
                 "ram": serials[name].command("ram-read", "RAM "),
@@ -154,12 +174,13 @@ def run(args: argparse.Namespace) -> pathlib.Path:
 
         result["memory_before_divergence"] = memory_snapshot()
 
-        serials[names[0]].command(
-            f"ram-write {args.write_marker}", f"RAM-WROTE {args.write_marker}"
-        )
-        serials[names[0]].command(
-            f"disk-write {args.write_marker}", f"DISK-WROTE {args.write_marker}"
-        )
+        for name, value in dirty_values.items():
+            if dirty_pages:
+                serials[name].command(
+                    f"ram-write-pages {dirty_pages} {value}",
+                    f"RAM-WROTE-PAGES {dirty_pages} {value}",
+                )
+                serials[name].command(f"disk-write {value}", f"DISK-WROTE {value}")
         result["after_first_clone_writes"] = {
             name: {
                 "ram": serials[name].command("ram-read", "RAM "),
@@ -169,10 +190,10 @@ def run(args: argparse.Namespace) -> pathlib.Path:
         }
         expected = {
             name: {
-                "ram": f"RAM {args.write_marker if index == 0 else args.expected_marker}",
-                "disk": f"DISK {args.write_marker if index == 0 else args.expected_marker}",
+                "ram": f"RAM {dirty_values.get(name, args.expected_marker)}",
+                "disk": f"DISK {dirty_values.get(name, args.expected_marker)}",
             }
-            for index, name in enumerate(names)
+            for name in names
         }
         if result["after_first_clone_writes"] != expected:
             raise RuntimeError(
@@ -285,11 +306,20 @@ def main() -> int:
     parser.add_argument("--expected-marker", type=int, default=73)
     parser.add_argument("--write-marker", type=int, default=91)
     parser.add_argument("--count", type=int, default=2)
+    parser.add_argument("--divergence-percent", type=int, default=100)
+    parser.add_argument(
+        "--divergence-mode", choices=("first-clone", "all-clones"), default="first-clone"
+    )
+    parser.add_argument("--region-mib", type=int, default=32)
     args = parser.parse_args()
     if not 0 <= args.expected_marker <= 255 or not 0 <= args.write_marker <= 255:
         parser.error("markers must be bytes in the range 0..255")
     if not 2 <= args.count <= 32:
         parser.error("clone count must be between 2 and 32")
+    if not 0 <= args.divergence_percent <= 100:
+        parser.error("divergence percentage must be between 0 and 100")
+    if not 1 <= args.region_mib <= 32:
+        parser.error("probe region must be between 1 and 32 MiB")
     try:
         print(run(args))
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError, subprocess.SubprocessError) as error:
