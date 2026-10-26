@@ -201,14 +201,17 @@ added.
 
 ## Scope and remaining work
 
-This verifies three repeated parent-to-child materializations and two
-independent descendants from each generation for the tested synthetic guest
-and QEMU machine. The v3 generation manifest and Rust catalog are experimental
-management tools, not a persistent Template Manager. They
-does not provide artifact relocation, garbage collection or orphan recovery,
-durable publication after power loss, migration compatibility checks across
-QEMU versions, network identity behavior across generations, or large
-multi-level tree benchmarks.
-It does not establish that every machine/device configuration supports the
-same migration sequence. Those require separate failure and compatibility
-tests before hierarchical templates are exposed as a general runtime feature.
+This verifies repeated parent-to-child materializations and independent
+descendants for the tested synthetic guest and QEMU machine. The schema-v4
+generation manifest and Rust catalog are experimental management tools, not a
+persistent Template Manager. The runtime `clone start/stop` path has also been
+verified with two clones from a relocated nested v4 generation; both inherited
+parent state and isolated RAM and disk writes. See the
+[`persistent template-tree runtime results`](../results/runtime-clone/2026-10-26/persistent-template-tree-run3/README.md).
+
+The system still lacks template garbage collection and orphan recovery,
+durable publication guarantees across power loss, migration compatibility
+checks across QEMU versions, and large multi-level tree benchmarks. It does not
+establish that every machine/device configuration supports the same migration
+sequence. These need separate failure and compatibility tests before
+hierarchical templates become a general runtime feature.
