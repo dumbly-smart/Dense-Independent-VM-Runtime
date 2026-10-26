@@ -92,6 +92,18 @@ benchmark. Each intermediate boundary briefly pauses/resumes the traced VM, so
 they are approximate phase boundaries and affect guest timing. Readiness
 ranged from 8,145 to 8,797 ms and process PSS from 302,500 to 303,915 KiB;
 neither should be compared directly to an untraced baseline.
+
+Three additional one-VM runs used the same patched QEMU binary with tracing
+disabled, saved under `results/tcg/2026-10-27/untraced1/` through `untraced3/`.
+Their readiness time averaged 8,761 ms (8,331–9,036) and process PSS averaged
+299,099 KiB (296,296–301,462), compared with 8,518 ms (8,145–8,797) and
+302,994 KiB (302,500–303,915) for the traced phase samples. Readiness time is
+measured before the phase-boundary pauses. The PSS ranges overlap, and the
+three sequential samples are too few to establish a trace overhead or a
+startup benefit; PSS is about 1.3% higher on average with tracing. It includes
+the patched binary, trace event output, and post-ready sampling, and is not a
+controlled estimate of any one component's cost.
+
 Reproduce with the patched QEMU binary first in `PATH`:
 
 ```sh

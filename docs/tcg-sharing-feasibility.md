@@ -248,6 +248,13 @@ full-trace values. An independent raw-log recount matched each phase range.
 The three sequential samples are directional, not a statistical benchmark.
 Readiness ranged from 8,145 to 8,797 ms and process PSS from 302,500 to
 303,915 KiB. Tracing and diagnostic freezes perturb both measurements.
+Three one-VM control runs with the same patched binary but tracing disabled
+measured 8,331–9,036 ms to readiness and 296,296–301,462 KiB process PSS.
+The traced runs measured 8,145–8,797 ms and 302,500–303,915 KiB respectively.
+Readiness is captured before phase pauses; the PSS comparison includes trace
+output and post-ready pauses. The overlapping ranges and sequential `n=3`
+samples do not establish trace overhead or a startup benefit. Raw controls are
+under `results/tcg/2026-10-27/untraced1/` through `untraced3/`.
 
 A stock-QEMU trace run is also saved at
 `results/tcg/2026-10-26/stockduration/`; it correctly reports the generated-code
