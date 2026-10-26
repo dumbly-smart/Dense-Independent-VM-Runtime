@@ -59,6 +59,10 @@ fn main() {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }
         Command::KsmStatus => densevm::inspect::ksm_status().and_then(print_json),
+        Command::CloneList { state_dir } => densevm::lifecycle::CloneRegistry::open(&state_dir)
+            .and_then(|registry| registry.list())
+            .and_then(|clones| serde_json::to_value(clones).map_err(|error| error.to_string()))
+            .and_then(print_json),
     };
     if let Err(error) = result {
         eprintln!("densevm probe failed: {error}");

@@ -41,6 +41,9 @@ pub enum Command {
         path: PathBuf,
     },
     KsmStatus,
+    CloneList {
+        state_dir: PathBuf,
+    },
 }
 
 fn value<I>(args: &mut I, flag: &str) -> Result<String, String>
@@ -212,6 +215,21 @@ where
             Ok(Command::MemoryMap { pid, path })
         }
         Some("ksm") if args.next().as_deref() == Some("status") && args.next().is_none() => Ok(Command::KsmStatus),
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        Some("clone") => {
+            if args.next().as_deref() != Some("list") {
+                return Err("usage: densevm clone list --state-dir DIR".into());
+            }
+            let mut state_dir = None;
+            while let Some(arg) = args.next() {
+                match arg.as_str() {
+                    "--state-dir" => state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?)),
+                    flag => return Err(format!("unknown option {flag}")),
+                }
+            }
+            Ok(Command::CloneList {
+                state_dir: state_dir.ok_or("--state-dir is required")?,
+            })
+        }
+        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

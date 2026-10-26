@@ -48,6 +48,23 @@ fn parses_probe_with_count_and_output() {
 }
 
 #[test]
+fn parses_persistent_clone_listing() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "clone",
+            "list",
+            "--state-dir",
+            "/var/lib/densevm"
+        ]),
+        Ok(Command::CloneList {
+            state_dir: PathBuf::from("/var/lib/densevm"),
+        })
+    );
+    assert!(parse_args(["densevm", "clone", "list"]).is_err());
+}
+
+#[test]
 fn supports_skipping_the_guest_oom_workload_for_targeted_identity_validation() {
     let result = parse_args([
         "densevm",
