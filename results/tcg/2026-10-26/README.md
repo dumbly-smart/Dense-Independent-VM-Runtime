@@ -73,22 +73,25 @@ and duration are recorded as unavailable. Build and run instructions are in
 
 ## Translation activity by workload phase
 
-[`phases1/`](../2026-10-27/phases1/) is one patched-QEMU sample with the
-trace split at QMP-frozen offsets after `READY`, before the active CPU
-workload, and after that workload. The complete machine-readable output is in
-[`baseline.json`](../2026-10-27/phases1/baseline.json); the raw trace is next to it.
+[`phases1/`](../2026-10-27/phases1/), [`phases2/`](../2026-10-27/phases2/),
+and [`phases3/`](../2026-10-27/phases3/) are three patched-QEMU samples with
+the trace split at QMP-frozen offsets after `READY`, before the active CPU
+workload, and after that workload. Each directory contains its machine-readable
+`baseline.json` and raw trace.
 
 | Phase | Translation starts | Completed blocks | Cumulative code bytes | Cumulative wall duration |
 | --- | ---: | ---: | ---: | ---: |
-| Boot through readiness freeze | 107,795 | 107,775 | 33,724,574 | 1,257,938 µs |
-| Post-ready idle through pre-active freeze | 513 | 513 | 152,532 | 5,831 µs |
-| Active workload through final freeze | 747 | 747 | 236,496 | 18,365 µs |
+| Boot through readiness freeze | 107,795–108,304 | 107,775–108,284 | 33,724,574–33,900,046 | 1,225,067–1,343,860 µs |
+| Post-ready idle through pre-active freeze | 189–517 | 189–517 | 65,660–153,949 | 3,824–5,863 µs |
+| Active workload through final freeze | 711–763 | 711–763 | 226,886–244,054 | 8,920–18,365 µs |
 
-The independently recounted per-phase start-event totals match the complete
-trace (109,055). This single run is illustrative only. Each intermediate
-boundary briefly pauses/resumes the traced VM, so they are approximate phase
-boundaries and affect guest timing. Readiness was 8,613 ms and process PSS was
-302,566 KiB; neither should be compared directly to an untraced baseline.
+In all three runs, independent phase recounts match the complete trace, and
+phase sums for generated blocks, bytes, and duration equal each run's
+full-trace totals. The three sequential runs are directional, not a statistical
+benchmark. Each intermediate boundary briefly pauses/resumes the traced VM, so
+they are approximate phase boundaries and affect guest timing. Readiness
+ranged from 8,145 to 8,797 ms and process PSS from 302,500 to 303,915 KiB;
+neither should be compared directly to an untraced baseline.
 Reproduce with the patched QEMU binary first in `PATH`:
 
 ```sh
