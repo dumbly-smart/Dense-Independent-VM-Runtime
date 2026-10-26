@@ -205,9 +205,9 @@ This verifies repeated parent-to-child materializations and independent
 descendants for the tested synthetic guest and QEMU machine. The schema-v4
 generation manifest and Rust catalog are experimental management tools, not a
 persistent Template Manager. The runtime `clone start/stop` path has also been
-verified with two clones from a relocated nested v4 generation; both inherited
-parent state and isolated RAM and disk writes. See the
-[`persistent template-tree runtime results`](../results/runtime-clone/2026-10-26/persistent-template-tree-run3/README.md).
+verified with eight clones from a relocated nested v4 generation; all inherited
+parent state, isolated A-only RAM/disk writes, and stopped cleanly. See the
+[`eight-clone persistent template-tree results`](../results/runtime-clone/2026-10-26/persistent-template-tree-run5/README.md).
 
 The system still lacks template garbage collection and orphan recovery,
 durable publication guarantees across power loss, migration compatibility

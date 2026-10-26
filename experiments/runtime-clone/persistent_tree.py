@@ -85,7 +85,11 @@ def run(args: argparse.Namespace) -> pathlib.Path:
         if result["validation"].get("status") != "verified":
             raise RuntimeError(f"template validation failed: {result['validation']}")
 
-        for clone_id in ("tree-child-a", "tree-child-b"):
+        startup_started = time.monotonic()
+        startup_samples = []
+        for index in range(args.count):
+            clone_id = f"tree-child-{index + 1:03d}"
+            clone_started = time.monotonic()
             _, stdout = run_command(
                 result,
                 binary,
@@ -101,9 +105,20 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             )
             record = json.loads(stdout)
             clones.append(record)
+            startup_samples.append(
+                {"id": clone_id, "startup_ms": round((time.monotonic() - clone_started) * 1000, 3)}
+            )
             serials[clone_id] = GuestSerial(
                 state_dir / clone_id / f"{clone_id}.serial.sock"
             )
+        result["clone_count"] = args.count
+        result["configured_guest_ram_bytes"] = (
+            metadata["ram"]["logical_size_bytes"] * args.count
+        )
+        result["startup"] = {
+            "clone_samples": startup_samples,
+            "time_to_n_clones_ms": round((time.monotonic() - startup_started) * 1000, 3),
+        }
 
         for field in ("mac", "machine_id"):
             values = [clone[field] for clone in clones]
@@ -128,6 +143,17 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             if state != {"ram": f"RAM {args.expected_marker}", "disk": f"DISK {args.expected_marker}"}:
                 raise RuntimeError(f"{name} did not inherit the expected template markers: {state}")
 
+        def memory_snapshot() -> dict[str, Any]:
+            return {
+                clone["id"]: {
+                    "process": process_memory(clone["qemu_pid"]),
+                    "template_ram_mapping": ram_mapping(clone["qemu_pid"], ram_path),
+                }
+                for clone in clones
+            }
+
+        result["memory_before_divergence"] = memory_snapshot()
+
         serials[names[0]].command(
             f"ram-write {args.write_marker}", f"RAM-WROTE {args.write_marker}"
         )
@@ -142,20 +168,51 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             for name in names
         }
         expected = {
-            names[0]: {"ram": f"RAM {args.write_marker}", "disk": f"DISK {args.write_marker}"},
-            names[1]: {"ram": f"RAM {args.expected_marker}", "disk": f"DISK {args.expected_marker}"},
+            name: {
+                "ram": f"RAM {args.write_marker if index == 0 else args.expected_marker}",
+                "disk": f"DISK {args.write_marker if index == 0 else args.expected_marker}",
+            }
+            for index, name in enumerate(names)
         }
         if result["after_first_clone_writes"] != expected:
             raise RuntimeError(
                 f"RAM or disk write leaked across clones: {result['after_first_clone_writes']}"
             )
 
-        result["memory"] = {
-            clone["id"]: {
-                "process": process_memory(clone["qemu_pid"]),
-                "template_ram_mapping": ram_mapping(clone["qemu_pid"], ram_path),
+        result["memory_after_divergence"] = memory_snapshot()
+        result["aggregate_memory"] = {
+            phase: {
+                section: {
+                    field: sum(sample[section][field] for sample in snapshot.values())
+                    for field in fields
+                }
+                for section, fields in (
+                    ("process", ("pss_kib", "private_dirty_kib")),
+                    (
+                        "template_ram_mapping",
+                        ("pss_kib", "shared_clean_kib", "shared_dirty_kib", "private_dirty_kib"),
+                    ),
+                )
             }
-            for clone in clones
+            for phase, snapshot in (
+                ("before_divergence", result["memory_before_divergence"]),
+                ("after_divergence", result["memory_after_divergence"]),
+            )
+        }
+        result["memory_delta"] = {
+            clone_id: {
+                field: (
+                    result["memory_after_divergence"][clone_id][section][field]
+                    - result["memory_before_divergence"][clone_id][section][field]
+                )
+                for section, field in (
+                    ("process", "pss_kib"),
+                    ("process", "private_dirty_kib"),
+                    ("template_ram_mapping", "pss_kib"),
+                    ("template_ram_mapping", "private_dirty_kib"),
+                )
+            }
+            for clone_id in names
         }
         result["template_artifact_hashes_after"] = {
             "ram": sha256(ram_path),
@@ -227,9 +284,12 @@ def main() -> int:
     parser.add_argument("--out", type=pathlib.Path, required=True)
     parser.add_argument("--expected-marker", type=int, default=73)
     parser.add_argument("--write-marker", type=int, default=91)
+    parser.add_argument("--count", type=int, default=2)
     args = parser.parse_args()
     if not 0 <= args.expected_marker <= 255 or not 0 <= args.write_marker <= 255:
         parser.error("markers must be bytes in the range 0..255")
+    if not 2 <= args.count <= 32:
+        parser.error("clone count must be between 2 and 32")
     try:
         print(run(args))
     except (OSError, ValueError, RuntimeError, json.JSONDecodeError, subprocess.SubprocessError) as error:
