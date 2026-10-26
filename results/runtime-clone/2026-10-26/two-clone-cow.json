@@ -1,0 +1,356 @@
+{
+  "experiment": "densevm-live-clone-cow",
+  "status": "verified",
+  "host": {
+    "kernel": "7.2.11-arch1-1",
+    "page_size_bytes": 4096,
+    "qemu_version": "QEMU emulator version 11.1.2"
+  },
+  "template": {
+    "manifest": "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+    "generation_id": "sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926",
+    "logical_ram_bytes": 268435456,
+    "ram": "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/child-memory.img",
+    "disk": "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/parent.qcow2",
+    "sha256_before": {
+      "ram": "b942d33b8905a3f1679ed4f60470a263c8d77d2b00a365eeef63d0326f796df2",
+      "disk": "1016469dd85f528f65f2c034c607f1c445630ff54885c7d895417393d75c1b87"
+    },
+    "sha256_after": {
+      "ram": "b942d33b8905a3f1679ed4f60470a263c8d77d2b00a365eeef63d0326f796df2",
+      "disk": "1016469dd85f528f65f2c034c607f1c445630ff54885c7d895417393d75c1b87"
+    }
+  },
+  "clones": [
+    {
+      "disk_overlay": "/home/xtrmn8/dvm-resources/densevm-cow-probe-state/cow-a/disk.qcow2",
+      "generation_id": "sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926",
+      "id": "cow-a",
+      "mac": "22:ea:35:6f:69:12",
+      "machine_id": "4927e8a6493308a31c6dd73fc24d18d0",
+      "qemu_pid": 103932,
+      "qmp_socket": "/home/xtrmn8/dvm-resources/densevm-cow-probe-state/cow-a/cow-a.qmp.sock",
+      "schema_version": 1,
+      "state": "running"
+    },
+    {
+      "disk_overlay": "/home/xtrmn8/dvm-resources/densevm-cow-probe-state/cow-b/disk.qcow2",
+      "generation_id": "sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926",
+      "id": "cow-b",
+      "mac": "52:c6:64:1e:5e:e2",
+      "machine_id": "56b07b6eb7b0a62da54056d91f2f04e1",
+      "qemu_pid": 104035,
+      "qmp_socket": "/home/xtrmn8/dvm-resources/densevm-cow-probe-state/cow-b/cow-b.qmp.sock",
+      "schema_version": 1,
+      "state": "running"
+    }
+  ],
+  "guest_baseline": {
+    "cow-a": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "cow-b": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    }
+  },
+  "shared_pages_before_divergence": {
+    "cow-a": {
+      "process": {
+        "rss_kib": 62380,
+        "pss_kib": 47977,
+        "shared_clean_kib": 26280,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 3948,
+        "private_dirty_kib": 32152
+      },
+      "template_ram_mapping": {
+        "pss_kib": 12948,
+        "shared_clean_kib": 16360,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 3456,
+        "private_dirty_kib": 1312
+      },
+      "overlay_allocated_bytes": 200704
+    },
+    "cow-b": {
+      "process": {
+        "rss_kib": 60856,
+        "pss_kib": 46453,
+        "shared_clean_kib": 26280,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 960,
+        "private_dirty_kib": 33616
+      },
+      "template_ram_mapping": {
+        "pss_kib": 9700,
+        "shared_clean_kib": 16360,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 588,
+        "private_dirty_kib": 932
+      },
+      "overlay_allocated_bytes": 200704
+    }
+  },
+  "divergence": [
+    {
+      "percent_of_guest_probe_region": 0,
+      "pages": 0,
+      "snapshot": {
+        "cow-a": {
+          "process": {
+            "rss_kib": 62380,
+            "pss_kib": 47949,
+            "shared_clean_kib": 26336,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 3892,
+            "private_dirty_kib": 32152
+          },
+          "template_ram_mapping": {
+            "pss_kib": 12920,
+            "shared_clean_kib": 16416,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 3400,
+            "private_dirty_kib": 1312
+          },
+          "overlay_allocated_bytes": 200704
+        },
+        "cow-b": {
+          "process": {
+            "rss_kib": 60920,
+            "pss_kib": 46489,
+            "shared_clean_kib": 26336,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 956,
+            "private_dirty_kib": 33628
+          },
+          "template_ram_mapping": {
+            "pss_kib": 9736,
+            "shared_clean_kib": 16416,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 584,
+            "private_dirty_kib": 944
+          },
+          "overlay_allocated_bytes": 200704
+        }
+      }
+    },
+    {
+      "percent_of_guest_probe_region": 5,
+      "pages": 409,
+      "snapshot": {
+        "cow-a": {
+          "process": {
+            "rss_kib": 64008,
+            "pss_kib": 48283,
+            "shared_clean_kib": 28924,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1292,
+            "private_dirty_kib": 33792
+          },
+          "template_ram_mapping": {
+            "pss_kib": 13254,
+            "shared_clean_kib": 19004,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 800,
+            "private_dirty_kib": 2952
+          },
+          "overlay_allocated_bytes": 200704
+        },
+        "cow-b": {
+          "process": {
+            "rss_kib": 63900,
+            "pss_kib": 48143,
+            "shared_clean_kib": 28988,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1028,
+            "private_dirty_kib": 33884
+          },
+          "template_ram_mapping": {
+            "pss_kib": 11390,
+            "shared_clean_kib": 19068,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 656,
+            "private_dirty_kib": 1200
+          },
+          "overlay_allocated_bytes": 200704
+        }
+      }
+    },
+    {
+      "percent_of_guest_probe_region": 10,
+      "pages": 819,
+      "snapshot": {
+        "cow-a": {
+          "process": {
+            "rss_kib": 65652,
+            "pss_kib": 49895,
+            "shared_clean_kib": 28988,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1228,
+            "private_dirty_kib": 35436
+          },
+          "template_ram_mapping": {
+            "pss_kib": 14866,
+            "shared_clean_kib": 19068,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 736,
+            "private_dirty_kib": 4596
+          },
+          "overlay_allocated_bytes": 200704
+        },
+        "cow-b": {
+          "process": {
+            "rss_kib": 63900,
+            "pss_kib": 48143,
+            "shared_clean_kib": 28988,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1028,
+            "private_dirty_kib": 33884
+          },
+          "template_ram_mapping": {
+            "pss_kib": 11390,
+            "shared_clean_kib": 19068,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 656,
+            "private_dirty_kib": 1200
+          },
+          "overlay_allocated_bytes": 200704
+        }
+      }
+    },
+    {
+      "percent_of_guest_probe_region": 25,
+      "pages": 2048,
+      "snapshot": {
+        "cow-a": {
+          "process": {
+            "rss_kib": 70492,
+            "pss_kib": 54763,
+            "shared_clean_kib": 28932,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1200,
+            "private_dirty_kib": 40360
+          },
+          "template_ram_mapping": {
+            "pss_kib": 19734,
+            "shared_clean_kib": 19012,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 708,
+            "private_dirty_kib": 9520
+          },
+          "overlay_allocated_bytes": 200704
+        },
+        "cow-b": {
+          "process": {
+            "rss_kib": 63900,
+            "pss_kib": 48171,
+            "shared_clean_kib": 28932,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1084,
+            "private_dirty_kib": 33884
+          },
+          "template_ram_mapping": {
+            "pss_kib": 11418,
+            "shared_clean_kib": 19012,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 712,
+            "private_dirty_kib": 1200
+          },
+          "overlay_allocated_bytes": 200704
+        }
+      }
+    },
+    {
+      "percent_of_guest_probe_region": 50,
+      "pages": 4096,
+      "snapshot": {
+        "cow-a": {
+          "process": {
+            "rss_kib": 78792,
+            "pss_kib": 63023,
+            "shared_clean_kib": 29012,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1196,
+            "private_dirty_kib": 48584
+          },
+          "template_ram_mapping": {
+            "pss_kib": 27994,
+            "shared_clean_kib": 19092,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 704,
+            "private_dirty_kib": 17744
+          },
+          "overlay_allocated_bytes": 200704
+        },
+        "cow-b": {
+          "process": {
+            "rss_kib": 64032,
+            "pss_kib": 48263,
+            "shared_clean_kib": 29012,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1124,
+            "private_dirty_kib": 33896
+          },
+          "template_ram_mapping": {
+            "pss_kib": 11510,
+            "shared_clean_kib": 19092,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 752,
+            "private_dirty_kib": 1212
+          },
+          "overlay_allocated_bytes": 200704
+        }
+      }
+    },
+    {
+      "percent_of_guest_probe_region": 100,
+      "pages": 8192,
+      "snapshot": {
+        "cow-a": {
+          "process": {
+            "rss_kib": 95204,
+            "pss_kib": 79435,
+            "shared_clean_kib": 29012,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1196,
+            "private_dirty_kib": 64996
+          },
+          "template_ram_mapping": {
+            "pss_kib": 44406,
+            "shared_clean_kib": 19092,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 704,
+            "private_dirty_kib": 34156
+          },
+          "overlay_allocated_bytes": 200704
+        },
+        "cow-b": {
+          "process": {
+            "rss_kib": 64032,
+            "pss_kib": 48263,
+            "shared_clean_kib": 29012,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 1124,
+            "private_dirty_kib": 33896
+          },
+          "template_ram_mapping": {
+            "pss_kib": 11510,
+            "shared_clean_kib": 19092,
+            "shared_dirty_kib": 0,
+            "private_clean_kib": 752,
+            "private_dirty_kib": 1212
+          },
+          "overlay_allocated_bytes": 200704
+        }
+      }
+    }
+  ],
+  "disk_isolation": {
+    "cow_a_after_write": "DISK 211",
+    "cow_b_after_a_write": "DISK 73"
+  },
+  "survivor_after_sibling_stop": "DISK 73",
+  "accounting_note": "PSS and smaps mappings are process metrics; they exclude KVM metadata and host page tables."
+}
