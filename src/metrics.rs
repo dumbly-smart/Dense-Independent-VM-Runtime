@@ -22,6 +22,8 @@ pub struct TcgTranslationSummary {
     pub generated_block_events: Option<u64>,
     pub generated_host_code_bytes_cumulative: Option<u64>,
     pub translation_start_completion_event_count_delta: Option<u64>,
+    pub generated_translation_wall_duration_us_cumulative: Option<u64>,
+    pub generated_translation_wall_duration_us_max: Option<u64>,
     pub interpretation: &'static str,
 }
 
@@ -175,6 +177,9 @@ pub fn parse_tcg_translation_summary(input: &str) -> Result<TcgTranslationSummar
     let mut events_by_guest_pc = BTreeMap::<u64, u64>::new();
     let mut generated_block_events = 0u64;
     let mut generated_host_code_bytes_cumulative = 0u64;
+    let mut duration_events = 0u64;
+    let mut generated_translation_wall_duration_us_cumulative = 0u64;
+    let mut generated_translation_wall_duration_us_max = 0u64;
     for line in input.lines() {
         if line.starts_with("translate_block ") {
             events = events
@@ -207,6 +212,28 @@ pub fn parse_tcg_translation_summary(input: &str) -> Result<TcgTranslationSummar
             generated_host_code_bytes_cumulative = generated_host_code_bytes_cumulative
                 .checked_add(size)
                 .ok_or_else(|| "generated host-code byte count exceeds u64".to_string())?;
+            if let Some(duration) = line
+                .split_whitespace()
+                .find_map(|field| field.strip_prefix("duration_us:"))
+            {
+                let duration = duration
+                    .trim_end_matches(',')
+                    .parse::<u64>()
+                    .map_err(|error| {
+                        format!("invalid duration_us in translate_block_complete event: {error}")
+                    })?;
+                duration_events = duration_events.checked_add(1).ok_or_else(|| {
+                    "generated block duration event count exceeds u64".to_string()
+                })?;
+                generated_translation_wall_duration_us_cumulative =
+                    generated_translation_wall_duration_us_cumulative
+                        .checked_add(duration)
+                        .ok_or_else(|| {
+                            "cumulative TCG translation duration exceeds u64".to_string()
+                        })?;
+                generated_translation_wall_duration_us_max =
+                    generated_translation_wall_duration_us_max.max(duration);
+            }
         }
     }
     if events == 0 {
@@ -217,6 +244,11 @@ pub fn parse_tcg_translation_summary(input: &str) -> Result<TcgTranslationSummar
     if generated_block_events > events {
         return Err(format!(
             "QEMU reported {generated_block_events} completed TBs but only {events} translation starts"
+        ));
+    }
+    if duration_events > generated_block_events {
+        return Err(format!(
+            "QEMU reported {duration_events} translation durations for {generated_block_events} generated blocks"
         ));
     }
     let mut events_at_guest_pcs_seen_multiple_times = 0u64;
@@ -244,6 +276,10 @@ pub fn parse_tcg_translation_summary(input: &str) -> Result<TcgTranslationSummar
             .then_some(generated_host_code_bytes_cumulative),
         translation_start_completion_event_count_delta: (generated_block_events > 0)
             .then_some(events - generated_block_events),
+        generated_translation_wall_duration_us_cumulative: (duration_events > 0)
+            .then_some(generated_translation_wall_duration_us_cumulative),
+        generated_translation_wall_duration_us_max: (duration_events > 0)
+            .then_some(generated_translation_wall_duration_us_max),
         interpretation: "guest-PC reuse only; a PC may identify multiple TBs under different translation state, so this is not a unique-TB or retranslations count",
     })
 }

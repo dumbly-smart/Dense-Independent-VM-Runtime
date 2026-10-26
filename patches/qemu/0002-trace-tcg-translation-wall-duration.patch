@@ -1,0 +1,56 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+Subject: [PATCH] accel/tcg: trace translation wall duration
+
+Measure elapsed monotonic wall time around setjmp_gen_code only when the
+completion trace event is enabled. This includes target translation and TCG
+optimization/code emission, but not code-cache publication or guest execution.
+
+--- a/accel/tcg/trace-events
++++ b/accel/tcg/trace-events
+@@ -12,7 +12,7 @@
+ 
+ # translate-all.c
+ translate_block(void *tb, uintptr_t pc, const void *tb_code) "tb:%p, pc:0x%"PRIxPTR", tb_code:%p"
+-translate_block_complete(void *tb, uintptr_t pc, int code_size) "tb:%p, pc:0x%"PRIxPTR", code_size:%d"
++translate_block_complete(void *tb, uintptr_t pc, int code_size, int64_t duration_us) "tb:%p, pc:0x%"PRIxPTR", code_size:%d, duration_us:%"PRId64
+ tb_gen_code_buffer_overflow(const char *reason) "reason: %s"
+ 
+ # ldst_atomicity
+--- a/accel/tcg/translate-all.c
++++ b/accel/tcg/translate-all.c
+@@ -266,6 +266,8 @@
+     tcg_insn_unit *gen_code_buf;
+     int gen_code_size, search_size, max_insns;
+     int64_t ti;
++    int64_t translation_start_us;
++    bool trace_translation_complete_enabled;
+     void *host_pc;
+ 
+     assert_memory_lock();
+@@ -320,6 +322,11 @@
+ 
+  restart_translate:
+     trace_translate_block(tb, s.pc, tb->tc.ptr);
++    trace_translation_complete_enabled =
++        trace_event_get_state(TRACE_TRANSLATE_BLOCK_COMPLETE);
++    if (trace_translation_complete_enabled) {
++        translation_start_us = g_get_monotonic_time();
++    }
+ 
+     gen_code_size = setjmp_gen_code(env, tb, s.pc, host_pc, &max_insns, &ti);
+     if (unlikely(gen_code_size < 0)) {
+@@ -395,7 +402,11 @@
+         goto buffer_overflow;
+     }
+     tb->tc.size = gen_code_size;
+-    trace_translate_block_complete(tb, s.pc, gen_code_size);
++    if (trace_translation_complete_enabled) {
++        trace_translate_block_complete(
++            tb, s.pc, gen_code_size,
++            g_get_monotonic_time() - translation_start_us);
++    }
+ 
+     /*
+      * For CF_PCREL, attribute all executions of the generated code
+-- 
+2.45.0
