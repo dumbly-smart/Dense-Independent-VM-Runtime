@@ -25,13 +25,23 @@ translation-block events. Generated-code size and time spent translating
 remain unmeasured. The KVM PSS values are QEMU process totals and do not
 include KVM or host page-table memory.
 
-An opt-in one-VM trace run is saved in [`trace1/`](trace1/). It recorded
-108,834 `translate_block` events through the active-workload sample in an
-8,759,535-byte trace log. Its ready time was 8,063 ms and process PSS was
-288,175 KiB. The trace is instrumentation, so these timing and memory values
+Two opt-in one-VM trace runs are saved in [`trace1/`](trace1/) and
+[`trace1b/`](trace1b/). They recorded 108,834 and 109,377 `translate_block`
+events through the active-workload sample in 8,759,535-byte and 8,803,502-byte
+logs. Ready time was 8,063 ms and 7,548 ms; process PSS was 288,175 KiB and
+287,784 KiB. The trace is instrumentation, so these timing and memory values
 are not directly comparable to the untraced runs. Event count is not a count
 of unique TBs and does not measure translation duration or generated-code
-size.
+size. The traces contained 92,654–92,677 distinct guest PC values; 28,410–
+28,999 events fell at 12,230–12,299 PCs observed multiple times. A PC can map
+to multiple TBs under different translation state, so these are PC reuse
+counts, not unique TB or retranslation counts.
+
+QEMU's `-d out_asm` output includes emitted host-code block sizes, but a manual
+probe generated a 395 MB log and did not yield a guest-ready checkpoint within
+the observation window. It is not treated as a result. See
+[`tcg-sharing-feasibility.md`](../../../docs/tcg-sharing-feasibility.md) for
+the limits and next measurement gate.
 
 Reproduce with:
 

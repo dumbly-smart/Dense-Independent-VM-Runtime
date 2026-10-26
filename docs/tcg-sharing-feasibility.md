@@ -168,8 +168,29 @@ This mode is limited to two VMs because the log grows with guest translation
 activity. It reports counts observed through the active CPU sample; it does not
 report translation duration or generated-code size. Startup and CPU metrics
 from a traced run are perturbed and must be compared only with other traced
-runs. A one-VM QEMU 11.1.2 sample recorded 108,834 events in an 8,759,535-byte
-log; the raw result and log are under `results/tcg/2026-10-26/trace1/`.
+runs. Two one-VM QEMU 11.1.2 samples recorded 108,834 and 109,377 events in
+8,759,535-byte and 8,803,502-byte logs; raw results and logs are under
+`results/tcg/2026-10-26/trace1/` and `trace1b/`.
+
+The trace parser also reports distinct guest PC values and how often those
+values appeared more than once. This is only a guest-PC reuse indicator: one
+PC can produce multiple TBs when translation state differs, so the number is
+not a unique-TB count or a count of retranslations. Across the two samples,
+event counts were 108,834–109,377; distinct guest PCs were 92,654–92,677;
+events at repeated PCs were 28,410–28,999 across 12,230–12,299 PCs; and the
+maximum observed events for one PC was 9–10. This indicates repeated
+translation events at some entry addresses, but it does not show whether the
+same TB was recreated or how expensive those events were.
+
+QEMU 11.1.2's local `-d help` lists `out_asm`, which prints generated host
+assembly and labels each emitted block with its byte size. It is a possible
+source for cumulative generated-code bytes, but it is highly verbose. A manual
+probe produced a 395 MB text log and did not yield a guest-ready checkpoint
+within its observation window. That probe is not accepted as a baseline, and
+no code-size or translation-time result is claimed. A future measurement must
+bound disk use and show that the guest reaches the same checkpoint before its
+metrics are compared. Translation duration still has no directly identified
+QEMU event in the installed trace-event list.
 
 ## Sources
 

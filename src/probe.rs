@@ -2898,9 +2898,15 @@ pub fn run_baseline(
         let translation = if let Some(path) = &translation_logs[index as usize] {
             let trace = fs::read_to_string(path)
                 .map_err(|e| format!("read TCG trace {}: {e}", path.display()))?;
+            let summary = crate::metrics::parse_tcg_translation_summary(&trace)?;
             json!({
                 "event": "translate_block",
-                "events_after_active_sample": crate::metrics::parse_tcg_translation_events(&trace)?,
+                "events_after_active_sample": summary.translation_block_events,
+                "unique_guest_pc_count": summary.unique_guest_pc_count,
+                "events_at_guest_pcs_seen_multiple_times": summary.events_at_guest_pcs_seen_multiple_times,
+                "guest_pcs_seen_multiple_times": summary.guest_pcs_seen_multiple_times,
+                "max_events_for_one_guest_pc": summary.max_events_for_one_guest_pc,
+                "guest_pc_metric_interpretation": summary.interpretation,
                 "log_path": path,
                 "log_bytes": fs::metadata(path).map_err(|e| e.to_string())?.len(),
             })

@@ -12,6 +12,16 @@ pub struct MemoryTotals {
     pub private_dirty_kib: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TcgTranslationSummary {
+    pub translation_block_events: u64,
+    pub unique_guest_pc_count: u64,
+    pub events_at_guest_pcs_seen_multiple_times: u64,
+    pub guest_pcs_seen_multiple_times: u64,
+    pub max_events_for_one_guest_pc: u64,
+    pub interpretation: &'static str,
+}
+
 pub fn parse_cgroup_memory(current: &str, stat: &str) -> Result<Value, String> {
     let current_bytes = current
         .trim()
@@ -154,12 +164,58 @@ pub fn verify_private_ram_mapping(input: &str, path: &str) -> Result<(), String>
 }
 
 pub fn parse_tcg_translation_events(input: &str) -> Result<u64, String> {
-    let count = input
+    Ok(parse_tcg_translation_summary(input)?.translation_block_events)
+}
+
+pub fn parse_tcg_translation_summary(input: &str) -> Result<TcgTranslationSummary, String> {
+    let mut events = 0u64;
+    let mut events_by_guest_pc = BTreeMap::<u64, u64>::new();
+    for line in input
         .lines()
         .filter(|line| line.starts_with("translate_block "))
-        .count();
-    if count == 0 {
+    {
+        events = events
+            .checked_add(1)
+            .ok_or_else(|| "translate_block event count exceeds u64".to_string())?;
+        let pc = line
+            .split_whitespace()
+            .find_map(|field| field.strip_prefix("pc:"))
+            .and_then(|field| field.trim_end_matches(',').strip_prefix("0x"))
+            .ok_or_else(|| {
+                format!("translate_block event omitted a hexadecimal guest PC: {line}")
+            })?;
+        let pc = u64::from_str_radix(pc, 16)
+            .map_err(|error| format!("invalid guest PC in translate_block event: {error}"))?;
+        let count = events_by_guest_pc.entry(pc).or_default();
+        *count = count
+            .checked_add(1)
+            .ok_or_else(|| "per-PC translation event count exceeds u64".to_string())?;
+    }
+    if events == 0 {
         return Err("QEMU trace contains no translate_block events".into());
     }
-    u64::try_from(count).map_err(|_| "translate_block event count exceeds u64".into())
+    let unique_guest_pc_count = u64::try_from(events_by_guest_pc.len())
+        .map_err(|_| "unique guest PC count exceeds u64".to_string())?;
+    let mut events_at_guest_pcs_seen_multiple_times = 0u64;
+    let mut guest_pcs_seen_multiple_times = 0u64;
+    let mut max_events_for_one_guest_pc = 0u64;
+    for count in events_by_guest_pc.values().copied() {
+        max_events_for_one_guest_pc = max_events_for_one_guest_pc.max(count);
+        if count > 1 {
+            guest_pcs_seen_multiple_times = guest_pcs_seen_multiple_times
+                .checked_add(1)
+                .ok_or_else(|| "repeated guest PC count exceeds u64".to_string())?;
+            events_at_guest_pcs_seen_multiple_times = events_at_guest_pcs_seen_multiple_times
+                .checked_add(count)
+                .ok_or_else(|| "repeated-PC event count exceeds u64".to_string())?;
+        }
+    }
+    Ok(TcgTranslationSummary {
+        translation_block_events: events,
+        unique_guest_pc_count,
+        events_at_guest_pcs_seen_multiple_times,
+        guest_pcs_seen_multiple_times,
+        max_events_for_one_guest_pc,
+        interpretation: "guest-PC reuse only; a PC may identify multiple TBs under different translation state, so this is not a unique-TB or retranslations count",
+    })
 }
