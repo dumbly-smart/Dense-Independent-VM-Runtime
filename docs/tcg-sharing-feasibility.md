@@ -155,12 +155,12 @@ processes. Use the same guest image and workload across VM counts, and measure
 translation cost separately from guest execution. Proceed to cache experiments
 only if repeated translation is a material measured cost, starting with a
 process-local decoded cache. Keep the experiment separate from the KVM results.
-The baseline CLI now supports `--accel tcg`; initial one- and two-VM runs are
-saved under `results/tcg/2026-10-26/`. They record readiness time, process
-memory, idle CPU ticks, and active CPU ticks. They do not yet count TB
-translations or measure translation time. The samples are single runs, and the
-TCG `max` CPU model differs from KVM's host CPU model. Expected cache savings
-remain unknown.
+The baseline CLI now supports `--accel tcg`; two TCG one-VM and two-VM runs,
+and two KVM two-VM runs, are saved under `results/tcg/2026-10-26/`. They record
+readiness time, process memory, idle CPU ticks, and active CPU ticks. The TCG
+`max` CPU model differs from KVM's host CPU model, and two runs per
+configuration are not a statistical comparison. Expected cache savings remain
+unknown.
 
 For bounded event counts, `--trace-translations` enables QEMU's
 `translate_block` trace event and saves the trace log in the run directory.
