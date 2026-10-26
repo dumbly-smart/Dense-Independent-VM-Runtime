@@ -71,6 +71,31 @@ shows the stock-QEMU fallback: baseline tracing works, and generated-code size
 and duration are recorded as unavailable. Build and run instructions are in
 [`patches/qemu/README.md`](../../../patches/qemu/README.md).
 
+## Translation activity by workload phase
+
+[`phases1/`](../2026-10-27/phases1/) is one patched-QEMU sample with the
+trace split at QMP-frozen offsets after `READY`, before the active CPU
+workload, and after that workload. The complete machine-readable output is in
+[`baseline.json`](../2026-10-27/phases1/baseline.json); the raw trace is next to it.
+
+| Phase | Translation starts | Completed blocks | Cumulative code bytes | Cumulative wall duration |
+| --- | ---: | ---: | ---: | ---: |
+| Boot through readiness freeze | 107,795 | 107,775 | 33,724,574 | 1,257,938 µs |
+| Post-ready idle through pre-active freeze | 513 | 513 | 152,532 | 5,831 µs |
+| Active workload through final freeze | 747 | 747 | 236,496 | 18,365 µs |
+
+The independently recounted per-phase start-event totals match the complete
+trace (109,055). This single run is illustrative only. Each intermediate
+boundary briefly pauses/resumes the traced VM, so they are approximate phase
+boundaries and affect guest timing. Readiness was 8,613 ms and process PSS was
+302,566 KiB; neither should be compared directly to an untraced baseline.
+Reproduce with the patched QEMU binary first in `PATH`:
+
+```sh
+PATH=/path/to/qemu-build:$PATH cargo run -- benchmark baseline \
+  --count 1 --accel tcg --trace-translations --out /path/to/phases1
+```
+
 Reproduce with:
 
 ```sh

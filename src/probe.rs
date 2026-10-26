@@ -381,6 +381,28 @@ mod login_tests {
     }
 
     #[test]
+    fn summarizes_translation_events_within_a_log_phase() {
+        let trace = "translate_block pc:0x10\ntranslate_block pc:0x10\n";
+        let phase = summarize_translation_phase(trace, 0, trace.len() as u64).unwrap();
+        assert_eq!(phase["status"], "recorded");
+        assert_eq!(phase["translation_block_events"], 2);
+        assert_eq!(phase["guest_pcs_seen_multiple_times"], 1);
+    }
+
+    #[test]
+    fn reports_translation_phases_without_events() {
+        let phase = summarize_translation_phase("", 0, 0).unwrap();
+        assert_eq!(phase["status"], "no_translation_events");
+        assert_eq!(phase["log_bytes"], 0);
+    }
+
+    #[test]
+    fn rejects_translation_phase_boundaries_outside_the_log() {
+        assert!(summarize_translation_phase("trace", 0, 6).is_err());
+        assert!(summarize_translation_phase("trace", 4, 2).is_err());
+    }
+
+    #[test]
     fn parses_x86_general_purpose_registers_from_qemu_monitor_output() {
         let registers = parse_qemu_gprs(
             "CPU#0\nRAX=00000000000000aa RBX=00000000000000bb RCX=00000000000000cc\nR8 = 0x8 R9=0000000000000009\nRIP=ffffffff81000000 RFLAGS=00000246",
@@ -1234,6 +1256,72 @@ fn resume_and_verify(qmp: &mut Qmp) -> Result<bool, String> {
         return Err(format!("QMP cont left guest in unexpected state {status}"));
     }
     Ok(true)
+}
+
+fn freeze_translation_traces(vms: &[Vm], logs: &[Option<PathBuf>]) -> Result<Vec<u64>, String> {
+    if vms.len() != logs.len() {
+        return Err("translation trace boundary must include one log per VM".into());
+    }
+    let mut offsets = Vec::with_capacity(vms.len());
+    for (vm, log) in vms.iter().zip(logs) {
+        let mut qmp = vm.qmp()?;
+        stop_and_verify(&mut qmp)?;
+        let offset = log
+            .as_ref()
+            .map(|path| {
+                fs::metadata(path)
+                    .map(|metadata| metadata.len())
+                    .map_err(|error| format!("measure TCG trace {}: {error}", path.display()))
+            })
+            .transpose()?
+            .unwrap_or(0);
+        offsets.push(offset);
+    }
+    for vm in vms {
+        let mut qmp = vm.qmp()?;
+        resume_and_verify(&mut qmp)?;
+    }
+    Ok(offsets)
+}
+
+fn summarize_translation_phase(trace: &str, start: u64, end: u64) -> Result<Value, String> {
+    let start = usize::try_from(start).map_err(|_| "TCG trace offset exceeds usize")?;
+    let end = usize::try_from(end).map_err(|_| "TCG trace offset exceeds usize")?;
+    if start > end || end > trace.len() {
+        return Err(format!("invalid TCG trace phase range {start}..{end}"));
+    }
+    let phase = trace
+        .get(start..end)
+        .ok_or("TCG trace phase boundary is not a UTF-8 boundary")?;
+    if !phase
+        .lines()
+        .any(|line| line.starts_with("translate_block "))
+    {
+        return Ok(json!({
+            "status":"no_translation_events",
+            "start_log_byte":start,
+            "end_log_byte":end,
+            "log_bytes":end-start
+        }));
+    }
+    let summary = crate::metrics::parse_tcg_translation_summary(phase)?;
+    Ok(json!({
+        "status":"recorded",
+        "start_log_byte":start,
+        "end_log_byte":end,
+        "log_bytes":end-start,
+        "translation_block_events":summary.translation_block_events,
+        "unique_guest_pc_count":summary.unique_guest_pc_count,
+        "events_at_guest_pcs_seen_multiple_times":summary.events_at_guest_pcs_seen_multiple_times,
+        "guest_pcs_seen_multiple_times":summary.guest_pcs_seen_multiple_times,
+        "max_events_for_one_guest_pc":summary.max_events_for_one_guest_pc,
+        "guest_pc_metric_interpretation":summary.interpretation,
+        "generated_block_events":summary.generated_block_events,
+        "generated_host_code_bytes_cumulative":summary.generated_host_code_bytes_cumulative,
+        "translation_start_completion_event_count_delta":summary.translation_start_completion_event_count_delta,
+        "generated_translation_wall_duration_us_cumulative":summary.generated_translation_wall_duration_us_cumulative,
+        "generated_translation_wall_duration_us_max":summary.generated_translation_wall_duration_us_max
+    }))
 }
 
 fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u64>, String> {
@@ -2914,14 +3002,37 @@ pub fn run_baseline(
     }
     let elapsed = start.elapsed().as_millis();
     let pids: Vec<_> = vms.iter().map(Vm::pid).collect();
+    let ready_trace_offsets = if trace_translations {
+        Some(freeze_translation_traces(&vms, &translation_logs)?)
+    } else {
+        None
+    };
     let (idle_cpu_sample_interval_ms, idle_cpu_ticks) = sample_cpu_ticks(&pids)?;
+    let idle_trace_offsets = if trace_translations {
+        Some(freeze_translation_traces(&vms, &translation_logs)?)
+    } else {
+        None
+    };
     let mut serial_refs: Vec<_> = serials.iter_mut().collect();
     let (active_cpu_sample_interval_ms, active_cpu_ticks) =
         sample_active_cpu_ticks(&pids, &mut serial_refs)?;
+    let mut final_trace_offsets = Vec::with_capacity(vms.len());
     if trace_translations {
-        for vm in &vms {
+        for (vm, log) in vms.iter().zip(&translation_logs) {
             let mut qmp = vm.qmp()?;
             stop_and_verify(&mut qmp)?;
+            let offset = log
+                .as_ref()
+                .map(|path| {
+                    fs::metadata(path)
+                        .map(|metadata| metadata.len())
+                        .map_err(|error| {
+                            format!("measure final TCG trace {}: {error}", path.display())
+                        })
+                })
+                .transpose()?
+                .unwrap_or(0);
+            final_trace_offsets.push(offset);
         }
     }
     let ticks_per_second = host["clock_ticks_per_second"].as_u64().unwrap_or(100);
@@ -2933,9 +3044,23 @@ pub fn run_baseline(
             let trace = fs::read_to_string(path)
                 .map_err(|e| format!("read TCG trace {}: {e}", path.display()))?;
             let summary = crate::metrics::parse_tcg_translation_summary(&trace)?;
+            let ready_offset = ready_trace_offsets
+                .as_ref()
+                .and_then(|offsets| offsets.get(index as usize))
+                .copied()
+                .ok_or("missing TCG trace offset at guest readiness")?;
+            let idle_offset = idle_trace_offsets
+                .as_ref()
+                .and_then(|offsets| offsets.get(index as usize))
+                .copied()
+                .ok_or("missing TCG trace offset before active workload")?;
+            let final_offset = final_trace_offsets
+                .get(index as usize)
+                .copied()
+                .ok_or("missing final TCG trace offset")?;
             json!({
                 "event": "translate_block",
-                "events_after_active_sample": summary.translation_block_events,
+                "events_through_final_freeze": summary.translation_block_events,
                 "unique_guest_pc_count": summary.unique_guest_pc_count,
                 "events_at_guest_pcs_seen_multiple_times": summary.events_at_guest_pcs_seen_multiple_times,
                 "guest_pcs_seen_multiple_times": summary.guest_pcs_seen_multiple_times,
@@ -2948,6 +3073,17 @@ pub fn run_baseline(
                 "generated_translation_wall_duration_us_cumulative": summary.generated_translation_wall_duration_us_cumulative,
                 "generated_translation_wall_duration_us_max": summary.generated_translation_wall_duration_us_max,
                 "translation_duration_metric_interpretation": if summary.generated_translation_wall_duration_us_cumulative.is_some() { "monotonic wall duration around setjmp_gen_code; includes scheduling delay and is not thread CPU time" } else { "not available: QEMU does not expose duration_us" },
+                "phase_boundaries": {
+                    "ready_freeze_log_byte": ready_offset,
+                    "pre_active_freeze_log_byte": idle_offset,
+                    "final_freeze_log_byte": final_offset,
+                    "interpretation": "boundaries are trace-file offsets observed while QMP reports the guest paused; each boundary briefly pauses and resumes traced VMs"
+                },
+                "phases": {
+                    "boot_through_ready_freeze": summarize_translation_phase(&trace, 0, ready_offset)?,
+                    "post_ready_idle_until_pre_active_freeze": summarize_translation_phase(&trace, ready_offset, idle_offset)?,
+                    "active_workload_until_final_freeze": summarize_translation_phase(&trace, idle_offset, final_offset)?
+                },
                 "log_path": path,
                 "log_bytes": fs::metadata(path).map_err(|e| e.to_string())?.len(),
             })
@@ -2956,7 +3092,7 @@ pub fn run_baseline(
         };
         guests.push(json!({"index":index,"pid":vm.pid(),"qemu_command":vm.command,"memory":measure(vm.pid())?,"idle_cpu_ticks":idle_cpu_ticks[index as usize],"active_cpu_ticks":active_cpu_ticks[index as usize],"active_cpu_percent_one_core":cpu_ticks_as_percent_of_one_core(active_cpu_ticks[index as usize], active_cpu_sample_interval_ms, ticks_per_second),"disk_allocated_bytes":allocated_bytes(&disk)?,"tcg_translation_trace":translation}));
     }
-    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":if trace_translations && trace_codegen_complete { "translate_block events, guest-PC reuse, cumulative generated TB bytes, and monotonic wall duration around setjmp_gen_code through active workload sample; not current cache residency or thread CPU time" } else if trace_translations { "translate_block events and guest-PC reuse through active workload sample; generated code size and translation duration unavailable" } else { "not instrumented in this baseline" },"translation_trace_perturbs_timing":trace_translations,"vms":guests});
+    let result = json!({"experiment":"baseline","accelerator":if tcg { "tcg" } else { "kvm" },"guest_cpu_model":if tcg { "max" } else { "host" },"host":host,"count":count,"guest_ram_mib":RAM_MIB,"host_mem_available_kib_at_start":available_kib,"time_to_ready_ms":elapsed,"idle_cpu_sample_interval_ms":idle_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":active_cpu_sample_interval_ms,"active_cpu_workload":{"guest_command":format!("cpu-burn {ACTIVE_CPU_BURN_MS}"),"ticks_per_second":ticks_per_second},"cpu_ticks_units":"raw /proc/<pid>/stat scheduler ticks","translation_metrics":if trace_translations && trace_codegen_complete { "translate_block events, guest-PC reuse, cumulative generated TB bytes, and monotonic wall duration around setjmp_gen_code; per-phase summaries split boot/readiness, idle, and active workload; generated bytes are not current cache residency, duration is not thread CPU time" } else if trace_translations { "translate_block events and guest-PC reuse split by boot/readiness, idle, and active workload; generated code size and translation duration unavailable" } else { "not instrumented in this baseline" },"translation_trace_perturbs_timing":trace_translations,"translation_trace_phase_boundary_perturbs_timing":if trace_translations { "each traced guest is briefly paused and resumed at READY and before the active workload; phase boundaries are QMP-frozen log offsets, not exact guest instruction boundaries" } else { "not applicable: translation tracing is disabled" },"vms":guests});
     fs::write(
         out.join("baseline.json"),
         serde_json::to_vec_pretty(&result).map_err(|e| e.to_string())?,
