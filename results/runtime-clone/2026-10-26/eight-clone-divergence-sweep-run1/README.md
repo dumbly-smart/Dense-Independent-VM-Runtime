@@ -47,3 +47,13 @@ double-counts some mapped pages. KVM metadata and host page tables are
 `UNKNOWN`. Each result is one sample; collect repeated runs before making
 statistical claims. Disk allocation is after the probe's disk-isolation
 workload and does not represent pristine overlay size.
+
+## Disk allocation during the probe
+
+The two primary clone overlays each reported 200,704 allocated bytes at
+creation. After the isolation workload, total allocation across all eight
+clone overlays was 69,701,632 bytes in every run. Clone A, which performed the
+full-disk write, ended at 67,379,200 bytes; clone B ended at 331,776 bytes.
+The six additional clone overlays reported 331,776 bytes each. These
+post-workload values show the cost of the test's deliberate disk writes and
+must not be read as initial clone storage.
