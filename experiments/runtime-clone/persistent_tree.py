@@ -181,7 +181,7 @@ def run(args: argparse.Namespace) -> pathlib.Path:
                     f"RAM-WROTE-PAGES {dirty_pages} {value}",
                 )
                 serials[name].command(f"disk-write {value}", f"DISK-WROTE {value}")
-        result["after_first_clone_writes"] = {
+        result["guest_state_after_divergence"] = {
             name: {
                 "ram": serials[name].command("ram-read", "RAM "),
                 "disk": serials[name].command("disk-read", "DISK "),
@@ -195,9 +195,9 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             }
             for name in names
         }
-        if result["after_first_clone_writes"] != expected:
+        if result["guest_state_after_divergence"] != expected:
             raise RuntimeError(
-                f"RAM or disk write leaked across clones: {result['after_first_clone_writes']}"
+                f"RAM or disk write leaked across clones: {result['guest_state_after_divergence']}"
             )
 
         result["memory_after_divergence"] = memory_snapshot()
