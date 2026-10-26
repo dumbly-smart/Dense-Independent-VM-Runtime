@@ -1,0 +1,796 @@
+{
+  "experiment": "persistent clones from a relocated nested template generation",
+  "densevm": "/home/xtrmn8/Dense-Independent-VM-Runtime/target/debug/densevm",
+  "manifest": "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+  "generation_id": "sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926",
+  "state_dir": "/tmp/densevm-persistent-tree-404c32nj",
+  "template_artifact_hashes_before": {
+    "ram": "b942d33b8905a3f1679ed4f60470a263c8d77d2b00a365eeef63d0326f796df2",
+    "disk": "1016469dd85f528f65f2c034c607f1c445630ff54885c7d895417393d75c1b87"
+  },
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "validate",
+        "template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"checked_artifacts\": 7,\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"integrity_verified\": true,\n  \"schema_version\": 4,\n  \"status\": \"verified\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-001",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-001/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-001\",\n  \"mac\": \"96:f6:06:c3:05:f5\",\n  \"machine_id\": \"0da190d8e855d9471e32d5f32e384401\",\n  \"qemu_pid\": 286390,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-001/tree-child-001.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-002",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-002/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-002\",\n  \"mac\": \"3a:46:66:4a:c1:1a\",\n  \"machine_id\": \"1087d673def6f0ee489a90810f65b1b4\",\n  \"qemu_pid\": 286431,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-002/tree-child-002.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-003",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-003/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-003\",\n  \"mac\": \"f6:77:74:87:90:de\",\n  \"machine_id\": \"0b7069405d2e01d44af1faaeebb370fb\",\n  \"qemu_pid\": 286497,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-003/tree-child-003.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-004",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-004/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-004\",\n  \"mac\": \"26:27:6f:d5:2f:4e\",\n  \"machine_id\": \"36972babf6a3dfddd92ac3b4f90d8ebb\",\n  \"qemu_pid\": 286547,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-004/tree-child-004.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-005",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-005/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-005\",\n  \"mac\": \"02:b3:29:e7:87:53\",\n  \"machine_id\": \"0985b4b5aa1d8d6143ea26def8fc1c80\",\n  \"qemu_pid\": 286588,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-005/tree-child-005.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-006",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-006/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-006\",\n  \"mac\": \"9a:0c:d4:f4:e6:59\",\n  \"machine_id\": \"ace39b4a2107608e3883cdb9446dfff4\",\n  \"qemu_pid\": 286630,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-006/tree-child-006.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-007",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-007/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-007\",\n  \"mac\": \"32:ab:06:19:85:e5\",\n  \"machine_id\": \"34563072198dee0e4497f550d4630cde\",\n  \"qemu_pid\": 286671,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-007/tree-child-007.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-008",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-relocated-v4/tree-reloc-run21/generation.json",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-008/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-008\",\n  \"mac\": \"c2:a1:e8:9a:59:0d\",\n  \"machine_id\": \"37bdab9e0788e06d513d216591fd79a5\",\n  \"qemu_pid\": 286712,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-008/tree-child-008.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-001",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-001/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-001\",\n  \"mac\": \"96:f6:06:c3:05:f5\",\n  \"machine_id\": \"0da190d8e855d9471e32d5f32e384401\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-001/tree-child-001.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-002",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-002/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-002\",\n  \"mac\": \"3a:46:66:4a:c1:1a\",\n  \"machine_id\": \"1087d673def6f0ee489a90810f65b1b4\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-002/tree-child-002.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-003",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-003/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-003\",\n  \"mac\": \"f6:77:74:87:90:de\",\n  \"machine_id\": \"0b7069405d2e01d44af1faaeebb370fb\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-003/tree-child-003.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-004",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-004/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-004\",\n  \"mac\": \"26:27:6f:d5:2f:4e\",\n  \"machine_id\": \"36972babf6a3dfddd92ac3b4f90d8ebb\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-004/tree-child-004.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-005",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-005/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-005\",\n  \"mac\": \"02:b3:29:e7:87:53\",\n  \"machine_id\": \"0985b4b5aa1d8d6143ea26def8fc1c80\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-005/tree-child-005.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-006",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-006/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-006\",\n  \"mac\": \"9a:0c:d4:f4:e6:59\",\n  \"machine_id\": \"ace39b4a2107608e3883cdb9446dfff4\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-006/tree-child-006.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-007",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-007/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-007\",\n  \"mac\": \"32:ab:06:19:85:e5\",\n  \"machine_id\": \"34563072198dee0e4497f550d4630cde\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-007/tree-child-007.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-008",
+        "--state-dir",
+        "/tmp/densevm-persistent-tree-404c32nj"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-008/disk.qcow2\",\n  \"generation_id\": \"sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926\",\n  \"id\": \"tree-child-008\",\n  \"mac\": \"c2:a1:e8:9a:59:0d\",\n  \"machine_id\": \"37bdab9e0788e06d513d216591fd79a5\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-persistent-tree-404c32nj/tree-child-008/tree-child-008.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    }
+  ],
+  "status": "verified",
+  "validation": {
+    "checked_artifacts": 7,
+    "generation_id": "sha256:7c70c7be8ee0656c84f9b4c7ee08ec2a3cda1ae0e574f7a430393b19e1da9926",
+    "integrity_verified": true,
+    "schema_version": 4,
+    "status": "verified"
+  },
+  "clone_count": 8,
+  "configured_guest_ram_bytes": 2147483648,
+  "startup": {
+    "clone_samples": [
+      {
+        "id": "tree-child-001",
+        "startup_ms": 626.627
+      },
+      {
+        "id": "tree-child-002",
+        "startup_ms": 668.603
+      },
+      {
+        "id": "tree-child-003",
+        "startup_ms": 675.963
+      },
+      {
+        "id": "tree-child-004",
+        "startup_ms": 616.083
+      },
+      {
+        "id": "tree-child-005",
+        "startup_ms": 586.721
+      },
+      {
+        "id": "tree-child-006",
+        "startup_ms": 577.89
+      },
+      {
+        "id": "tree-child-007",
+        "startup_ms": 583.159
+      },
+      {
+        "id": "tree-child-008",
+        "startup_ms": 595.573
+      }
+    ],
+    "time_to_n_clones_ms": 4931.243
+  },
+  "identities": {
+    "macs": [
+      "96:f6:06:c3:05:f5",
+      "3a:46:66:4a:c1:1a",
+      "f6:77:74:87:90:de",
+      "26:27:6f:d5:2f:4e",
+      "02:b3:29:e7:87:53",
+      "9a:0c:d4:f4:e6:59",
+      "32:ab:06:19:85:e5",
+      "c2:a1:e8:9a:59:0d"
+    ],
+    "machine_ids": [
+      "0da190d8e855d9471e32d5f32e384401",
+      "1087d673def6f0ee489a90810f65b1b4",
+      "0b7069405d2e01d44af1faaeebb370fb",
+      "36972babf6a3dfddd92ac3b4f90d8ebb",
+      "0985b4b5aa1d8d6143ea26def8fc1c80",
+      "ace39b4a2107608e3883cdb9446dfff4",
+      "34563072198dee0e4497f550d4630cde",
+      "37bdab9e0788e06d513d216591fd79a5"
+    ],
+    "unique": true
+  },
+  "divergence": {
+    "mode": "all-clones",
+    "percent_of_guest_probe_region": 100,
+    "probe_region_mib": 32,
+    "pages_per_dirty_clone": 8192,
+    "targets": [
+      "tree-child-001",
+      "tree-child-002",
+      "tree-child-003",
+      "tree-child-004",
+      "tree-child-005",
+      "tree-child-006",
+      "tree-child-007",
+      "tree-child-008"
+    ],
+    "byte_values": {
+      "tree-child-001": 91,
+      "tree-child-002": 92,
+      "tree-child-003": 93,
+      "tree-child-004": 94,
+      "tree-child-005": 95,
+      "tree-child-006": 96,
+      "tree-child-007": 97,
+      "tree-child-008": 98
+    },
+    "disk_write": "one marker byte per target when divergence is nonzero"
+  },
+  "initial_guest_state": {
+    "tree-child-001": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-002": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-003": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-004": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-005": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-006": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-007": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-008": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    }
+  },
+  "memory_before_divergence": {
+    "tree-child-001": {
+      "process": {
+        "rss_kib": 66252,
+        "pss_kib": 38143,
+        "shared_clean_kib": 31924,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 260,
+        "private_dirty_kib": 34068
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4373,
+        "shared_clean_kib": 21832,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 236,
+        "private_dirty_kib": 1320
+      }
+    },
+    "tree-child-002": {
+      "process": {
+        "rss_kib": 66060,
+        "pss_kib": 37848,
+        "shared_clean_kib": 32040,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 33996
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4126,
+        "shared_clean_kib": 21892,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 1300
+      }
+    },
+    "tree-child-003": {
+      "process": {
+        "rss_kib": 66260,
+        "pss_kib": 37988,
+        "shared_clean_kib": 32176,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 34060
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4126,
+        "shared_clean_kib": 21892,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 1300
+      }
+    },
+    "tree-child-004": {
+      "process": {
+        "rss_kib": 66116,
+        "pss_kib": 37907,
+        "shared_clean_kib": 32076,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 34016
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4068,
+        "shared_clean_kib": 21784,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 1280
+      }
+    },
+    "tree-child-005": {
+      "process": {
+        "rss_kib": 66060,
+        "pss_kib": 37822,
+        "shared_clean_kib": 32056,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 33980
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4068,
+        "shared_clean_kib": 21784,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 1280
+      }
+    },
+    "tree-child-006": {
+      "process": {
+        "rss_kib": 66208,
+        "pss_kib": 37923,
+        "shared_clean_kib": 32168,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 36,
+        "private_dirty_kib": 34004
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4063,
+        "shared_clean_kib": 21792,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 1272
+      }
+    },
+    "tree-child-007": {
+      "process": {
+        "rss_kib": 66096,
+        "pss_kib": 37856,
+        "shared_clean_kib": 32088,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 32,
+        "private_dirty_kib": 33976
+      },
+      "template_ram_mapping": {
+        "pss_kib": 4072,
+        "shared_clean_kib": 21816,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 8,
+        "private_dirty_kib": 1240
+      }
+    },
+    "tree-child-008": {
+      "process": {
+        "rss_kib": 62572,
+        "pss_kib": 37336,
+        "shared_clean_kib": 28668,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 240,
+        "private_dirty_kib": 33664
+      },
+      "template_ram_mapping": {
+        "pss_kib": 3457,
+        "shared_clean_kib": 18404,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 192,
+        "private_dirty_kib": 928
+      }
+    }
+  },
+  "memory_after_divergence": {
+    "tree-child-001": {
+      "process": {
+        "rss_kib": 99200,
+        "pss_kib": 71009,
+        "shared_clean_kib": 31936,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 88,
+        "private_dirty_kib": 67176
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36988,
+        "shared_clean_kib": 21844,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 64,
+        "private_dirty_kib": 34176
+      }
+    },
+    "tree-child-002": {
+      "process": {
+        "rss_kib": 99196,
+        "pss_kib": 70909,
+        "shared_clean_kib": 32044,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 67128
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36935,
+        "shared_clean_kib": 21896,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 34180
+      }
+    },
+    "tree-child-003": {
+      "process": {
+        "rss_kib": 99396,
+        "pss_kib": 71048,
+        "shared_clean_kib": 32180,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 67192
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36935,
+        "shared_clean_kib": 21896,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 34180
+      }
+    },
+    "tree-child-004": {
+      "process": {
+        "rss_kib": 99380,
+        "pss_kib": 71022,
+        "shared_clean_kib": 32192,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 67164
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36932,
+        "shared_clean_kib": 21900,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 34176
+      }
+    },
+    "tree-child-005": {
+      "process": {
+        "rss_kib": 99196,
+        "pss_kib": 70893,
+        "shared_clean_kib": 32060,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 67112
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36888,
+        "shared_clean_kib": 21788,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 34160
+      }
+    },
+    "tree-child-006": {
+      "process": {
+        "rss_kib": 99344,
+        "pss_kib": 70994,
+        "shared_clean_kib": 32172,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 36,
+        "private_dirty_kib": 67136
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36882,
+        "shared_clean_kib": 21796,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 34152
+      }
+    },
+    "tree-child-007": {
+      "process": {
+        "rss_kib": 99292,
+        "pss_kib": 70943,
+        "shared_clean_kib": 32136,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 32,
+        "private_dirty_kib": 67124
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36908,
+        "shared_clean_kib": 21864,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 8,
+        "private_dirty_kib": 34136
+      }
+    },
+    "tree-child-008": {
+      "process": {
+        "rss_kib": 99176,
+        "pss_kib": 71012,
+        "shared_clean_kib": 32004,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 96,
+        "private_dirty_kib": 67076
+      },
+      "template_ram_mapping": {
+        "pss_kib": 36882,
+        "shared_clean_kib": 21740,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 48,
+        "private_dirty_kib": 34088
+      }
+    }
+  },
+  "aggregate_memory": {
+    "before_divergence": {
+      "process": {
+        "pss_kib": 302823,
+        "private_dirty_kib": 271764
+      },
+      "template_ram_mapping": {
+        "pss_kib": 32353,
+        "shared_clean_kib": 171196,
+        "shared_dirty_kib": 0,
+        "private_dirty_kib": 9920
+      }
+    },
+    "after_divergence": {
+      "process": {
+        "pss_kib": 567830,
+        "private_dirty_kib": 537108
+      },
+      "template_ram_mapping": {
+        "pss_kib": 295350,
+        "shared_clean_kib": 174724,
+        "shared_dirty_kib": 0,
+        "private_dirty_kib": 273248
+      }
+    }
+  },
+  "memory_delta": {
+    "tree-child-001": {
+      "pss_kib": 32615,
+      "private_dirty_kib": 32856
+    },
+    "tree-child-002": {
+      "pss_kib": 32809,
+      "private_dirty_kib": 32880
+    },
+    "tree-child-003": {
+      "pss_kib": 32809,
+      "private_dirty_kib": 32880
+    },
+    "tree-child-004": {
+      "pss_kib": 32864,
+      "private_dirty_kib": 32896
+    },
+    "tree-child-005": {
+      "pss_kib": 32820,
+      "private_dirty_kib": 32880
+    },
+    "tree-child-006": {
+      "pss_kib": 32819,
+      "private_dirty_kib": 32880
+    },
+    "tree-child-007": {
+      "pss_kib": 32836,
+      "private_dirty_kib": 32896
+    },
+    "tree-child-008": {
+      "pss_kib": 33425,
+      "private_dirty_kib": 33160
+    }
+  },
+  "template_artifact_hashes_after": {
+    "ram": "b942d33b8905a3f1679ed4f60470a263c8d77d2b00a365eeef63d0326f796df2",
+    "disk": "1016469dd85f528f65f2c034c607f1c445630ff54885c7d895417393d75c1b87"
+  },
+  "stops": [
+    {
+      "id": "tree-child-001",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-002",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-003",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-004",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-005",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-006",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-007",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-008",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    }
+  ],
+  "cleanup_leftover_pids": [],
+  "guest_state_after_divergence": {
+    "tree-child-001": {
+      "ram": "RAM 91",
+      "disk": "DISK 91"
+    },
+    "tree-child-002": {
+      "ram": "RAM 92",
+      "disk": "DISK 92"
+    },
+    "tree-child-003": {
+      "ram": "RAM 93",
+      "disk": "DISK 93"
+    },
+    "tree-child-004": {
+      "ram": "RAM 94",
+      "disk": "DISK 94"
+    },
+    "tree-child-005": {
+      "ram": "RAM 95",
+      "disk": "DISK 95"
+    },
+    "tree-child-006": {
+      "ram": "RAM 96",
+      "disk": "DISK 96"
+    },
+    "tree-child-007": {
+      "ram": "RAM 97",
+      "disk": "DISK 97"
+    },
+    "tree-child-008": {
+      "ram": "RAM 98",
+      "disk": "DISK 98"
+    }
+  }
+}

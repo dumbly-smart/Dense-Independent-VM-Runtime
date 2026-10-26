@@ -349,40 +349,6 @@
       "disk": "DISK 73"
     }
   },
-  "after_first_clone_writes": {
-    "tree-child-001": {
-      "ram": "RAM 91",
-      "disk": "DISK 91"
-    },
-    "tree-child-002": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    },
-    "tree-child-003": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    },
-    "tree-child-004": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    },
-    "tree-child-005": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    },
-    "tree-child-006": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    },
-    "tree-child-007": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    },
-    "tree-child-008": {
-      "ram": "RAM 73",
-      "disk": "DISK 73"
-    }
-  },
   "memory": {
     "tree-child-001": {
       "process": {
@@ -578,5 +544,39 @@
       "pid_gone_on_return": true
     }
   ],
-  "cleanup_leftover_pids": []
+  "cleanup_leftover_pids": [],
+  "guest_state_after_divergence": {
+    "tree-child-001": {
+      "ram": "RAM 91",
+      "disk": "DISK 91"
+    },
+    "tree-child-002": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-003": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-004": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-005": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-006": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-007": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-008": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    }
+  }
 }
