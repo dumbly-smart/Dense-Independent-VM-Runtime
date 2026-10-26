@@ -94,6 +94,8 @@ the command and scope limitations are documented in
 Two additional 2- and 4-VM points and the 8-VM sample are compared in
 `results/runtime-clone/2026-10-26/cgroup-scaling-run1/`; tmpfs page-cache
 variation made clone `memory.current` nonmonotonic between the smaller counts.
+Repeat points in `results/runtime-clone/2026-10-26/cgroup-scaling-run2/` show process PSS varying less than 3%,
+while cgroup file charges changed substantially across corresponding runs.
 
 The larger Alpine range run created 20 targets plus an attacker (21 guests)
 and passed guest RAM/disk isolation, guest OOM, crash, process, reboot, and

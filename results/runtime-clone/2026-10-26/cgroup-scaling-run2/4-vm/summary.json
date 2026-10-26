@@ -1,0 +1,510 @@
+{
+  "after_divergence": {
+    "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+    "process_private_kib": 280252,
+    "process_pss_kib": 319753,
+    "process_pss_plus_full_template_cache_kib": 580065,
+    "process_rss_kib": 477908,
+    "template_file_resident_kib": 260312,
+    "template_ram_mapping": {
+      "accounting": "sum across clone mappings of the template RAM file; shared mapped pages are counted once per clone mapping, while mapping PSS apportions shared pages",
+      "private_clean_kib": 0,
+      "private_dirty_kib": 148536,
+      "private_kib": 148536,
+      "pss_kib": 174906,
+      "shared_clean_kib": 0,
+      "shared_dirty_kib": 103716,
+      "shared_mapped_kib": 103716
+    }
+  },
+  "baseline_cache_accounting": "baseline process PSS excludes unmapped disk/kernel/initramfs file cache",
+  "baseline_process_pss_kib": 817565,
+  "before_divergence": {
+    "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+    "process_private_kib": 280236,
+    "process_pss_kib": 319765,
+    "process_pss_plus_full_template_cache_kib": 580077,
+    "process_rss_kib": 477904,
+    "template_file_resident_kib": 260312,
+    "template_ram_mapping": {
+      "accounting": "sum across clone mappings of the template RAM file; shared mapped pages are counted once per clone mapping, while mapping PSS apportions shared pages",
+      "private_clean_kib": 0,
+      "private_dirty_kib": 148520,
+      "private_kib": 148520,
+      "pss_kib": 174894,
+      "shared_clean_kib": 0,
+      "shared_dirty_kib": 103728,
+      "shared_mapped_kib": 103728
+    }
+  },
+  "cgroup_memory": {
+    "baseline": {
+      "current_bytes": 836386816,
+      "memory_stat": {
+        "active_anon": 829079552,
+        "active_file": 0,
+        "anon": 821805056,
+        "anon_thp": 759169024,
+        "file": 5206016,
+        "file_dirty": 0,
+        "file_mapped": 2355200,
+        "file_thp": 0,
+        "file_writeback": 0,
+        "hugetlb": 0,
+        "inactive_anon": 0,
+        "inactive_file": 20480,
+        "kernel": 6139904,
+        "kernel_stack": 393216,
+        "numa_hint_faults": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "pagetables": 2777088,
+        "percpu": 2080,
+        "pgactivate": 0,
+        "pgdeactivate": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_proactive": 0,
+        "pgfault": 92982,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "pgmajfault": 0,
+        "pgpromote_success": 0,
+        "pgrefill": 0,
+        "pgscan": 0,
+        "pgscan_direct": 0,
+        "pgscan_khugepaged": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_proactive": 0,
+        "pgsteal": 0,
+        "pgsteal_direct": 0,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_proactive": 0,
+        "pswpin": 0,
+        "pswpout": 0,
+        "sec_pagetables": 245760,
+        "shmem": 5206016,
+        "shmem_thp": 0,
+        "slab": 1432992,
+        "slab_reclaimable": 304416,
+        "slab_unreclaimable": 1128576,
+        "sock": 0,
+        "swapcached": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "thp_collapse_alloc": 0,
+        "thp_fault_alloc": 364,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "unevictable": 0,
+        "vmalloc": 589824,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_nodereclaim": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "zswap": 0,
+        "zswap_incomp": 0,
+        "zswapped": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0
+      },
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/run-p235363-i187215.scope",
+      "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+      "status": "measured"
+    },
+    "clones_after_divergence": {
+      "current_bytes": 566505472,
+      "memory_stat": {
+        "active_anon": 555606016,
+        "active_file": 0,
+        "anon": 282722304,
+        "anon_thp": 73400320,
+        "file": 273145856,
+        "file_dirty": 0,
+        "file_mapped": 32100352,
+        "file_thp": 0,
+        "file_writeback": 0,
+        "hugetlb": 0,
+        "inactive_anon": 0,
+        "inactive_file": 20480,
+        "kernel": 7237632,
+        "kernel_stack": 393216,
+        "numa_hint_faults": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "pagetables": 2367488,
+        "percpu": 2080,
+        "pgactivate": 0,
+        "pgdeactivate": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_proactive": 0,
+        "pgfault": 212787,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "pgmajfault": 0,
+        "pgpromote_success": 0,
+        "pgrefill": 0,
+        "pgscan": 0,
+        "pgscan_direct": 0,
+        "pgscan_khugepaged": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_proactive": 0,
+        "pgsteal": 0,
+        "pgsteal_direct": 0,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_proactive": 0,
+        "pswpin": 0,
+        "pswpout": 0,
+        "sec_pagetables": 1093632,
+        "shmem": 273145856,
+        "shmem_thp": 0,
+        "slab": 2150632,
+        "slab_reclaimable": 937008,
+        "slab_unreclaimable": 1213624,
+        "sock": 0,
+        "swapcached": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "thp_collapse_alloc": 0,
+        "thp_fault_alloc": 407,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "unevictable": 0,
+        "vmalloc": 458752,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_nodereclaim": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "zswap": 0,
+        "zswap_incomp": 0,
+        "zswapped": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0
+      },
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/run-p235363-i187215.scope",
+      "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+      "status": "measured"
+    },
+    "clones_before_divergence": {
+      "current_bytes": 565624832,
+      "memory_stat": {
+        "active_anon": 555606016,
+        "active_file": 0,
+        "anon": 282722304,
+        "anon_thp": 73400320,
+        "file": 273145856,
+        "file_dirty": 0,
+        "file_mapped": 32100352,
+        "file_thp": 0,
+        "file_writeback": 0,
+        "hugetlb": 0,
+        "inactive_anon": 0,
+        "inactive_file": 20480,
+        "kernel": 7237632,
+        "kernel_stack": 393216,
+        "numa_hint_faults": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "pagetables": 2367488,
+        "percpu": 2080,
+        "pgactivate": 0,
+        "pgdeactivate": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_proactive": 0,
+        "pgfault": 212787,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "pgmajfault": 0,
+        "pgpromote_success": 0,
+        "pgrefill": 0,
+        "pgscan": 0,
+        "pgscan_direct": 0,
+        "pgscan_khugepaged": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_proactive": 0,
+        "pgsteal": 0,
+        "pgsteal_direct": 0,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_proactive": 0,
+        "pswpin": 0,
+        "pswpout": 0,
+        "sec_pagetables": 1093632,
+        "shmem": 273145856,
+        "shmem_thp": 0,
+        "slab": 2150632,
+        "slab_reclaimable": 937008,
+        "slab_unreclaimable": 1213624,
+        "sock": 0,
+        "swapcached": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "thp_collapse_alloc": 0,
+        "thp_fault_alloc": 407,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "unevictable": 0,
+        "vmalloc": 458752,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_nodereclaim": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "zswap": 0,
+        "zswap_incomp": 0,
+        "zswapped": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0
+      },
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/run-p235363-i187215.scope",
+      "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+      "status": "measured"
+    },
+    "scope": "cgroup-v2 memory.current includes anonymous memory, file cache, and memory.stat kernel charges in the measured cgroup; it may not include external or uncharged KVM allocations"
+  },
+  "clone_count": 4,
+  "configured_guest_ram_kib": 1048576,
+  "disk_storage": {
+    "base_allocated_bytes": 200704,
+    "total_clone_overlay_allocated_bytes": 68370432
+  },
+  "divergence_percent": 0,
+  "divergence_region_bytes": 33554432,
+  "divergence_scope": "clone A only",
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "kernel_memory_overhead": "process PSS excludes kernel memory; cgroup.memory_stat reports charges visible to its cgroup; coverage of KVM and external allocations remains UNKNOWN"
+}

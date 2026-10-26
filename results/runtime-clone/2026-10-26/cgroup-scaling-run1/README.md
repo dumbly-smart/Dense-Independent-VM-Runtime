@@ -1,6 +1,6 @@
 # Cgroup memory scaling samples
 
-These are one run each at 2, 4, and 8 VMs. All used QEMU 11.1.2, Linux
+These are the first of two runs each at 2, 4, and 8 VMs. All used QEMU 11.1.2, Linux
 7.2.11, KVM, synthetic initramfs guests with 256 MiB configured RAM per VM,
 and cgroup v2 `MemoryAccounting=yes` in a user systemd scope. The 2- and
 4-VM raw records are in this directory; the 8-VM record is
@@ -27,3 +27,6 @@ not charged to it may be absent.
 Reproduce a point by launching the probe in a memory-accounted systemd scope
 and setting `DENSEVM_CGROUP_PATH` to the scope path as shown in the eight-VM
 sample README.
+
+Repeat measurements are documented in
+[`../cgroup-scaling-run2/`](../cgroup-scaling-run2/).
