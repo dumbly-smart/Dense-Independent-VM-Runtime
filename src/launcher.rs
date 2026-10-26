@@ -1,4 +1,87 @@
-use std::path::Path;
+use serde_json::Value;
+use std::path::{Component, Path, PathBuf};
+
+#[derive(Clone, Debug)]
+pub struct TemplateArtifacts {
+    pub generation_id: String,
+    pub ram: PathBuf,
+    pub machine_state: PathBuf,
+    pub disk: PathBuf,
+    pub logical_ram_bytes: u64,
+    pub qemu_command: Vec<String>,
+}
+
+pub fn load_template_artifacts(manifest_path: &Path) -> Result<TemplateArtifacts, String> {
+    let report = crate::inspect::validate_template_generation(manifest_path)?;
+    if report["schema_version"] != 4 {
+        return Err("clone runtime requires a relocatable v4 template generation".into());
+    }
+    let manifest_path = manifest_path
+        .canonicalize()
+        .map_err(|error| format!("resolve template manifest: {error}"))?;
+    let contents = std::fs::read_to_string(&manifest_path)
+        .map_err(|error| format!("read template manifest: {error}"))?;
+    let manifest: Value = serde_json::from_str(&contents)
+        .map_err(|error| format!("parse template manifest: {error}"))?;
+    parse_template_manifest(&manifest_path, &manifest, &report)
+}
+
+fn parse_template_manifest(
+    manifest_path: &Path,
+    manifest: &Value,
+    report: &Value,
+) -> Result<TemplateArtifacts, String> {
+    fn artifact_path(
+        manifest_path: &Path,
+        manifest: &Value,
+        section: &str,
+    ) -> Result<PathBuf, String> {
+        let filename = manifest[section]["path"]
+            .as_str()
+            .ok_or_else(|| format!("template manifest is missing {section}.path"))?;
+        let relative = Path::new(filename);
+        if relative.components().count() != 1
+            || !matches!(relative.components().next(), Some(Component::Normal(_)))
+        {
+            return Err(format!("template {section} path must be a local filename"));
+        }
+        Ok(manifest_path
+            .parent()
+            .ok_or("template manifest has no parent directory")?
+            .join(relative))
+    }
+
+    if manifest["schema_version"] != 4 {
+        return Err("clone runtime requires a relocatable v4 template generation".into());
+    }
+    let qemu_command = manifest["qemu_command"]
+        .as_array()
+        .filter(|items| !items.is_empty())
+        .ok_or("template manifest has no QEMU command")?
+        .iter()
+        .map(|item| {
+            item.as_str()
+                .map(str::to_string)
+                .ok_or_else(|| "template QEMU command contains a non-string argument".into())
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let logical_ram_bytes = manifest["ram"]["logical_size_bytes"]
+        .as_u64()
+        .filter(|size| *size > 0)
+        .ok_or("template manifest has invalid logical RAM size")?;
+    let generation_id = report["generation_id"]
+        .as_str()
+        .ok_or("verified template report omitted generation ID")?
+        .to_string();
+    Ok(TemplateArtifacts {
+        generation_id,
+        ram: artifact_path(manifest_path, manifest, "ram")?,
+        machine_state: artifact_path(manifest_path, manifest, "machine_state")?,
+        disk: artifact_path(manifest_path, manifest, "disk")?,
+        logical_ram_bytes,
+        qemu_command,
+    })
+}
 
 pub fn build_clone_command(
     source: &[String],
@@ -261,6 +344,7 @@ fn is_network_device(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     fn source() -> Vec<String> {
         [
@@ -287,6 +371,52 @@ mod tests {
         .into_iter()
         .map(str::to_string)
         .collect()
+    }
+
+    #[test]
+    fn template_metadata_resolves_only_verified_local_artifacts() {
+        let manifest_path = Path::new("/templates/child/generation.json");
+        let manifest = json!({
+            "schema_version": 4,
+            "qemu_command": ["qemu-system-x86_64", "-machine", "q35"],
+            "ram": {"path": "child-memory.img", "logical_size_bytes": 268435456},
+            "machine_state": {"path": "child-machine-state"},
+            "disk": {"path": "parent.qcow2"}
+        });
+        let report = json!({"schema_version": 4, "generation_id": "sha256:verified"});
+        let artifacts = parse_template_manifest(manifest_path, &manifest, &report).unwrap();
+        assert_eq!(artifacts.generation_id, "sha256:verified");
+        assert_eq!(
+            artifacts.ram,
+            PathBuf::from("/templates/child/child-memory.img")
+        );
+        assert_eq!(
+            artifacts.machine_state,
+            PathBuf::from("/templates/child/child-machine-state")
+        );
+        assert_eq!(
+            artifacts.disk,
+            PathBuf::from("/templates/child/parent.qcow2")
+        );
+        assert_eq!(artifacts.logical_ram_bytes, 268435456);
+        assert_eq!(artifacts.qemu_command[0], "qemu-system-x86_64");
+    }
+
+    #[test]
+    fn template_metadata_rejects_legacy_and_traversing_artifacts() {
+        let manifest_path = Path::new("/templates/child/generation.json");
+        let mut manifest = json!({
+            "schema_version": 4,
+            "qemu_command": ["qemu-system-x86_64"],
+            "ram": {"path": "../memory.img", "logical_size_bytes": 268435456},
+            "machine_state": {"path": "state"},
+            "disk": {"path": "disk.qcow2"}
+        });
+        let report = json!({"schema_version": 4, "generation_id": "sha256:verified"});
+        assert!(parse_template_manifest(manifest_path, &manifest, &report).is_err());
+        manifest["ram"]["path"] = json!("memory.img");
+        manifest["schema_version"] = json!(3);
+        assert!(parse_template_manifest(manifest_path, &manifest, &report).is_err());
     }
 
     #[test]
