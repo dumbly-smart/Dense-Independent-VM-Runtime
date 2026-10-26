@@ -1,0 +1,247 @@
+{
+  "after_divergence": {
+    "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+    "process_private_kib": 210292,
+    "process_pss_kib": 246889,
+    "process_pss_plus_full_template_cache_kib": 509033,
+    "process_rss_kib": 307464,
+    "template_file_resident_kib": 262144
+  },
+  "baseline_cache_accounting": "baseline process PSS excludes unmapped disk/kernel/initramfs file cache",
+  "baseline_process_pss_kib": 416436,
+  "before_divergence": {
+    "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+    "process_private_kib": 210284,
+    "process_pss_kib": 246887,
+    "process_pss_plus_full_template_cache_kib": 509031,
+    "process_rss_kib": 307464,
+    "template_file_resident_kib": 262144
+  },
+  "clone_count": 2,
+  "configured_guest_ram_kib": 524288,
+  "disk_storage": {
+    "base_allocated_bytes": 200704,
+    "total_clone_overlay_allocated_bytes": 67710976
+  },
+  "divergence_percent": 0,
+  "divergence_region_bytes": 33554432,
+  "divergence_scope": "clone A only",
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded"
+}
