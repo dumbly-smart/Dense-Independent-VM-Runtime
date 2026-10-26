@@ -18,7 +18,7 @@ configured RAM, for 2 GiB total logical guest RAM.
 | --- | ---: | ---: |
 | Aggregate process PSS | 1,625,501 KiB | 462,966 KiB |
 | Aggregate process RSS | 1,816,412 KiB | 820,472 KiB |
-| Clone PSS plus full template cache | — | 725,110 KiB |
+| Clone PSS plus full template cache | — | 725,141 KiB |
 
 Clone process PSS was about 71.5% lower in this run. The PSS-plus-full-cache
 figure is a deliberately conservative accounting bound that double-counts
