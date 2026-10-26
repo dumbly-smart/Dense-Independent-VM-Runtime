@@ -185,5 +185,35 @@ fn clone_delete_removes_stopped_artifacts_and_refuses_live_or_ambiguous_clones()
         .unwrap();
     assert!(!refused.status.success());
     assert!(outside.disk_overlay.exists());
+
+    let mut failed = outside.clone();
+    failed.id = "failed".into();
+    failed.qmp_socket = state_dir.join("failed/failed.qmp.sock");
+    failed.disk_overlay = state_dir.join("failed/disk.qcow2");
+    failed.machine_id = "4123456789abcdef0123456789abcdef".into();
+    failed.mac = "02:00:00:00:00:05".into();
+    failed.state = CloneState::Starting;
+    registry.create(&failed).unwrap();
+    registry
+        .transition(
+            "failed",
+            CloneState::Starting,
+            CloneState::Running,
+            Some(u32::MAX),
+        )
+        .unwrap();
+    registry.reconcile().unwrap();
+    fs::write(&failed.disk_overlay, b"orphaned overlay").unwrap();
+    let deleted = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args(["clone", "delete", "failed", "--state-dir"])
+        .arg(&state_dir)
+        .output()
+        .unwrap();
+    assert!(
+        deleted.status.success(),
+        "failed clone delete failed: {}",
+        String::from_utf8_lossy(&deleted.stderr)
+    );
+    assert!(!state_dir.join("failed").exists());
     fs::remove_dir_all(root).unwrap();
 }

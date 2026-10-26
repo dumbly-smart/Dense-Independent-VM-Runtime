@@ -1,0 +1,59 @@
+{
+  "experiment": "real-QEMU crash reconciliation and orphan deletion",
+  "status": "verified",
+  "manifest": "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+  "generation_id": "sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357",
+  "template_disk": "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/parent.qcow2",
+  "clone_pid": 311413,
+  "pid_gone_after_sigkill": true,
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "crash-delete-check",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+        "--state-dir",
+        "/tmp/densevm-crash-delete-11k16kao"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-crash-delete-11k16kao/crash-delete-check/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"crash-delete-check\",\n  \"mac\": \"f6:f3:0b:f5:ad:d0\",\n  \"machine_id\": \"8e7fbd0f24e60794107e711382844d29\",\n  \"qemu_pid\": 311413,\n  \"qmp_socket\": \"/tmp/densevm-crash-delete-11k16kao/crash-delete-check/crash-delete-check.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "reconcile",
+        "--state-dir",
+        "/tmp/densevm-crash-delete-11k16kao"
+      ],
+      "exit_code": 0,
+      "stdout": "[\n  {\n    \"disk_overlay\": \"/tmp/densevm-crash-delete-11k16kao/crash-delete-check/disk.qcow2\",\n    \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n    \"id\": \"crash-delete-check\",\n    \"mac\": \"f6:f3:0b:f5:ad:d0\",\n    \"machine_id\": \"8e7fbd0f24e60794107e711382844d29\",\n    \"qemu_pid\": null,\n    \"qmp_socket\": \"/tmp/densevm-crash-delete-11k16kao/crash-delete-check/crash-delete-check.qmp.sock\",\n    \"schema_version\": 1,\n    \"state\": \"failed\"\n  }\n]",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "delete",
+        "crash-delete-check",
+        "--state-dir",
+        "/tmp/densevm-crash-delete-11k16kao"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"deleted\": \"crash-delete-check\"\n}",
+      "stderr": ""
+    }
+  ],
+  "reconciled_state": "failed",
+  "delete": {
+    "deleted": "crash-delete-check"
+  },
+  "overlay_removed": true,
+  "state_directory_removed": true,
+  "template_disk_hash_unchanged": true,
+  "cleanup_leftover_pids": []
+}
