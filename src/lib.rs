@@ -1,5 +1,6 @@
 pub mod capabilities;
 pub mod cli;
+pub mod guest_serial;
 pub mod identity;
 pub mod inspect;
 pub mod interrupt;
