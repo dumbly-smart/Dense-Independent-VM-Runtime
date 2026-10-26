@@ -77,6 +77,14 @@ table shows clone process PSS rising from 462,997 KiB at 0% to 495,980 KiB at
 The six runs are single samples, and the entire 256 MiB template RAM file was
 resident in cache. Kernel/KVM memory is not included.
 
+A second full sweep using the same synthetic initramfs probe completed on the
+same host. The clone process-PSS increase from 0% to 100% was 28,112 KiB in
+that sweep, compared with 32,983 KiB in the first; clone-private memory rose
+by 27,840 KiB and 33,236 KiB respectively. These two samples confirm the
+direction and approximate scale of the COW cost, while also showing several
+MiB of measurement variation. Per-point data and the second chart are in
+`results/runtime-clone/2026-10-26/eight-clone-divergence-sweep-run2/`.
+
 The larger Alpine range run created 20 targets plus an attacker (21 guests)
 and passed guest RAM/disk isolation, guest OOM, crash, process, reboot, and
 range connectivity checks. The attacker reached all targets before one target

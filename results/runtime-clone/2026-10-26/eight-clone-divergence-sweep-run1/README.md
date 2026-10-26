@@ -3,10 +3,12 @@
 Each data point is a separate run on 2026-10-26 using QEMU 11.1.2, Linux
 7.2.11, KVM, 4 KiB pages, eight 256 MiB guests, and the same generated guest
 artifacts for that run's independent baseline and restored clones. Clone A
-writes the requested fraction of a 32 MiB guest RAM test region. Each
+writes the requested fraction of a 32 MiB guest RAM test region. The raw guest
+metadata identifies this as a synthetic initramfs workload. Each
 percentage directory contains the raw `result.json` and the output of
 `densevm stats` in `summary.json`. `divergence.json` consolidates the six
-measurements for plotting; `divergence.svg` is the generated chart.
+measurements for plotting; `divergence.svg` is the generated chart. The plot
+title uses the guest profile recorded in the raw result.
 
 Reproduce each point with a fresh output directory:
 

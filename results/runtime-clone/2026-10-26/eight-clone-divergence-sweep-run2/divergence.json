@@ -1,0 +1,146 @@
+[
+  {
+    "divergence_percent": 0,
+    "baseline_process_pss_kib": 1634241,
+    "before_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 426092,
+      "process_pss_kib": 467328,
+      "process_pss_plus_full_template_cache_kib": 726960,
+      "process_rss_kib": 825648,
+      "template_file_resident_kib": 259632
+    },
+    "after_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 426100,
+      "process_pss_kib": 467336,
+      "process_pss_plus_full_template_cache_kib": 726968,
+      "process_rss_kib": 825652,
+      "template_file_resident_kib": 259632
+    },
+    "clone_count": 8,
+    "divergence_region_bytes": 33554432,
+    "divergence_scope": "clone A only",
+    "guest_profile": "synthetic initramfs"
+  },
+  {
+    "divergence_percent": 5,
+    "baseline_process_pss_kib": 1625829,
+    "before_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 422828,
+      "process_pss_kib": 463440,
+      "process_pss_plus_full_template_cache_kib": 723772,
+      "process_rss_kib": 818220,
+      "template_file_resident_kib": 260332
+    },
+    "after_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 424552,
+      "process_pss_kib": 465187,
+      "process_pss_plus_full_template_cache_kib": 725519,
+      "process_rss_kib": 819920,
+      "template_file_resident_kib": 260332
+    },
+    "clone_count": 8,
+    "divergence_region_bytes": 33554432,
+    "divergence_scope": "clone A only",
+    "guest_profile": "synthetic initramfs"
+  },
+  {
+    "divergence_percent": 10,
+    "baseline_process_pss_kib": 1631723,
+    "before_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 421716,
+      "process_pss_kib": 462832,
+      "process_pss_plus_full_template_cache_kib": 723172,
+      "process_rss_kib": 819236,
+      "template_file_resident_kib": 260340
+    },
+    "after_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 425080,
+      "process_pss_kib": 466184,
+      "process_pss_plus_full_template_cache_kib": 726524,
+      "process_rss_kib": 822584,
+      "template_file_resident_kib": 260340
+    },
+    "clone_count": 8,
+    "divergence_region_bytes": 33554432,
+    "divergence_scope": "clone A only",
+    "guest_profile": "synthetic initramfs"
+  },
+  {
+    "divergence_percent": 25,
+    "baseline_process_pss_kib": 1633953,
+    "before_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 428124,
+      "process_pss_kib": 470006,
+      "process_pss_plus_full_template_cache_kib": 729498,
+      "process_rss_kib": 829160,
+      "template_file_resident_kib": 259492
+    },
+    "after_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 436344,
+      "process_pss_kib": 478197,
+      "process_pss_plus_full_template_cache_kib": 737689,
+      "process_rss_kib": 837232,
+      "template_file_resident_kib": 259492
+    },
+    "clone_count": 8,
+    "divergence_region_bytes": 33554432,
+    "divergence_scope": "clone A only",
+    "guest_profile": "synthetic initramfs"
+  },
+  {
+    "divergence_percent": 50,
+    "baseline_process_pss_kib": 1613415,
+    "before_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 423204,
+      "process_pss_kib": 464044,
+      "process_pss_plus_full_template_cache_kib": 724380,
+      "process_rss_kib": 819588,
+      "template_file_resident_kib": 260336
+    },
+    "after_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 439648,
+      "process_pss_kib": 480452,
+      "process_pss_plus_full_template_cache_kib": 740788,
+      "process_rss_kib": 835872,
+      "template_file_resident_kib": 260336
+    },
+    "clone_count": 8,
+    "divergence_region_bytes": 33554432,
+    "divergence_scope": "clone A only",
+    "guest_profile": "synthetic initramfs"
+  },
+  {
+    "divergence_percent": 100,
+    "baseline_process_pss_kib": 1629433,
+    "before_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 421152,
+      "process_pss_kib": 462693,
+      "process_pss_plus_full_template_cache_kib": 722697,
+      "process_rss_kib": 821600,
+      "template_file_resident_kib": 260004
+    },
+    "after_divergence": {
+      "cache_accounting": "PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",
+      "process_private_kib": 453940,
+      "process_pss_kib": 495448,
+      "process_pss_plus_full_template_cache_kib": 755452,
+      "process_rss_kib": 854164,
+      "template_file_resident_kib": 260004
+    },
+    "clone_count": 8,
+    "divergence_region_bytes": 33554432,
+    "divergence_scope": "clone A only",
+    "guest_profile": "synthetic initramfs"
+  }
+]

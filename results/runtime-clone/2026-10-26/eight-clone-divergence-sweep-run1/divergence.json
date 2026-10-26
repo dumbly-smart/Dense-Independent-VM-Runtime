@@ -245,7 +245,7 @@
       }
     },
     "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded",
-    "guest_profile": "Alpine 3.24.2 ext4"
+    "guest_profile": "synthetic initramfs"
   },
   {
     "after_divergence": {
@@ -493,7 +493,7 @@
       }
     },
     "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded",
-    "guest_profile": "Alpine 3.24.2 ext4"
+    "guest_profile": "synthetic initramfs"
   },
   {
     "after_divergence": {
@@ -741,7 +741,7 @@
       }
     },
     "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded",
-    "guest_profile": "Alpine 3.24.2 ext4"
+    "guest_profile": "synthetic initramfs"
   },
   {
     "after_divergence": {
@@ -989,7 +989,7 @@
       }
     },
     "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded",
-    "guest_profile": "Alpine 3.24.2 ext4"
+    "guest_profile": "synthetic initramfs"
   },
   {
     "after_divergence": {
@@ -1237,7 +1237,7 @@
       }
     },
     "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded",
-    "guest_profile": "Alpine 3.24.2 ext4"
+    "guest_profile": "synthetic initramfs"
   },
   {
     "after_divergence": {
@@ -1485,6 +1485,6 @@
       }
     },
     "kernel_memory_overhead": "UNKNOWN; KVM metadata and host page tables excluded",
-    "guest_profile": "Alpine 3.24.2 ext4"
+    "guest_profile": "synthetic initramfs"
   }
 ]

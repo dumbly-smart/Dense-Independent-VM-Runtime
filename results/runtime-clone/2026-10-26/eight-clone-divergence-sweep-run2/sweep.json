@@ -1,0 +1,76 @@
+{
+  "experiment": "densevm-ram-divergence-sweep",
+  "densevm": "/home/xtrmn8/Dense-Independent-VM-Runtime/target/debug/densevm",
+  "clone_count": 8,
+  "divergence_percentages": [
+    0,
+    5,
+    10,
+    25,
+    50,
+    100
+  ],
+  "status": "verified",
+  "runs": [
+    {
+      "divergence_percent": 0,
+      "baseline_process_pss_kib": 1634241,
+      "clone_pss_before_kib": 467328,
+      "clone_pss_after_kib": 467336,
+      "clone_private_after_kib": 426100,
+      "clone_pss_plus_full_cache_kib": 726968,
+      "result": "000-percent/result.json",
+      "summary": "000-percent/summary.json"
+    },
+    {
+      "divergence_percent": 5,
+      "baseline_process_pss_kib": 1625829,
+      "clone_pss_before_kib": 463440,
+      "clone_pss_after_kib": 465187,
+      "clone_private_after_kib": 424552,
+      "clone_pss_plus_full_cache_kib": 725519,
+      "result": "005-percent/result.json",
+      "summary": "005-percent/summary.json"
+    },
+    {
+      "divergence_percent": 10,
+      "baseline_process_pss_kib": 1631723,
+      "clone_pss_before_kib": 462832,
+      "clone_pss_after_kib": 466184,
+      "clone_private_after_kib": 425080,
+      "clone_pss_plus_full_cache_kib": 726524,
+      "result": "010-percent/result.json",
+      "summary": "010-percent/summary.json"
+    },
+    {
+      "divergence_percent": 25,
+      "baseline_process_pss_kib": 1633953,
+      "clone_pss_before_kib": 470006,
+      "clone_pss_after_kib": 478197,
+      "clone_private_after_kib": 436344,
+      "clone_pss_plus_full_cache_kib": 737689,
+      "result": "025-percent/result.json",
+      "summary": "025-percent/summary.json"
+    },
+    {
+      "divergence_percent": 50,
+      "baseline_process_pss_kib": 1613415,
+      "clone_pss_before_kib": 464044,
+      "clone_pss_after_kib": 480452,
+      "clone_private_after_kib": 439648,
+      "clone_pss_plus_full_cache_kib": 740788,
+      "result": "050-percent/result.json",
+      "summary": "050-percent/summary.json"
+    },
+    {
+      "divergence_percent": 100,
+      "baseline_process_pss_kib": 1629433,
+      "clone_pss_before_kib": 462693,
+      "clone_pss_after_kib": 495448,
+      "clone_private_after_kib": 453940,
+      "clone_pss_plus_full_cache_kib": 755452,
+      "result": "100-percent/result.json",
+      "summary": "100-percent/summary.json"
+    }
+  ]
+}
