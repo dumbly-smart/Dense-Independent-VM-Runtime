@@ -30,9 +30,9 @@ code-generation calls emit a duration; failed or restarted attempts have no
 duration sample, and the start/completion count difference must be retained
 as a separate signal.
 
-Two patched one-VM runs are saved under `results/tcg/2026-10-26/duration1/`
-and `duration2/`. They provide a first repeated sample, not a statistical
-benchmark.
+Three patched one-VM runs are saved under `results/tcg/2026-10-26/duration1/`,
+`duration2/`, and `duration3/`. They provide a small repeated sample, not a
+statistical benchmark.
 
 The experiment used:
 
