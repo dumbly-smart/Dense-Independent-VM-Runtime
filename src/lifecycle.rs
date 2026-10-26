@@ -33,6 +33,16 @@ pub struct CloneRecord {
     pub id: String,
     pub generation_id: String,
     pub qemu_pid: Option<u32>,
+    #[serde(default)]
+    pub qemu_start_ticks: Option<u64>,
+    #[serde(default)]
+    pub qemu_boot_id: Option<String>,
+    #[serde(default)]
+    pub launcher_pid: Option<u32>,
+    #[serde(default)]
+    pub launcher_start_ticks: Option<u64>,
+    #[serde(default)]
+    pub launcher_boot_id: Option<String>,
     pub qmp_socket: PathBuf,
     pub disk_overlay: PathBuf,
     pub machine_id: String,
@@ -88,6 +98,30 @@ impl CloneRecord {
         }
         if self.qemu_pid == Some(0) {
             return Err("QEMU PID must be positive when present".into());
+        }
+        if self.qemu_pid.is_none() && self.qemu_start_ticks.is_some() {
+            return Err("QEMU start-time ticks require a QEMU PID".into());
+        }
+        if self.qemu_pid.is_none() && self.qemu_boot_id.is_some() {
+            return Err("QEMU boot ID requires a QEMU PID".into());
+        }
+        if self.qemu_start_ticks.is_some() != self.qemu_boot_id.is_some() {
+            return Err("QEMU start-time ticks and boot ID must be present together".into());
+        }
+        let launcher_fields = [
+            self.launcher_pid.is_some(),
+            self.launcher_start_ticks.is_some(),
+            self.launcher_boot_id.is_some(),
+        ];
+        if launcher_fields.iter().any(|present| *present)
+            && launcher_fields.iter().any(|present| !present)
+        {
+            return Err(
+                "launcher PID, start-time ticks, and boot ID must be present together".into(),
+            );
+        }
+        if self.launcher_pid == Some(0) {
+            return Err("launcher PID must be positive when present".into());
         }
         if self.state == CloneState::Running && self.qemu_pid.is_none() {
             return Err("running clone record must include a QEMU PID".into());
@@ -189,18 +223,67 @@ impl CloneRegistry {
 
     pub fn reconcile(&self) -> Result<Vec<CloneRecord>, String> {
         for record in self.list()? {
+            if record.state == CloneState::Starting {
+                let (Some(launcher_pid), Some(start_ticks)) =
+                    (record.launcher_pid, record.launcher_start_ticks)
+                else {
+                    continue;
+                };
+                if process_matches(
+                    launcher_pid,
+                    Some(start_ticks),
+                    record.launcher_boot_id.as_deref(),
+                )? {
+                    continue;
+                }
+                if let Some(pid) = record.qemu_pid {
+                    if process_matches(
+                        pid,
+                        record.qemu_start_ticks,
+                        record.qemu_boot_id.as_deref(),
+                    )? {
+                        continue;
+                    }
+                }
+                if qmp_endpoint_reachable(&record.qmp_socket)? {
+                    continue;
+                }
+                self.transition(&record.id, CloneState::Starting, CloneState::Failed, None)?;
+                continue;
+            }
             if record.state != CloneState::Running {
                 continue;
             }
             let Some(pid) = record.qemu_pid else {
                 continue;
             };
-            if process_exists(pid)? || qmp_endpoint_reachable(&record.qmp_socket)? {
+            if process_matches(pid, record.qemu_start_ticks, record.qemu_boot_id.as_deref())?
+                || qmp_endpoint_reachable(&record.qmp_socket)?
+            {
                 continue;
             }
             self.transition(&record.id, CloneState::Running, CloneState::Failed, None)?;
         }
         self.list()
+    }
+
+    pub fn record_starting_qemu_pid(&self, id: &str, pid: u32) -> Result<CloneRecord, String> {
+        if pid == 0 {
+            return Err("QEMU PID must be positive".into());
+        }
+        let mut record = self.get(id)?;
+        if record.state != CloneState::Starting {
+            return Err(format!("clone {id} is {:?}, not starting", record.state));
+        }
+        let start_ticks = process_start_ticks(pid)?
+            .ok_or_else(|| format!("QEMU PID {pid} disappeared during clone start"))?;
+        let boot_id = current_boot_id()?;
+        record.qemu_pid = Some(pid);
+        record.qemu_start_ticks = Some(start_ticks);
+        record.qemu_boot_id = Some(boot_id);
+        record.validate()?;
+        write_record_atomic(&self.root.join(id), &record)?;
+        Ok(record)
     }
 
     pub fn delete(&self, id: &str) -> Result<(), String> {
@@ -212,7 +295,7 @@ impl CloneRegistry {
             ));
         }
         if let Some(pid) = record.qemu_pid {
-            if process_exists(pid)? {
+            if process_matches(pid, record.qemu_start_ticks, record.qemu_boot_id.as_deref())? {
                 return Err(format!(
                     "clone {id} still has a live recorded QEMU PID {pid}"
                 ));
@@ -273,7 +356,20 @@ impl CloneRegistry {
             ));
         }
         record.state = next;
+        if record.qemu_pid != qemu_pid {
+            record.qemu_start_ticks = None;
+            record.qemu_boot_id = None;
+        }
         record.qemu_pid = qemu_pid;
+        if qemu_pid.is_none() {
+            record.qemu_start_ticks = None;
+            record.qemu_boot_id = None;
+        }
+        if next != CloneState::Starting {
+            record.launcher_pid = None;
+            record.launcher_start_ticks = None;
+            record.launcher_boot_id = None;
+        }
         record.validate()?;
         write_record_atomic(&self.root.join(id), &record)?;
         Ok(record)
@@ -294,7 +390,12 @@ impl CloneRegistry {
             Ok(qmp) => qmp,
             Err(error) => {
                 if let Some(pid) = record.qemu_pid {
-                    if !process_exists(pid)? && !qmp_endpoint_reachable(&record.qmp_socket)? {
+                    if !process_matches(
+                        pid,
+                        record.qemu_start_ticks,
+                        record.qemu_boot_id.as_deref(),
+                    )? && !qmp_endpoint_reachable(&record.qmp_socket)?
+                    {
                         return self.transition(id, CloneState::Running, CloneState::Failed, None);
                     }
                 }
@@ -333,7 +434,9 @@ impl CloneRegistry {
                     }
                 }
             }
-            if qmp_closed && !process_exists(pid)? {
+            if qmp_closed
+                && !process_matches(pid, record.qemu_start_ticks, record.qemu_boot_id.as_deref())?
+            {
                 return self.transition(id, CloneState::Running, CloneState::Stopped, None);
             }
             if Instant::now() >= deadline {
@@ -352,6 +455,46 @@ fn process_exists(pid: u32) -> Result<bool, String> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(error) => Err(format!("inspect recorded QEMU PID {pid}: {error}")),
     }
+}
+
+fn process_matches(
+    pid: u32,
+    expected_start_ticks: Option<u64>,
+    expected_boot_id: Option<&str>,
+) -> Result<bool, String> {
+    if let Some(expected_boot_id) = expected_boot_id {
+        if current_boot_id()? != expected_boot_id {
+            return Ok(false);
+        }
+    }
+    if let Some(expected_start_ticks) = expected_start_ticks {
+        return Ok(process_start_ticks(pid)? == Some(expected_start_ticks));
+    }
+    process_exists(pid)
+}
+
+pub(crate) fn current_boot_id() -> Result<String, String> {
+    fs::read_to_string("/proc/sys/kernel/random/boot_id")
+        .map(|boot_id| boot_id.trim().to_string())
+        .map_err(|error| format!("read Linux boot ID: {error}"))
+}
+
+pub(crate) fn process_start_ticks(pid: u32) -> Result<Option<u64>, String> {
+    let stat = match fs::read_to_string(format!("/proc/{pid}/stat")) {
+        Ok(stat) => stat,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(format!("read process start time for PID {pid}: {error}")),
+    };
+    let (_, fields) = stat
+        .rsplit_once(')')
+        .ok_or_else(|| format!("malformed /proc/{pid}/stat process name"))?;
+    let start_ticks = fields
+        .split_whitespace()
+        .nth(19)
+        .ok_or_else(|| format!("/proc/{pid}/stat omitted start-time ticks"))?
+        .parse::<u64>()
+        .map_err(|error| format!("invalid /proc/{pid}/stat start-time ticks: {error}"))?;
+    Ok(Some(start_ticks))
 }
 
 fn qmp_endpoint_reachable(path: &Path) -> Result<bool, String> {
@@ -451,6 +594,11 @@ mod tests {
             id: id.into(),
             generation_id: format!("sha256:{}", "a".repeat(64)),
             qemu_pid: None,
+            qemu_start_ticks: None,
+            qemu_boot_id: None,
+            launcher_pid: None,
+            launcher_start_ticks: None,
+            launcher_boot_id: None,
             qmp_socket: PathBuf::from("/run/densevm/alpha.qmp"),
             disk_overlay: PathBuf::from("/var/lib/densevm/alpha.qcow2"),
             machine_id: "0123456789abcdef0123456789abcdef".into(),

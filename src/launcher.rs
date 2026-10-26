@@ -96,11 +96,20 @@ pub fn start_clone(
         &instance_dir,
         &identity.mac,
     )?;
+    let launcher_pid = std::process::id();
+    let launcher_start_ticks = crate::lifecycle::process_start_ticks(launcher_pid)?
+        .ok_or_else(|| format!("launcher PID {launcher_pid} disappeared during clone start"))?;
+    let launcher_boot_id = crate::lifecycle::current_boot_id()?;
     let record = crate::lifecycle::CloneRecord {
         schema_version: 1,
         id: clone_id.to_string(),
         generation_id: template.generation_id,
         qemu_pid: None,
+        qemu_start_ticks: None,
+        qemu_boot_id: None,
+        launcher_pid: Some(launcher_pid),
+        launcher_start_ticks: Some(launcher_start_ticks),
+        launcher_boot_id: Some(launcher_boot_id),
         qmp_socket: instance_dir.join(format!("{clone_id}.qmp.sock")),
         disk_overlay: overlay,
         machine_id: identity.machine_id.clone(),
@@ -116,6 +125,7 @@ pub fn start_clone(
             .map_err(|error| format!("create QEMU log: {error}"))?;
         let pid = spawn_daemonized_qemu(&command, &instance_dir, clone_id, log)?;
         qemu_pid = Some(pid);
+        registry.record_starting_qemu_pid(clone_id, pid)?;
         restore_clone_state(pid, clone_id, &record.qmp_socket, &template.machine_state)?;
         let serial_path = instance_dir.join(format!("{clone_id}.serial.sock"));
         let mut serial =
