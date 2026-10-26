@@ -104,6 +104,13 @@ startup benefit; PSS is about 1.3% higher on average with tracing. It includes
 the patched binary, trace event output, and post-ready sampling, and is not a
 controlled estimate of any one component's cost.
 
+[`stockphase1/`](../2026-10-27/stockphase1/) verifies the same phase split
+using the unpatched system QEMU 11.1.2 binary. It recorded 107,551 boot/readiness,
+188 idle, and 883 active-workload translation events (108,622 total). An
+independent recount matched every raw-log range. As expected, generated block
+size and duration are unavailable in stock QEMU, while ordinary phase event
+counts remain available.
+
 Reproduce with the patched QEMU binary first in `PATH`:
 
 ```sh

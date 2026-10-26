@@ -259,7 +259,11 @@ under `results/tcg/2026-10-27/untraced1/` through `untraced3/`.
 A stock-QEMU trace run is also saved at
 `results/tcg/2026-10-26/stockduration/`; it correctly reports the generated-code
 and duration metrics as unavailable while preserving ordinary translation
-counts. Reproduce the patched run using the QEMU v11.1.2 source and both
+counts. The phase split was additionally checked with stock system QEMU 11.1.2
+at `results/tcg/2026-10-27/stockphase1/`: it recorded 107,551 boot/readiness,
+188 idle, and 883 active-workload events (108,622 total), with each phase
+independently matching its raw log range. Generated block size and duration
+remain unavailable, as expected. Reproduce the patched run using the QEMU v11.1.2 source and both
 patches, then put the custom binary first in `PATH`; the exact build and run
 commands are in `patches/qemu/README.md`. See the [versioned translate-all.c
 source](https://github.com/qemu/qemu/blob/v11.1.2/accel/tcg/translate-all.c)

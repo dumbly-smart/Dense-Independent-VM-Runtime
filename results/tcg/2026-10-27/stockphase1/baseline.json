@@ -1,0 +1,376 @@
+{
+  "accelerator": "tcg",
+  "active_cpu_sample_interval_ms": 1000,
+  "active_cpu_workload": {
+    "guest_command": "cpu-burn 1500",
+    "ticks_per_second": 100
+  },
+  "count": 1,
+  "cpu_ticks_units": "raw /proc/<pid>/stat scheduler ticks",
+  "experiment": "baseline",
+  "guest_cpu_model": "max",
+  "guest_ram_mib": 256,
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "host_mem_available_kib_at_start": 8261180,
+  "idle_cpu_sample_interval_ms": 1000,
+  "time_to_ready_ms": 7795,
+  "translation_metrics": "translate_block events and guest-PC reuse split by boot/readiness, idle, and active workload; generated code size and translation duration unavailable",
+  "translation_trace_perturbs_timing": true,
+  "translation_trace_phase_boundary_perturbs_timing": "each traced guest is briefly paused and resumed at READY and before the active workload; phase boundaries are QMP-frozen log offsets, not exact guest instruction boundaries",
+  "vms": [
+    {
+      "active_cpu_percent_one_core": 103.0,
+      "active_cpu_ticks": 103,
+      "disk_allocated_bytes": 200704,
+      "idle_cpu_ticks": 3,
+      "index": 0,
+      "memory": {
+        "private_clean_kib": 10860,
+        "private_dirty_kib": 275232,
+        "pss_kib": 287107,
+        "rss_kib": 299340,
+        "shared_clean_kib": 13248,
+        "shared_dirty_kib": 0
+      },
+      "pid": 466860,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=tcg,mem-merge=off",
+        "-cpu",
+        "max",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/Dense-Independent-VM-Runtime/results/tcg/2026-10-27/stockphase1/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/Dense-Independent-VM-Runtime/results/tcg/2026-10-27/stockphase1/baseline-000.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "virtio-net-pci,bus=rp1,netdev=net0,mac=3a:0e:61:5b:0a:ce,id=nic0",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/tcg/2026-10-27/stockphase1/baseline-000.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/tcg/2026-10-27/stockphase1/baseline-000.qmp.sock,server=on,wait=off",
+        "-d",
+        "trace:translate_block",
+        "-D",
+        "/home/xtrmn8/Dense-Independent-VM-Runtime/results/tcg/2026-10-27/stockphase1/baseline-000.tcg-trace.log"
+      ],
+      "tcg_translation_trace": {
+        "event": "translate_block",
+        "events_at_guest_pcs_seen_multiple_times": 28137,
+        "events_through_final_freeze": 108622,
+        "generated_block_events": null,
+        "generated_code_metric_interpretation": "not available: QEMU does not expose translate_block_complete",
+        "generated_host_code_bytes_cumulative": null,
+        "generated_translation_wall_duration_us_cumulative": null,
+        "generated_translation_wall_duration_us_max": null,
+        "guest_pc_metric_interpretation": "guest-PC reuse only; a PC may identify multiple TBs under different translation state, so this is not a unique-TB or retranslations count",
+        "guest_pcs_seen_multiple_times": 12107,
+        "log_bytes": 8742466,
+        "log_path": "/home/xtrmn8/Dense-Independent-VM-Runtime/results/tcg/2026-10-27/stockphase1/baseline-000.tcg-trace.log",
+        "max_events_for_one_guest_pc": 9,
+        "phase_boundaries": {
+          "final_freeze_log_byte": 8742466,
+          "interpretation": "boundaries are trace-file offsets observed while QMP reports the guest paused; each boundary briefly pauses and resumes traced VMs",
+          "pre_active_freeze_log_byte": 8671647,
+          "ready_freeze_log_byte": 8656419
+        },
+        "phases": {
+          "active_workload_until_final_freeze": {
+            "end_log_byte": 8742466,
+            "events_at_guest_pcs_seen_multiple_times": 60,
+            "generated_block_events": null,
+            "generated_host_code_bytes_cumulative": null,
+            "generated_translation_wall_duration_us_cumulative": null,
+            "generated_translation_wall_duration_us_max": null,
+            "guest_pc_metric_interpretation": "guest-PC reuse only; a PC may identify multiple TBs under different translation state, so this is not a unique-TB or retranslations count",
+            "guest_pcs_seen_multiple_times": 30,
+            "log_bytes": 70819,
+            "max_events_for_one_guest_pc": 2,
+            "start_log_byte": 8671647,
+            "status": "recorded",
+            "translation_block_events": 883,
+            "translation_start_completion_event_count_delta": null,
+            "unique_guest_pc_count": 853
+          },
+          "boot_through_ready_freeze": {
+            "end_log_byte": 8656419,
+            "events_at_guest_pcs_seen_multiple_times": 27373,
+            "generated_block_events": null,
+            "generated_host_code_bytes_cumulative": null,
+            "generated_translation_wall_duration_us_cumulative": null,
+            "generated_translation_wall_duration_us_max": null,
+            "guest_pc_metric_interpretation": "guest-PC reuse only; a PC may identify multiple TBs under different translation state, so this is not a unique-TB or retranslations count",
+            "guest_pcs_seen_multiple_times": 11749,
+            "log_bytes": 8656419,
+            "max_events_for_one_guest_pc": 9,
+            "start_log_byte": 0,
+            "status": "recorded",
+            "translation_block_events": 107551,
+            "translation_start_completion_event_count_delta": null,
+            "unique_guest_pc_count": 91927
+          },
+          "post_ready_idle_until_pre_active_freeze": {
+            "end_log_byte": 8671647,
+            "events_at_guest_pcs_seen_multiple_times": 4,
+            "generated_block_events": null,
+            "generated_host_code_bytes_cumulative": null,
+            "generated_translation_wall_duration_us_cumulative": null,
+            "generated_translation_wall_duration_us_max": null,
+            "guest_pc_metric_interpretation": "guest-PC reuse only; a PC may identify multiple TBs under different translation state, so this is not a unique-TB or retranslations count",
+            "guest_pcs_seen_multiple_times": 2,
+            "log_bytes": 15228,
+            "max_events_for_one_guest_pc": 2,
+            "start_log_byte": 8656419,
+            "status": "recorded",
+            "translation_block_events": 188,
+            "translation_start_completion_event_count_delta": null,
+            "unique_guest_pc_count": 186
+          }
+        },
+        "translation_duration_metric_interpretation": "not available: QEMU does not expose duration_us",
+        "translation_start_completion_event_count_delta": null,
+        "unique_guest_pc_count": 92592
+      }
+    }
+  ]
+}
