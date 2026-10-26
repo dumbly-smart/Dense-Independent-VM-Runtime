@@ -6,13 +6,16 @@ to share in the current runtime. This document evaluates a separate,
 future-facing TCG experiment. It does not propose changing the KVM design or
 claim that translated code can eliminate guest CPU work.
 
-The source and internals below are checked against QEMU 11.1.2, the version on
-the measured host. QEMU's TCG documentation describes translation blocks
-(TBs), CPU-state assumptions, direct block chaining, self-modifying-code
-invalidation, and the system-mode software MMU. The multi-threaded TCG design
-uses per-vCPU jump caches and TLBs alongside process-global TB lookup and
-translation structures. Those structures are internal to a QEMU process;
-QEMU does not document a cross-process TB cache.
+The host has `qemu-system-x86_64` 11.1.2 (`qemu-base` 11.1.2-1) and the
+matching versioned TCG documentation installed under
+`/usr/share/doc/qemu/qemu/devel`. A QEMU source tree or source package was not
+installed locally. The findings below are therefore checked against the
+version-matched upstream documentation, not a local source-code audit. That
+documentation describes translation blocks (TBs), CPU-state assumptions,
+direct block chaining, self-modifying-code invalidation, and the system-mode
+software MMU. It also describes per-vCPU jump caches and TLBs alongside
+process-wide TB lookup and translation structures. QEMU documents no supported
+cross-process TB cache.
 
 ## What a translation block contains
 
@@ -130,18 +133,30 @@ storage for cached input or IR. It would not remove per-VM vCPU state, QEMU
 device state, memory accesses, scheduling, or execution of guest instructions.
 It may add lookup, validation, synchronization, and invalidation overhead.
 
-The first experiment should measure TCG translation time, generated-code
-bytes, TB counts, and startup time for ordinary independent TCG VMs. Then
-compare a process-local decoded cache with a prototype immutable decoded-IR
-cache. Measure active workload CPU separately from translation savings. If
-translation is a small share of total cost, stop before attempting a cache.
+The first experiment should use ordinary independent TCG VMs and measure
+translation time, generated-code bytes, TB counts, and startup time separately
+from guest execution. The installed documentation does not establish a ready
+QMP counter for all of these, so collecting them may require instrumentation
+in a separate QEMU build. If repeated translation is material, first compare
+the baseline with a process-local decoded cache; only then evaluate an
+immutable cross-process decoded-IR representation. Measure active workload
+CPU separately from translation savings. If translation is a small share of
+total cost, stop before attempting a shared cache.
 
-## Decision
+## Decision and next experiment gate
 
-No QEMU patch or cross-process host-code cache is justified by the current
-evidence. Keep this track deferred until the KVM/template measurements leave a
-specific TCG research question. Any experiment must remain separate from the
-KVM result and report its own correctness and performance evidence.
+The KVM/template prerequisite for investigating this separate track is now
+met. This analysis does not justify a QEMU patch or a cross-process host-code
+cache: there is no supported interface for sharing emitted TBs, and the
+correctness burden is much larger than sharing decoded guest code.
+
+The next useful step is an instrumented TCG baseline using independent QEMU
+processes. Use the same guest image and workload across VM counts, and measure
+translation cost separately from guest execution. Proceed to cache experiments
+only if repeated translation is a material measured cost, starting with a
+process-local decoded cache. Keep the experiment separate from the KVM results.
+No TCG benchmark or code-sharing experiment has yet been run, so expected
+savings remain unknown.
 
 ## Sources
 
@@ -149,6 +164,7 @@ KVM result and report its own correctness and performance evidence.
 - [QEMU 11.1.2 TCG Intermediate Representation](https://qemu.readthedocs.io/en/v11.1.2/devel/tcg-ops.html): `cpu_env`, TCG globals, and guest memory operations.
 - [QEMU 11.1.2 Multi-threaded TCG](https://qemu.readthedocs.io/en/v11.1.2/devel/multi-thread-tcg.html): per-vCPU jump caches/TLBs, shared TB lookup structures, and invalidation bookkeeping.
 - [QEMU 11.1.2 TCG Emulation overview](https://qemu.readthedocs.io/en/v11.1.2/devel/index-tcg.html): the TCG subsystem scope and its relationship to hardware-accelerated hypervisors.
+- [QEMU 11.1.2 source tree](https://gitlab.com/qemu-project/qemu/-/tree/v11.1.2): upstream source for follow-up implementation-level inspection; it was not installed on the measured host.
 
 These documents explain QEMU's implementation model. The conclusions about
 cross-process reuse and expected savings are analysis for DenseVM, not a QEMU
