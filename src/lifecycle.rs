@@ -187,6 +187,22 @@ impl CloneRegistry {
         Ok(records)
     }
 
+    pub fn reconcile(&self) -> Result<Vec<CloneRecord>, String> {
+        for record in self.list()? {
+            if record.state != CloneState::Running {
+                continue;
+            }
+            let Some(pid) = record.qemu_pid else {
+                continue;
+            };
+            if process_exists(pid)? || qmp_endpoint_reachable(&record.qmp_socket)? {
+                continue;
+            }
+            self.transition(&record.id, CloneState::Running, CloneState::Failed, None)?;
+        }
+        self.list()
+    }
+
     pub fn transition(
         &self,
         id: &str,
@@ -228,23 +244,8 @@ impl CloneRegistry {
             Ok(qmp) => qmp,
             Err(error) => {
                 if let Some(pid) = record.qemu_pid {
-                    match fs::symlink_metadata(format!("/proc/{pid}")) {
-                        Err(process_error)
-                            if process_error.kind() == std::io::ErrorKind::NotFound =>
-                        {
-                            return self.transition(
-                                id,
-                                CloneState::Running,
-                                CloneState::Stopped,
-                                None,
-                            );
-                        }
-                        Err(process_error) => {
-                            return Err(format!(
-                                "inspect recorded QEMU PID {pid}: {process_error}"
-                            ));
-                        }
-                        Ok(_) => {}
+                    if !process_exists(pid)? && !qmp_endpoint_reachable(&record.qmp_socket)? {
+                        return self.transition(id, CloneState::Running, CloneState::Failed, None);
                     }
                 }
                 return Err(error);
@@ -283,6 +284,32 @@ impl CloneRegistry {
                 Duration::from_millis(20).min(deadline.saturating_duration_since(Instant::now())),
             );
         }
+    }
+}
+
+fn process_exists(pid: u32) -> Result<bool, String> {
+    match fs::symlink_metadata(format!("/proc/{pid}")) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(format!("inspect recorded QEMU PID {pid}: {error}")),
+    }
+}
+
+fn qmp_endpoint_reachable(path: &Path) -> Result<bool, String> {
+    match UnixStream::connect(path) {
+        Ok(stream) => {
+            drop(stream);
+            Ok(true)
+        }
+        Err(error)
+            if matches!(
+                error.kind(),
+                std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
+            ) =>
+        {
+            Ok(false)
+        }
+        Err(error) => Err(format!("inspect QMP endpoint {}: {error}", path.display())),
     }
 }
 
@@ -515,7 +542,7 @@ mod tests {
     }
 
     #[test]
-    fn stop_reconciles_a_running_record_when_its_process_is_gone() {
+    fn stop_marks_a_crashed_running_record_failed() {
         let root = temp_dir("stale-process");
         let mut clone = record("alpha");
         clone.qmp_socket = root.join("missing.qmp");
@@ -531,8 +558,34 @@ mod tests {
             .unwrap();
 
         let stopped = registry.stop("alpha", Duration::from_millis(100)).unwrap();
-        assert_eq!(stopped.state, CloneState::Stopped);
+        assert_eq!(stopped.state, CloneState::Failed);
         assert_eq!(stopped.qemu_pid, None);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn reconcile_keeps_a_running_record_when_its_qmp_socket_is_reachable() {
+        let root = temp_dir("live-qmp-with-stale-pid");
+        let registry = CloneRegistry::open(&root.join("registry")).unwrap();
+        let mut clone = record("alpha");
+        clone.qmp_socket = root.join("alpha.qmp");
+        registry.create(&clone).unwrap();
+        registry
+            .transition(
+                "alpha",
+                CloneState::Starting,
+                CloneState::Running,
+                Some(u32::MAX),
+            )
+            .unwrap();
+        let listener = UnixListener::bind(&clone.qmp_socket).unwrap();
+        let server = thread::spawn(move || listener.accept().unwrap());
+
+        let records = registry.reconcile().unwrap();
+
+        assert_eq!(records[0].state, CloneState::Running);
+        assert_eq!(records[0].qemu_pid, Some(u32::MAX));
+        server.join().unwrap();
         fs::remove_dir_all(root).unwrap();
     }
 

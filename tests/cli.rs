@@ -65,6 +65,23 @@ fn parses_persistent_clone_listing() {
 }
 
 #[test]
+fn parses_clone_reconciliation_with_an_explicit_state_directory() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "clone",
+            "reconcile",
+            "--state-dir",
+            "/var/lib/densevm"
+        ]),
+        Ok(Command::CloneReconcile {
+            state_dir: PathBuf::from("/var/lib/densevm"),
+        })
+    );
+    assert!(parse_args(["densevm", "clone", "reconcile"]).is_err());
+}
+
+#[test]
 fn parses_clone_stop_with_an_explicit_state_directory() {
     assert_eq!(
         parse_args([

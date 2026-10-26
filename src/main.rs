@@ -63,6 +63,12 @@ fn main() {
             .and_then(|registry| registry.list())
             .and_then(|clones| serde_json::to_value(clones).map_err(|error| error.to_string()))
             .and_then(print_json),
+        Command::CloneReconcile { state_dir } => {
+            densevm::lifecycle::CloneRegistry::open(&state_dir)
+                .and_then(|registry| registry.reconcile())
+                .and_then(|clones| serde_json::to_value(clones).map_err(|error| error.to_string()))
+                .and_then(print_json)
+        }
         Command::CloneStop { id, state_dir } => densevm::lifecycle::CloneRegistry::open(&state_dir)
             .and_then(|registry| registry.stop(&id, std::time::Duration::from_secs(10)))
             .and_then(|clone| serde_json::to_value(clone).map_err(|error| error.to_string()))
