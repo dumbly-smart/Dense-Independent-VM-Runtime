@@ -40,9 +40,13 @@ available host memory, or less than 1 GiB of free disk space. Use a disk-backed
 filesystem for both input and output. The experiment builds in a short hidden
 staging directory and atomically renames it to the requested output path only
 after all checks pass. A caught error removes the staging directory. A hard
-process or host crash can leave an orphan `.dvm-*` staging directory, but does
-not publish it at the requested path; automatic orphan recovery is not
-implemented.
+process or host crash can leave a marked `.dvm-*` staging directory, but does
+not publish it at the requested path. Recovery defaults to listing candidates;
+it removes only marked directories after acquiring the publication lock and
+checking same-user process command lines and memory maps for references. Active
+stages and unrecognized `.dvm-*` paths are preserved. The stable hidden lock
+file remains in the parent directory so concurrent publication and recovery
+cannot race.
 
 ```sh
 cargo build
@@ -54,6 +58,14 @@ python3 experiments/template-tree/probe.py \
 python3 experiments/template-tree/probe.py \
   --template-dir /path/to/new-tree-experiment \
   --out /path/to/next-generation
+```
+
+After an interrupted process, inspect possible orphan stages without changing
+them, then explicitly remove safe candidates if appropriate:
+
+```sh
+python3 experiments/template-tree/probe.py --recover-staging /path/to/output-parent
+python3 experiments/template-tree/probe.py --recover-staging /path/to/output-parent --remove-staging
 ```
 
 The experiment writes its QEMU logs, child RAM file, child machine-state file,
@@ -209,9 +221,13 @@ verified with eight clones from a relocated nested v4 generation; all inherited
 parent state, isolated A-only RAM/disk writes, and stopped cleanly. See the
 [`eight-clone persistent template-tree results`](../results/runtime-clone/2026-10-26/persistent-template-tree-run5/README.md).
 
-The system still lacks template garbage collection and orphan recovery,
-durable publication guarantees across power loss, migration compatibility
-checks across QEMU versions, and large multi-level tree benchmarks. It does not
+The experiment now recovers marked orphan staging directories after a process
+crash. This is not durable publication across power loss: artifact and parent
+directory `fsync` ordering has not been implemented or tested. Process
+reference detection covers same-user `/proc` command lines and memory maps; it
+is not a general process supervisor or a persistent template manager. The
+system still lacks template garbage collection, migration compatibility checks
+across QEMU versions, and large multi-level tree benchmarks. It does not
 establish that every machine/device configuration supports the same migration
 sequence. These need separate failure and compatibility tests before
 hierarchical templates become a general runtime feature.

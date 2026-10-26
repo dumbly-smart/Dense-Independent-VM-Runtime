@@ -8,10 +8,13 @@ from probe import (
     build_child_generation_manifest,
     backing_chain,
     extend_backing_chain,
+    _ensure_experiment_output,
     load_template_artifacts,
     make_overlay,
+    main,
     parse_ram_mapping,
     publish_atomically,
+    recover_staging,
     validate_generation_manifest,
 )
 
@@ -244,6 +247,25 @@ class DiskLineageTests(unittest.TestCase):
 
 
 class AtomicPublicationTests(unittest.TestCase):
+    def test_experiment_output_accepts_only_its_marked_precreated_stage(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary) / ".dvm-stage"
+            staging.mkdir()
+            (staging / ".densevm-stage.json").write_text(
+                json.dumps({"schema_version": 1, "project": "densevm-template-tree"})
+            )
+
+            _ensure_experiment_output(staging)
+
+            self.assertTrue(staging.is_dir())
+            unknown = Path(temporary) / "unrelated"
+            unknown.mkdir()
+            with self.assertRaisesRegex(ValueError, "not an owned staging directory"):
+                _ensure_experiment_output(unknown)
+
     def test_staging_keeps_qmp_socket_path_under_linux_unix_limit(self) -> None:
         import tempfile
 
@@ -253,7 +275,7 @@ class AtomicPublicationTests(unittest.TestCase):
 
             def build(staging: Path) -> dict[str, str]:
                 measured.append(len(str(staging / "child-template.serial.sock").encode()))
-                staging.mkdir()
+                staging.mkdir(exist_ok=True)
                 return {}
 
             publish_atomically(output, build)
@@ -268,7 +290,7 @@ class AtomicPublicationTests(unittest.TestCase):
             output = Path(temporary) / "template"
 
             def build(staging: Path) -> dict[str, str]:
-                staging.mkdir()
+                staging.mkdir(exist_ok=True)
                 (staging / "result.json").write_text(
                     json.dumps({"artifact": str(staging / "memory.img")})
                 )
@@ -289,7 +311,7 @@ class AtomicPublicationTests(unittest.TestCase):
             output = Path(temporary) / "template"
 
             def fail(staging: Path) -> dict[str, str]:
-                staging.mkdir()
+                staging.mkdir(exist_ok=True)
                 (staging / "partial").write_text("incomplete")
                 raise RuntimeError("simulated experiment failure")
 
@@ -298,6 +320,116 @@ class AtomicPublicationTests(unittest.TestCase):
 
             self.assertFalse(output.exists())
             self.assertEqual(list(Path(temporary).glob(".dvm-*")), [])
+
+    def test_recovery_lists_abandoned_staging_without_removing_it(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            staging = parent / ".dvm-abandoned"
+            staging.mkdir()
+            (staging / ".densevm-stage.json").write_text(
+                json.dumps({"schema_version": 1, "project": "densevm-template-tree"})
+            )
+            (staging / "partial.img").write_bytes(b"partial")
+
+            result = recover_staging(parent)
+
+            self.assertEqual(result["staging_directories"], [str(staging)])
+            self.assertEqual(result["removed"], [])
+            self.assertTrue((staging / "partial.img").is_file())
+
+    def test_recovery_removes_only_marked_staging_when_requested(self) -> None:
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            marked = parent / ".dvm-abandoned"
+            unknown = parent / ".dvm-unknown"
+            marked.mkdir()
+            unknown.mkdir()
+            (marked / ".densevm-stage.json").write_text(
+                json.dumps({"schema_version": 1, "project": "densevm-template-tree"})
+            )
+            (marked / "partial.img").write_bytes(b"partial")
+            (unknown / "keep.txt").write_text("unrecognized")
+
+            result = recover_staging(parent, remove=True)
+
+            self.assertEqual(result["removed"], [str(marked)])
+            self.assertEqual(result["unrecognized"], [str(unknown)])
+            self.assertFalse(marked.exists())
+            self.assertTrue((unknown / "keep.txt").is_file())
+
+    def test_recovery_reports_staging_without_removing_it_from_cli(self) -> None:
+        import contextlib
+        import io
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary) / ".dvm-abandoned"
+            staging.mkdir()
+            (staging / ".densevm-stage.json").write_text(
+                json.dumps({"schema_version": 1, "project": "densevm-template-tree"})
+            )
+            output = io.StringIO()
+
+            with contextlib.redirect_stdout(output):
+                status = main(["probe.py", "--recover-staging", temporary])
+
+            self.assertEqual(status, 0)
+            self.assertIn(str(staging), output.getvalue())
+            self.assertTrue(staging.is_dir())
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                status = main(["probe.py", "--recover-staging", temporary, "--remove-staging"])
+
+            self.assertEqual(status, 0)
+            self.assertFalse(staging.exists())
+
+    def test_recovery_refuses_to_run_during_an_active_publication(self) -> None:
+        import fcntl
+        import os
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            lock = Path(temporary) / ".densevm-template-tree.lock"
+            descriptor = os.open(lock, os.O_CREAT | os.O_RDWR, 0o600)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX)
+                with self.assertRaisesRegex(RuntimeError, "another template-tree publication or recovery is active"):
+                    recover_staging(Path(temporary), remove=True)
+            finally:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+                os.close(descriptor)
+
+    def test_recovery_preserves_a_stage_referenced_by_a_live_process(self) -> None:
+        import json
+        import subprocess
+        import tempfile
+        import time
+
+        with tempfile.TemporaryDirectory() as temporary:
+            staging = Path(temporary) / ".dvm-active"
+            staging.mkdir()
+            (staging / ".densevm-stage.json").write_text(
+                json.dumps({"schema_version": 1, "project": "densevm-template-tree"})
+            )
+            process = subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(30)", str(staging)]
+            )
+            try:
+                time.sleep(0.05)
+                result = recover_staging(Path(temporary), remove=True)
+                self.assertEqual(result["active"], [str(staging)])
+                self.assertEqual(result["removed"], [])
+                self.assertTrue(staging.is_dir())
+            finally:
+                process.terminate()
+                process.wait(timeout=2)
 
 
 if __name__ == "__main__":

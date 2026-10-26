@@ -7,6 +7,7 @@ template, then restores two descendants from it.
 """
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -489,32 +490,139 @@ def _rewrite_staging_paths(value: Any, staging: str, final: str) -> Any:
     return value
 
 
+_STAGING_MARKER = ".densevm-stage.json"
+_PUBLICATION_LOCK = ".densevm-template-tree.lock"
+
+
+def _operation_lock(parent: Path, *, nonblocking: bool = False) -> int:
+    descriptor = os.open(
+        parent / _PUBLICATION_LOCK,
+        os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0),
+        0o600,
+    )
+    flags = fcntl.LOCK_EX | (fcntl.LOCK_NB if nonblocking else 0)
+    try:
+        fcntl.flock(descriptor, flags)
+    except BlockingIOError as error:
+        os.close(descriptor)
+        raise RuntimeError("another template-tree publication or recovery is active") from error
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
+
+
+def _is_owned_staging(path: Path) -> bool:
+    if path.is_symlink() or not path.is_dir():
+        return False
+    marker = path / _STAGING_MARKER
+    if marker.is_symlink() or not marker.is_file():
+        return False
+    try:
+        contents = json.loads(marker.read_text())
+    except (OSError, ValueError):
+        return False
+    return contents == {"schema_version": 1, "project": "densevm-template-tree"}
+
+
+def _ensure_experiment_output(path: Path) -> None:
+    if path.exists():
+        if _is_owned_staging(path):
+            return
+        raise ValueError(f"output path already exists and is not an owned staging directory: {path}")
+    path.mkdir(mode=0o700, parents=True)
+
+
+def _referenced_by_live_process(path: Path) -> bool:
+    encoded_path = os.fsencode(path)
+    for process in Path("/proc").iterdir():
+        if not process.name.isdecimal() or process.name == str(os.getpid()):
+            continue
+        try:
+            if process.stat().st_uid != os.geteuid():
+                continue
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            continue
+        for proc_file in (process / "cmdline", process / "maps"):
+            try:
+                if encoded_path in proc_file.read_bytes():
+                    return True
+            except (FileNotFoundError, ProcessLookupError, PermissionError):
+                continue
+    return False
+
+
+def recover_staging(parent: Path, *, remove: bool = False) -> dict[str, Any]:
+    parent = parent.resolve(strict=True)
+    if not parent.is_dir():
+        raise ValueError(f"staging parent is not a directory: {parent}")
+    descriptor = _operation_lock(parent, nonblocking=True)
+    try:
+        recognized: list[Path] = []
+        active: list[Path] = []
+        unrecognized: list[Path] = []
+        for candidate in sorted(parent.glob(".dvm-*")):
+            if _is_owned_staging(candidate):
+                if _referenced_by_live_process(candidate):
+                    active.append(candidate)
+                else:
+                    recognized.append(candidate)
+            else:
+                unrecognized.append(candidate)
+        removed: list[Path] = []
+        if remove:
+            for candidate in recognized:
+                shutil.rmtree(candidate)
+                removed.append(candidate)
+        return {
+            "status": "ok",
+            "dry_run": not remove,
+            "staging_directories": [str(path) for path in recognized],
+            "active": [str(path) for path in active],
+            "unrecognized": [str(path) for path in unrecognized],
+            "removed": [str(path) for path in removed],
+        }
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
 def publish_atomically(
     output: Path,
     build: Callable[[Path], dict[str, Any]],
 ) -> dict[str, Any]:
     output = output.resolve()
-    if output.exists():
-        raise ValueError(f"output path already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=".dvm-", dir=output.parent))
-    staging.rmdir()
+    descriptor = _operation_lock(output.parent)
+    staging: Path | None = None
     try:
+        if output.exists():
+            raise ValueError(f"output path already exists: {output}")
+        staging = Path(tempfile.mkdtemp(prefix=".dvm-", dir=output.parent))
+        (staging / _STAGING_MARKER).write_text(
+            json.dumps({"schema_version": 1, "project": "densevm-template-tree"}) + "\n"
+        )
         result = build(staging)
         for json_path in staging.glob("*.json"):
+            if json_path.name == _STAGING_MARKER:
+                continue
             contents = json.loads(json_path.read_text())
             contents = _rewrite_staging_paths(contents, str(staging), str(output))
             json_path.write_text(json.dumps(contents, indent=2) + "\n")
         if output.exists():
             raise ValueError(f"output path appeared during experiment: {output}")
         os.rename(staging, output)
+        (output / _STAGING_MARKER).unlink()
         return _rewrite_staging_paths(result, str(staging), str(output))
     except BaseException:
-        shutil.rmtree(staging, ignore_errors=True)
+        if staging is not None:
+            shutil.rmtree(staging, ignore_errors=True)
         raise
     finally:
-        if staging.exists():
+        if staging is not None and staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
 
 
 def parse_ram_mapping(text: str, memory_path: str) -> dict[str, int]:
@@ -631,8 +739,6 @@ def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
     for path in (template_ram, base_disk, machine_state):
         if not path.is_file():
             raise ValueError(f"template artifact is missing: {path}")
-    if out.exists():
-        raise ValueError(f"output path already exists: {out}")
     disk_free = shutil.disk_usage(out.parent).free
     if disk_free < 1024 * 1024 * 1024:
         raise ValueError("template-tree experiment requires 1 GiB free disk space")
@@ -642,7 +748,7 @@ def _run_in_directory(template_dir: Path, out: Path) -> dict[str, Any]:
     if mem_available < 2 * 1024 * 1024:
         raise ValueError("template-tree experiment requires 2 GiB MemAvailable")
 
-    out.mkdir(mode=0o700, parents=True)
+    _ensure_experiment_output(out)
     out = out.resolve()
     original_hashes = {str(path): sha256(path) for path in (template_ram, base_disk, machine_state)}
     parent_disk = out / "parent.qcow2"
@@ -816,10 +922,24 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--template-dir", type=Path, help="completed DenseVM probe output directory")
     parser.add_argument("--out", type=Path, help="new experiment output directory")
     parser.add_argument("--validate-manifest", type=Path, help="verify a saved generation manifest and its artifacts")
+    parser.add_argument("--recover-staging", type=Path, help="inspect abandoned staging directories under PARENT")
+    parser.add_argument("--remove-staging", action="store_true", help="remove recognized abandoned stages; requires --recover-staging")
     args = parser.parse_args(argv[1:])
+    if args.remove_staging and args.recover_staging is None:
+        parser.error("--remove-staging requires --recover-staging")
+    if args.recover_staging is not None:
+        if args.template_dir is not None or args.out is not None or args.validate_manifest is not None:
+            parser.error("--recover-staging cannot be combined with experiment or manifest options")
+        try:
+            result = recover_staging(args.recover_staging, remove=args.remove_staging)
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"template-tree recovery error: {error}", file=sys.stderr)
+            return 1
+        print(json.dumps(result, indent=2))
+        return 0
     if args.validate_manifest is not None:
-        if args.template_dir is not None or args.out is not None:
-            parser.error("--validate-manifest cannot be combined with --template-dir or --out")
+        if args.template_dir is not None or args.out is not None or args.remove_staging:
+            parser.error("--validate-manifest cannot be combined with experiment or recovery options")
         try:
             print(json.dumps(validate_generation_manifest(args.validate_manifest), indent=2))
         except (OSError, ValueError, RuntimeError) as error:
