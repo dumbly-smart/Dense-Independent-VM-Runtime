@@ -7,9 +7,13 @@
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
+use std::net::Shutdown;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread;
+use std::time::{Duration, Instant};
 
 static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 const RECORD_FILE: &str = "clone.json";
@@ -208,6 +212,53 @@ impl CloneRegistry {
         write_record_atomic(&self.root.join(id), &record)?;
         Ok(record)
     }
+
+    pub fn stop(&self, id: &str, timeout: Duration) -> Result<CloneRecord, String> {
+        let record = self.get(id)?;
+        if record.state != CloneState::Running {
+            return Err(format!("clone {id} is {:?}, not running", record.state));
+        }
+        if timeout.is_zero() {
+            return Err("clone stop timeout must be positive".into());
+        }
+        let deadline = Instant::now()
+            .checked_add(timeout)
+            .ok_or("clone stop timeout is too large")?;
+        let mut qmp = crate::qmp::Qmp::connect(&record.qmp_socket, timeout)?;
+        let identity = qmp.execute("query-name", None)?;
+        if identity["name"].as_str() != Some(id) {
+            return Err(format!(
+                "QMP endpoint for clone {id} reports a different VM name: {identity}"
+            ));
+        }
+        qmp.execute("quit", None)?;
+        drop(qmp);
+
+        loop {
+            match UnixStream::connect(&record.qmp_socket) {
+                Ok(stream) => {
+                    let _ = stream.shutdown(Shutdown::Both);
+                }
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
+                    ) =>
+                {
+                    return self.transition(id, CloneState::Running, CloneState::Stopped, None);
+                }
+                Err(error) => {
+                    return Err(format!("check QMP endpoint after quit: {error}"));
+                }
+            }
+            if Instant::now() >= deadline {
+                return Err(format!("QEMU for clone {id} did not stop before timeout"));
+            }
+            thread::sleep(
+                Duration::from_millis(20).min(deadline.saturating_duration_since(Instant::now())),
+            );
+        }
+    }
 }
 
 fn validate_id(id: &str) -> Result<(), String> {
@@ -266,6 +317,9 @@ fn write_record_atomic(directory: &Path, record: &CloneRecord) -> Result<(), Str
 mod tests {
     use super::*;
     use std::fs;
+    use std::io::{BufRead, BufReader};
+    use std::os::unix::net::UnixListener;
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir(label: &str) -> PathBuf {
@@ -291,6 +345,46 @@ mod tests {
             mac: "02:00:00:00:00:01".into(),
             state: CloneState::Starting,
         }
+    }
+
+    fn qmp_server(path: &Path, name: &str, remove_on_quit: bool) -> thread::JoinHandle<()> {
+        let listener = UnixListener::bind(path).unwrap();
+        let path = path.to_path_buf();
+        let name = name.to_string();
+        thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.write_all(b"{\"QMP\":{\"version\":{}}}\n").unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+            reader.read_line(&mut line).unwrap();
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&line).unwrap()["execute"],
+                "qmp_capabilities"
+            );
+            stream.write_all(b"{\"return\":{}}\n").unwrap();
+            line.clear();
+            reader.read_line(&mut line).unwrap();
+            assert_eq!(
+                serde_json::from_str::<serde_json::Value>(&line).unwrap()["execute"],
+                "query-name"
+            );
+            stream
+                .write_all(format!("{{\"return\":{{\"name\":\"{name}\"}}}}\n").as_bytes())
+                .unwrap();
+            if !remove_on_quit {
+                return;
+            }
+            line.clear();
+            reader.read_line(&mut line).unwrap();
+            let command: serde_json::Value = serde_json::from_str(&line).unwrap();
+            assert_eq!(command["execute"], "quit");
+            stream.write_all(b"{\"return\":{}}\n").unwrap();
+            let _ = stream.shutdown(Shutdown::Both);
+            drop(reader);
+            drop(stream);
+            drop(listener);
+            fs::remove_file(path).unwrap();
+        })
     }
 
     #[test]
@@ -345,6 +439,53 @@ mod tests {
             .transition("alpha", CloneState::Running, CloneState::Stopped, None)
             .unwrap();
         assert_eq!(stopped.state, CloneState::Stopped);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn stop_verifies_qmp_name_and_waits_for_the_socket_to_close() {
+        let root = temp_dir("stop");
+        let mut clone = record("alpha");
+        clone.qmp_socket = root.join("alpha.qmp");
+        let registry = CloneRegistry::open(&root.join("registry")).unwrap();
+        registry.create(&clone).unwrap();
+        registry
+            .transition(
+                "alpha",
+                CloneState::Starting,
+                CloneState::Running,
+                Some(1234),
+            )
+            .unwrap();
+        let server = qmp_server(&clone.qmp_socket, "alpha", true);
+
+        let stopped = registry.stop("alpha", Duration::from_secs(1)).unwrap();
+        assert_eq!(stopped.state, CloneState::Stopped);
+        assert_eq!(stopped.qemu_pid, None);
+        server.join().unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn stop_refuses_a_qmp_endpoint_owned_by_another_vm() {
+        let root = temp_dir("wrong-qmp");
+        let mut clone = record("alpha");
+        clone.qmp_socket = root.join("alpha.qmp");
+        let registry = CloneRegistry::open(&root.join("registry")).unwrap();
+        registry.create(&clone).unwrap();
+        registry
+            .transition(
+                "alpha",
+                CloneState::Starting,
+                CloneState::Running,
+                Some(1234),
+            )
+            .unwrap();
+        let server = qmp_server(&clone.qmp_socket, "beta", false);
+
+        assert!(registry.stop("alpha", Duration::from_millis(100)).is_err());
+        assert_eq!(registry.get("alpha").unwrap().state, CloneState::Running);
+        server.join().unwrap();
         fs::remove_dir_all(root).unwrap();
     }
 

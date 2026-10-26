@@ -65,6 +65,24 @@ fn parses_persistent_clone_listing() {
 }
 
 #[test]
+fn parses_clone_stop_with_an_explicit_state_directory() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "clone",
+            "stop",
+            "alpha",
+            "--state-dir",
+            "/var/lib/densevm",
+        ]),
+        Ok(Command::CloneStop {
+            id: "alpha".into(),
+            state_dir: PathBuf::from("/var/lib/densevm"),
+        })
+    );
+}
+
+#[test]
 fn supports_skipping_the_guest_oom_workload_for_targeted_identity_validation() {
     let result = parse_args([
         "densevm",
