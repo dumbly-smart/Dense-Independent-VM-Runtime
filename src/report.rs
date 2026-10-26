@@ -14,6 +14,13 @@ fn sum_memory(vms: &[Value], field: &str) -> Result<u64, String> {
     })
 }
 
+fn sum_ram_mapping(clones: &[Value], field: &str) -> Result<u64, String> {
+    clones.iter().try_fold(0u64, |sum, clone| {
+        sum.checked_add(number(&clone["ram_mapping"], field)?)
+            .ok_or_else(|| "template RAM mapping total overflow".to_string())
+    })
+}
+
 fn snapshot_summary(snapshot: &Value, count: u64) -> Result<Value, String> {
     let clones = snapshot["clones"]
         .as_array()
@@ -21,10 +28,25 @@ fn snapshot_summary(snapshot: &Value, count: u64) -> Result<Value, String> {
         .ok_or("snapshot clone count mismatch")?;
     let pss = sum_memory(clones, "pss_kib")?;
     let cache = number(snapshot, "template_file_resident_bytes")? / 1024;
+    let shared_clean = sum_ram_mapping(clones, "shared_clean_kib")?;
+    let shared_dirty = sum_ram_mapping(clones, "shared_dirty_kib")?;
+    let private_clean = sum_ram_mapping(clones, "private_clean_kib")?;
+    let private_dirty = sum_ram_mapping(clones, "private_dirty_kib")?;
+    let ram_mapping = json!({
+        "pss_kib":sum_ram_mapping(clones, "pss_kib")?,
+        "shared_clean_kib":shared_clean,
+        "shared_dirty_kib":shared_dirty,
+        "shared_mapped_kib":shared_clean.checked_add(shared_dirty).ok_or("template RAM mapping total overflow")?,
+        "private_clean_kib":private_clean,
+        "private_dirty_kib":private_dirty,
+        "private_kib":private_clean.checked_add(private_dirty).ok_or("template RAM mapping total overflow")?,
+        "accounting":"sum across clone mappings of the template RAM file; shared mapped pages are counted once per clone mapping, while mapping PSS apportions shared pages",
+    });
     Ok(json!({
         "process_pss_kib":pss,
         "process_rss_kib":sum_memory(clones, "rss_kib")?,
         "process_private_kib":sum_memory(clones, "private_clean_kib")? + sum_memory(clones, "private_dirty_kib")?,
+        "template_ram_mapping":ram_mapping,
         "template_file_resident_kib":cache,
         "process_pss_plus_full_template_cache_kib":pss.checked_add(cache).ok_or("memory total overflow")?,
         "cache_accounting":"PSS plus full template cache intentionally double-counts mapped template pages; this is a conservative user-space bound, not total host memory",

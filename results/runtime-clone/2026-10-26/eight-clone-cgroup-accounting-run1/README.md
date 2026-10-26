@@ -27,6 +27,9 @@ densevm stats /tmp/densevm-cgroup-run/result.json
 | Cgroup `memory.stat` anonymous (bytes) | 1,659,785,216 | 426,053,632 before divergence |
 | Cgroup `memory.stat` file (bytes) | 278,016,000 | 532,832,256 before divergence |
 | Cgroup `memory.stat` kernel (bytes) | 13,717,504 | 14,979,072 before divergence |
+| Template-RAM mapping PSS (KiB) | — | 184,925 before divergence |
+| Template-RAM shared mapped bytes summed over clone mappings (KiB) | — | 208,136 before divergence |
+| Template-RAM private mapped bytes (KiB) | — | 158,168 before divergence |
 
 The clone cgroup's `memory.current` was about 50.1% lower than the conventional
 baseline in this sample. The process-PSS comparison alone suggested a larger
@@ -35,6 +38,11 @@ tmpfs, and charged-kernel byte in the cgroup. These views overlap and must not
 be added together. `memory.current` is scope-local accounting, not a
 host-global total; KVM or other kernel allocations not charged to the scope
 may remain uncounted.
+
+The mapping PSS approximates the resident physical footprint attributed to
+these template-file VMAs. The summed `Shared_*` fields count a shared page once
+for each clone mapping, so they are a mapping total rather than a count of
+unique physical pages.
 
 The result captures sequential snapshots while the baseline VMs or clone VMs
 were live. The output directory was tmpfs, so the file-cache and shmem

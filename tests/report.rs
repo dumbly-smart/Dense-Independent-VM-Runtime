@@ -23,6 +23,18 @@ fn reports_measured_pss_and_a_separately_labeled_cache_upper_bound() {
         1001
     );
     assert_eq!(report["before_divergence"]["process_private_kib"], 40);
+    assert_eq!(
+        report["before_divergence"]["template_ram_mapping"]["pss_kib"],
+        200
+    );
+    assert_eq!(
+        report["before_divergence"]["template_ram_mapping"]["shared_mapped_kib"],
+        20
+    );
+    assert_eq!(
+        report["after_divergence"]["template_ram_mapping"]["private_kib"],
+        40
+    );
     assert_eq!(report["configured_guest_ram_kib"], 512 * 1024);
     assert_eq!(
         report["cgroup_memory"]["baseline"]["status"],
