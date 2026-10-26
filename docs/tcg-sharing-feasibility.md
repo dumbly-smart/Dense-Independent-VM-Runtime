@@ -192,6 +192,17 @@ bound disk use and show that the guest reaches the same checkpoint before its
 metrics are compared. Translation duration still has no directly identified
 QEMU event in the installed trace-event list.
 
+The matching QEMU 11.1.2 source shows that `translate_block` fires before
+`setjmp_gen_code`, while the generated size is stored in `tb->tc.size` after
+code generation. `patches/qemu/0001-trace-tcg-generated-block-size.patch`
+adds a completion trace event at that point, avoiding full assembly output.
+The patch was checked against the upstream v11.1.2 source files, but it has
+not been built or run, so it has produced no measurement. It reports
+cumulative generated block bytes, not resident cache usage, and still does
+not report elapsed translation time. See the [versioned translate-all.c
+source](https://github.com/qemu/qemu/blob/v11.1.2/accel/tcg/translate-all.c)
+and [trace event definitions](https://github.com/qemu/qemu/blob/v11.1.2/accel/tcg/trace-events).
+
 ## Sources
 
 - [QEMU 11.1.2 Translator Internals](https://qemu.readthedocs.io/en/v11.1.2/devel/tcg.html): CPU-state assumptions in TBs, direct block chaining, code invalidation, exception recovery, and physical TB indexing in system emulation.
