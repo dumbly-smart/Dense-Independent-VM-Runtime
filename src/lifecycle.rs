@@ -203,6 +203,56 @@ impl CloneRegistry {
         self.list()
     }
 
+    pub fn delete(&self, id: &str) -> Result<(), String> {
+        let record = self.get(id)?;
+        if !matches!(record.state, CloneState::Stopped | CloneState::Failed) {
+            return Err(format!(
+                "clone {id} is {:?}; only stopped or failed clones can be deleted",
+                record.state
+            ));
+        }
+        if let Some(pid) = record.qemu_pid {
+            if process_exists(pid)? {
+                return Err(format!(
+                    "clone {id} still has a live recorded QEMU PID {pid}"
+                ));
+            }
+        }
+        if qmp_endpoint_reachable(&record.qmp_socket)? {
+            return Err(format!(
+                "clone {id} QMP endpoint is reachable; refusing to delete ambiguous state"
+            ));
+        }
+
+        let clone_dir = self.root.join(id);
+        for artifact in [&record.qmp_socket, &record.disk_overlay] {
+            if artifact.parent() != Some(clone_dir.as_path()) {
+                return Err(format!(
+                    "clone {id} artifact path is outside its state directory: {}",
+                    artifact.display()
+                ));
+            }
+        }
+        let metadata = fs::symlink_metadata(&clone_dir).map_err(|error| {
+            format!(
+                "inspect clone state directory {}: {error}",
+                clone_dir.display()
+            )
+        })?;
+        if !metadata.file_type().is_dir() {
+            return Err(format!(
+                "clone state path is not a real directory: {}",
+                clone_dir.display()
+            ));
+        }
+        fs::remove_dir_all(&clone_dir).map_err(|error| {
+            format!(
+                "delete clone state directory {}: {error}",
+                clone_dir.display()
+            )
+        })
+    }
+
     pub fn transition(
         &self,
         id: &str,

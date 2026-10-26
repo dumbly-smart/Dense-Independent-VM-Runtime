@@ -11,6 +11,18 @@ After QMP closes, stop also waits for the recorded QEMU PID to disappear from
 briefly while QEMU finishes cleanup. If either signal does not arrive before the
 timeout, the record remains `running` so callers can inspect or reconcile it.
 
+Remove the state and private disk overlay for a stopped or reconciled failed
+clone with:
+
+```sh
+densevm clone delete ID --state-dir DIR
+```
+
+Deletion refuses `starting`/`running` records, a still-live recorded PID, or a
+reachable QMP endpoint. It also refuses artifact paths outside the clone's own
+state directory. On success the per-clone record, overlay, sockets, and log
+directory are removed; the shared template and backing disk are not touched.
+
 A QEMU crash can leave a durable record saying `running`. Reconcile records
 with:
 

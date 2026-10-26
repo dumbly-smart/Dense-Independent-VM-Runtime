@@ -1,0 +1,58 @@
+{
+  "experiment": "real-QEMU stopped clone deletion",
+  "status": "verified",
+  "manifest": "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+  "generation_id": "sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357",
+  "template_disk": "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/parent.qcow2",
+  "clone_pid": 308423,
+  "stop_state": "stopped",
+  "delete_result": {
+    "deleted": "delete-check"
+  },
+  "clone_state_directory_removed": true,
+  "overlay_removed": true,
+  "template_disk_hash_unchanged": true,
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "delete-check",
+        "--template",
+        "/home/xtrmn8/dvm-resources/tree-spike-20261026-run18/generation.json",
+        "--state-dir",
+        "/tmp/densevm-delete-63l1qwyh"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-delete-63l1qwyh/delete-check/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"delete-check\",\n  \"mac\": \"de:22:52:28:99:82\",\n  \"machine_id\": \"97ef9f6b3268c370c043fa72691f7cfc\",\n  \"qemu_pid\": 308423,\n  \"qmp_socket\": \"/tmp/densevm-delete-63l1qwyh/delete-check/delete-check.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "delete-check",
+        "--state-dir",
+        "/tmp/densevm-delete-63l1qwyh"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/tmp/densevm-delete-63l1qwyh/delete-check/disk.qcow2\",\n  \"generation_id\": \"sha256:caf6537b878472dce42d33b721c2ecd774b5dd996a8c7a2eb3bb0f28f03a9357\",\n  \"id\": \"delete-check\",\n  \"mac\": \"de:22:52:28:99:82\",\n  \"machine_id\": \"97ef9f6b3268c370c043fa72691f7cfc\",\n  \"qemu_pid\": null,\n  \"qmp_socket\": \"/tmp/densevm-delete-63l1qwyh/delete-check/delete-check.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "delete",
+        "delete-check",
+        "--state-dir",
+        "/tmp/densevm-delete-63l1qwyh"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"deleted\": \"delete-check\"\n}",
+      "stderr": ""
+    }
+  ]
+}

@@ -100,6 +100,24 @@ fn parses_clone_stop_with_an_explicit_state_directory() {
 }
 
 #[test]
+fn parses_clone_delete_with_an_explicit_state_directory() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "clone",
+            "delete",
+            "alpha",
+            "--state-dir",
+            "/var/lib/densevm",
+        ]),
+        Ok(Command::CloneDelete {
+            id: "alpha".into(),
+            state_dir: PathBuf::from("/var/lib/densevm"),
+        })
+    );
+}
+
+#[test]
 fn parses_clone_start_from_a_verified_template_manifest() {
     assert_eq!(
         parse_args([

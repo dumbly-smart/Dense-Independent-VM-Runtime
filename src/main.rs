@@ -73,6 +73,12 @@ fn main() {
             .and_then(|registry| registry.stop(&id, std::time::Duration::from_secs(10)))
             .and_then(|clone| serde_json::to_value(clone).map_err(|error| error.to_string()))
             .and_then(print_json),
+        Command::CloneDelete { id, state_dir } => {
+            densevm::lifecycle::CloneRegistry::open(&state_dir)
+                .and_then(|registry| registry.delete(&id))
+                .map(|()| serde_json::json!({"deleted": id}))
+                .and_then(print_json)
+        }
         Command::CloneStart {
             id,
             manifest,
