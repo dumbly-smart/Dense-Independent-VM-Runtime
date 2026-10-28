@@ -269,8 +269,9 @@ The read-only `template gc-plan` command checks that every discovered
 generation is integrity-verified before suggesting candidates. Explicit
 `--keep` IDs and clones recorded as `starting` or `running` are roots; each
 root's parent generations are roots too because a descendant may need those
-artifacts. Unmarked generations are candidate orphans, with leaf candidates
-listed for a hypothetical deletion order. A duplicate ID, bad hash, missing
+artifacts. Unmarked generations are candidate orphans; each entry includes its
+directory, manifest path, parent ID, and whether it is a leaf. Leaf candidates
+are listed for a hypothetical deletion order. A duplicate ID, bad hash, missing
 in-catalog parent, cycle, empty catalog, or active clone that points outside
 the catalog blocks all candidates. The command only prints a plan: it does
 not delete files, detach backing disks, acquire a catalog-wide lock, or

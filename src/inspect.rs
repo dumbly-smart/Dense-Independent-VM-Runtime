@@ -536,6 +536,18 @@ fn plan_template_gc_report(tree: Value, keep_ids: &[String], active_ids: &[Strin
         if generation["integrity_verified"] != true {
             blockers.push(format!("generation {id} is not integrity-verified"));
         }
+        if generation["directory"].as_str().is_none()
+            || generation["manifest_path"].as_str().is_none()
+        {
+            blockers.push(format!("generation {id} is missing its catalog paths"));
+        }
+        if !generation["parent_generation_id"].is_null()
+            && generation["parent_generation_id"].as_str().is_none()
+        {
+            blockers.push(format!(
+                "generation {id} has an invalid parent generation reference"
+            ));
+        }
         let parent = generation["parent_generation_id"]
             .as_str()
             .map(str::to_string);
@@ -580,6 +592,7 @@ fn plan_template_gc_report(tree: Value, keep_ids: &[String], active_ids: &[Strin
         return json!({
             "status":"blocked", "dry_run":true, "deletes_files":false,
             "candidate_generation_ids":[], "candidate_leaves":[], "protected_generation_ids":[],
+            "candidate_generations":[],
             "blockers":blockers,
             "safety":"No candidates are reported unless the complete catalog is verified and every protected reference resolves."
         });
@@ -619,9 +632,30 @@ fn plan_template_gc_report(tree: Value, keep_ids: &[String], active_ids: &[Strin
         })
         .cloned()
         .collect::<Vec<_>>();
+    let leaf_set = leaves
+        .iter()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    let candidate_generations = generations
+        .iter()
+        .filter_map(|generation| {
+            let id = generation["generation_id"].as_str()?;
+            if !candidate_set.contains(id) {
+                return None;
+            }
+            Some(json!({
+                "generation_id": id,
+                "directory": generation["directory"],
+                "manifest_path": generation["manifest_path"],
+                "parent_generation_id": generation["parent_generation_id"],
+                "is_leaf": leaf_set.contains(id),
+            }))
+        })
+        .collect::<Vec<_>>();
     json!({
         "status":"planned", "dry_run":true, "deletes_files":false,
         "candidate_generation_ids":candidates, "candidate_leaves":leaves,
+        "candidate_generations":candidate_generations,
         "protected_generation_ids":protected, "protection_reasons":reasons,
         "blockers":[],
         "safety":"Candidates are unreferenced by active clones and explicit keeps; this report does not delete or detach files."
@@ -681,6 +715,8 @@ mod template_tests {
                 "generation_id": id,
                 "parent_generation_id": parent,
                 "integrity_verified": true,
+                "directory": format!("/catalog/{id}"),
+                "manifest_path": format!("/catalog/{id}/generation.json"),
             })).collect::<Vec<_>>(),
         })
     }
@@ -708,6 +744,16 @@ mod template_tests {
             serde_json::json!(["db"])
         );
         assert_eq!(report["candidate_leaves"], serde_json::json!(["db"]));
+        assert_eq!(report["candidate_generations"][0]["generation_id"], "db");
+        assert_eq!(
+            report["candidate_generations"][0]["directory"],
+            "/catalog/db"
+        );
+        assert_eq!(
+            report["candidate_generations"][0]["manifest_path"],
+            "/catalog/db/generation.json"
+        );
+        assert_eq!(report["candidate_generations"][0]["is_leaf"], true);
         assert_eq!(report["dry_run"], true);
     }
 
@@ -763,6 +809,24 @@ mod template_tests {
         ] {
             let report = plan_template_gc_report(tree, &[], &[]);
             assert_eq!(report["status"], "blocked");
+            assert_eq!(report["candidate_generation_ids"], serde_json::json!([]));
+        }
+    }
+
+    #[test]
+    fn template_gc_blocks_invalid_parent_references_and_missing_catalog_paths() {
+        let mut invalid_parent = verified_tree(&[("root", None)]);
+        invalid_parent["generations"][0]["parent_generation_id"] = serde_json::json!(17);
+        let mut missing_path = verified_tree(&[("root", None)]);
+        missing_path["generations"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("directory");
+
+        for tree in [invalid_parent, missing_path] {
+            let report = plan_template_gc_report(tree, &[], &[]);
+            assert_eq!(report["status"], "blocked");
+            assert_eq!(report["candidate_generations"], serde_json::json!([]));
             assert_eq!(report["candidate_generation_ids"], serde_json::json!([]));
         }
     }
