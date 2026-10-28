@@ -4,6 +4,7 @@ use crate::qmp::Qmp;
 use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
@@ -16,6 +17,7 @@ const RAM_BYTES: u64 = RAM_MIB * 1024 * 1024;
 const TEST_REGION_MIB: u32 = 32;
 const TEST_REGION_PAGES: u32 = TEST_REGION_MIB * 256;
 const ACTIVE_CPU_BURN_MS: u64 = 1500;
+const UNIX_SOCKET_PATH_MAX_BYTES: usize = 107;
 
 struct Vm {
     child: Child,
@@ -444,6 +446,14 @@ mod login_tests {
         assert!(parse_qemu_vcpu_indexes(&json!([{"cpu-index": 0}, {"cpu-index": 0}]), 2).is_err());
         assert!(parse_qemu_vcpu_indexes(&json!([{"thread-id": 101}]), 1).is_err());
         assert!(parse_qemu_vcpu_indexes(&json!({"cpu-index": 0}), 1).is_err());
+    }
+
+    #[test]
+    fn rejects_output_directories_that_make_qemu_sockets_too_long() {
+        let long_output = Path::new("/tmp").join("d".repeat(96));
+        let error = validate_output_socket_paths(&long_output, 2, true).unwrap_err();
+        assert!(error.contains("Unix socket path"));
+        assert!(validate_output_socket_paths(Path::new("/tmp/dv"), 32, true).is_ok());
     }
 
     #[test]
@@ -1749,6 +1759,8 @@ pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> 
     if options.lapic_tpr_state && !options.vcpu_register_state {
         return Err("LAPIC TPR sampling requires vCPU register sampling".into());
     }
+    let socket_dir = prospective_output_dir(out)?;
+    validate_output_socket_paths(&socket_dir, count, options.guest_dir.is_some())?;
     let mut ksm_guard = if ksm {
         Some(crate::ksm::KsmGuard::enable()?)
     } else {
@@ -2943,6 +2955,60 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     Ok(())
 }
 
+fn prospective_output_dir(out: &Path) -> Result<PathBuf, String> {
+    if out.exists() {
+        return Err(format!(
+            "output directory already exists: {}",
+            out.display()
+        ));
+    }
+    let absolute = if out.is_absolute() {
+        out.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map_err(|error| format!("read current directory: {error}"))?
+            .join(out)
+    };
+    let file_name = absolute
+        .file_name()
+        .ok_or_else(|| format!("output path has no final directory name: {}", out.display()))?;
+    let parent = absolute
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("/"));
+    let parent = fs::canonicalize(parent)
+        .map_err(|error| format!("resolve output parent {}: {error}", parent.display()))?;
+    Ok(parent.join(file_name))
+}
+
+fn validate_output_socket_paths(out: &Path, count: u32, guest_login: bool) -> Result<(), String> {
+    if count == 0 {
+        return Err("QEMU socket preflight requires at least one VM".into());
+    }
+    let mut names = vec!["template".to_string()];
+    for index in 0..count {
+        names.push(format!("baseline-{index:03}"));
+        names.push(format!("clone-{index:03}"));
+    }
+    for name in names {
+        let mut suffixes = vec!["qmp.sock", "serial.sock"];
+        if guest_login {
+            suffixes.push("login.sock");
+        }
+        for suffix in suffixes {
+            let socket = out.join(format!("{name}.{suffix}"));
+            let bytes = socket.as_os_str().as_bytes().len();
+            if bytes > UNIX_SOCKET_PATH_MAX_BYTES {
+                return Err(format!(
+                    "QEMU Unix socket path is {bytes} bytes (maximum {UNIX_SOCKET_PATH_MAX_BYTES}): {}; choose a shorter output directory",
+                    socket.display()
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn prepare_identity(serial: &mut Serial, identity: &CloneIdentity) -> Result<String, String> {
     let vmgenid_reaction = serial.command("vmgenid-reaction-read", "VMGENID-REACTION ")?;
     serial.command(
@@ -3049,6 +3115,8 @@ pub fn run_baseline(
     if count == 0 || count > 32 {
         return Err("baseline count must be between 1 and 32".to_string());
     }
+    let socket_dir = prospective_output_dir(out)?;
+    validate_output_socket_paths(&socket_dir, count, false)?;
     if trace_translations && !tcg {
         return Err("translation tracing requires the TCG accelerator".into());
     }

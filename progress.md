@@ -95,6 +95,11 @@ exactly the configured CPU index set, and stores GPRs under keys such as
 vCPUs in a paused TCG interface smoke. This is not a substitute for a live KVM
 restore and independent-state experiment.
 
+The probe and baseline commands now preflight QMP, serial, and optional login
+socket path lengths before enabling KSM or creating guest/disk artifacts. An
+overlong output path returned the measured 161-byte path, the Linux limit of
+107 bytes, and created no output directory.
+
 ## Completion criterion
 
 The prototype's main COW and isolation mechanisms are implemented and
