@@ -418,6 +418,19 @@ mod login_tests {
     }
 
     #[test]
+    fn validates_live_vcpu_topology_from_qmp() {
+        let cpus = json!([
+            {"cpu-index": 0, "thread-id": 101},
+            {"cpu-index": 1, "thread-id": 102}
+        ]);
+        assert_eq!(parse_qemu_vcpu_indexes(&cpus, 2).unwrap(), vec![0, 1]);
+        assert!(parse_qemu_vcpu_indexes(&cpus, 1).is_err());
+        assert!(parse_qemu_vcpu_indexes(&json!([{"cpu-index": 0}, {"cpu-index": 0}]), 2).is_err());
+        assert!(parse_qemu_vcpu_indexes(&json!([{"thread-id": 101}]), 1).is_err());
+        assert!(parse_qemu_vcpu_indexes(&json!({"cpu-index": 0}), 1).is_err());
+    }
+
+    #[test]
     fn parses_privilege_level_from_qemu_register_output() {
         assert_eq!(parse_qemu_cpl("RIP=1234 RFL=2 CPL=3 II=0").unwrap(), 3);
         assert_eq!(parse_qemu_cpl("RIP=ffff RFL=2 CPL=0 II=0").unwrap(), 0);
@@ -1228,6 +1241,34 @@ fn restore(qmp: &mut Qmp, state: &Path) -> Result<Value, String> {
     Ok(result)
 }
 
+fn parse_qemu_vcpu_indexes(cpus: &Value, expected: u8) -> Result<Vec<u64>, String> {
+    let cpus = cpus
+        .as_array()
+        .ok_or_else(|| "QMP query-cpus-fast did not return an array".to_string())?;
+    if cpus.len() != usize::from(expected) {
+        return Err(format!(
+            "QMP reported {} vCPUs, expected {expected}",
+            cpus.len()
+        ));
+    }
+    let mut indexes = cpus
+        .iter()
+        .map(|cpu| {
+            cpu["cpu-index"]
+                .as_u64()
+                .ok_or_else(|| "QMP query-cpus-fast entry omitted a valid cpu-index".to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    indexes.sort_unstable();
+    let expected_indexes = (0..u64::from(expected)).collect::<Vec<_>>();
+    if indexes != expected_indexes {
+        return Err(format!(
+            "QMP vCPU indexes were {indexes:?}, expected {expected_indexes:?}"
+        ));
+    }
+    Ok(indexes)
+}
+
 fn add_nic(qmp: &mut Qmp, mac: &str) -> Result<(), String> {
     qmp.execute(
         "device_add",
@@ -1937,6 +1978,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut bq = b.qmp()?;
     let a_migration = restore(&mut aq, &state)?;
     let b_migration = restore(&mut bq, &state)?;
+    let a_vcpu_indexes = parse_qemu_vcpu_indexes(&aq.execute("query-cpus-fast", None)?, vcpus)?;
+    let b_vcpu_indexes = parse_qemu_vcpu_indexes(&bq.execute("query-cpus-fast", None)?, vcpus)?;
     let a_vmgenid = aq.execute("query-vm-generation-id", None)?["guid"]
         .as_str()
         .ok_or("clone A vmgenid missing")?
@@ -1948,6 +1991,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let mut vmgenid_unique =
         a_vmgenid != b_vmgenid && a_vmgenid != template_vmgenid && b_vmgenid != template_vmgenid;
     let mut extra_clones = Vec::new();
+    let mut extra_vcpu_indexes = Vec::new();
     for index in 2..count {
         let name = format!("clone-{index:03}");
         let vm = launch(
@@ -1967,6 +2011,10 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         )?;
         let mut qmp = vm.qmp()?;
         let migration = restore(&mut qmp, &state)?;
+        extra_vcpu_indexes.push(parse_qemu_vcpu_indexes(
+            &qmp.execute("query-cpus-fast", None)?,
+            vcpus,
+        )?);
         let identity = &clone_identities[index as usize];
         let mut serial = vm.serial()?;
         let identity_guest = prepare_identity(&mut serial, identity)?;
@@ -2675,6 +2723,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                     "identity_guest": identity_guest,
                     "mac_guest": mac_guest,
                     "vmgenid": vmgenid,
+                    "vcpu_indexes": extra_vcpu_indexes[*index as usize - 2],
                     "migration": migration,
                 }))
             },
@@ -2726,8 +2775,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "baseline":{"count":count,"vms":baseline_measurements,"cgroup_memory_at_measurement":baseline_cgroup_memory,"time_to_count_ready_ms":baseline_elapsed_ms,"idle_cpu_sample_interval_ms":baseline_cpu_sample_interval_ms,"active_cpu_sample_interval_ms":baseline_active_cpu_sample_interval_ms},
         "template":{"qemu_command":template_command,"memory_file_bytes":RAM_BYTES,"memory_file_allocated_bytes":allocated_bytes(&ram)?,"memory_file_resident_bytes":memory_file_resident_bytes,"memory_sha256":ram_hash_after,"vmgenid":template_vmgenid,"machine_state_allocated_bytes":allocated_bytes(&state)?,"migration":template_migration},
         "disk_storage":{"base_allocated_bytes":allocated_bytes(&base)?,"total_clone_overlay_allocated_bytes":total_overlay_allocated_bytes},
-        "clones":{"count":count,"idle_cpu_sample_interval_ms":clone_cpu_sample_interval_ms,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"idle_cpu_ticks":clone_idle_cpu_ticks[0],"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
-                  "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"idle_cpu_ticks":clone_idle_cpu_ticks[1],"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
+        "clones":{"count":count,"idle_cpu_sample_interval_ms":clone_cpu_sample_interval_ms,"a":{"pid":a.pid(),"qemu_command":a.command,"memory":before_a,"ram_mapping":before_ram_a,"idle_cpu_ticks":clone_idle_cpu_ticks[0],"after_ram_write_memory":after_ram_a,"after_ram_write_ram_mapping":after_ram_mapping_a,"mac_guest":a_mac_guest,"identity_guest":a_identity_guest,"vmgenid":a_vmgenid,"vcpu_indexes":a_vcpu_indexes,"overlay_initial_allocated_bytes":overlay_before[0],"overlay_final_allocated_bytes":overlay_after[0],"overlay_after_full_write_allocated_bytes":a_overlay_after_full_write,"migration":a_migration},
+                  "b":{"pid":b.pid(),"qemu_command":b.command,"memory":before_b,"ram_mapping":before_ram_b,"idle_cpu_ticks":clone_idle_cpu_ticks[1],"after_a_ram_write_memory":after_ram_b,"after_a_ram_write_ram_mapping":after_ram_mapping_b,"mac_guest":b_mac_guest,"identity_guest":b_identity_guest,"vmgenid":b_vmgenid,"vcpu_indexes":b_vcpu_indexes,"overlay_initial_allocated_bytes":overlay_before[1],"overlay_final_allocated_bytes":overlay_after[1],"migration":b_migration},
                   "extra":extra_measurements,
                   "time_to_count_resumed_ms":clone_elapsed_ms},
         "ram_isolation":ram_isolation,"disk_isolation":disk_isolation,"extra_clone_isolation":extra_guest_isolation,"full_disk_isolation":full_disk_isolation,"b_survives_guest_reboot":b_survives_guest_reboot,"template_ram_unchanged":template_ram_unchanged,"backing_verified":true,"mac_unique":all_macs_unique,"identity_unique":identity_unique,"vmgenid_unique":vmgenid_unique,"b_survives_a_kill":b_survives_a_kill,"parking_verified":parking_verified,"parking":parking_details,

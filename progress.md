@@ -1,6 +1,7 @@
 # DenseVM project status
 
-**Status date:** 2026-10-28  
+**Status date:** 2026-10-29
+
 **Working branch:** `research/remaining-runtime`  
 **Detailed research diary:** [`docs/progress.md`](docs/progress.md)  
 **Evidence index:** [`reports.md`](reports.md)  
@@ -70,6 +71,15 @@ preflight includes extra vCPU overhead. Two two-vCPU runs passed restore,
 RAM/disk isolation, unique identities, and sibling survival. See
 [`results/vcpu-multi2/`](results/vcpu-multi2/) and
 [`results/vcpu-multi2-run2/`](results/vcpu-multi2-run2/).
+
+The probe now also queries `query-cpus-fast` after every clone restore, requires
+the expected contiguous vCPU index set, and writes those indexes to each
+clone's result. Unit tests pass, and a two-vCPU TCG smoke test confirmed the
+installed QEMU 11.1.2 reply shape. The attempted post-change KVM run failed in
+the first baseline with `KVM: entry failed, hardware error 0x0`, before
+template creation; thus the new check still needs a successful live KVM run.
+See [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/)
+and [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/).
 
 ## Completion criterion
 

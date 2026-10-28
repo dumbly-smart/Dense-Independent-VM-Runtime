@@ -7,3 +7,9 @@
 !/results/vcpu-multi2/result.json
 /results/vcpu-multi2-run2/*
 !/results/vcpu-multi2-run2/result.json
+/results/vcpu-qmp-smoke-2026-10-29/*
+!/results/vcpu-qmp-smoke-2026-10-29/README.md
+!/results/vcpu-qmp-smoke-2026-10-29/result.json
+/results/vcpu-topology-2026-10-29/*
+!/results/vcpu-topology-2026-10-29/README.md
+!/results/vcpu-topology-2026-10-29/baseline-000.qemu.log

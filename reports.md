@@ -42,6 +42,7 @@ count recorded by each experiment. The detailed dated history is
 | [`results/tcg/2026-10-26/`](results/tcg/2026-10-26/) | Repeated conventional KVM/TCG baseline, TCG trace, patched code-size/duration, and stock fallback. | TCG and KVM use different CPU models; small sequential samples. |
 | [`results/tcg/2026-10-27/`](results/tcg/2026-10-27/) | Three patched phase traces, three untraced controls, and stock-QEMU phase fallback. | Tracing and QMP phase stops perturb execution; only three sequential samples per patched mode. |
 | [`results/vcpu-multi2/`](results/vcpu-multi2/) and [`run2`](results/vcpu-multi2-run2/) | Two-vCPU template migration, restore, and clone isolation, repeated twice. | HMP register snapshots show CPU#0 only; CPU#1 architectural state is not directly sampled. |
+| [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/) and [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/) | `query-cpus-fast` two-vCPU response shape under TCG; attempted post-change KVM rerun. | TCG smoke does not prove template restore; the KVM attempt failed before template creation with a KVM entry error. |
 | [`results/2026-10-24/ksm-comparison-blocked/`](results/2026-10-24/ksm-comparison-blocked/) | Read-only KSM capability/preflight output. | Positive KSM merge requires host-global write permission unavailable to this user. |
 
 ## Selected measured outcomes
@@ -90,6 +91,10 @@ backing verification, unique MAC/machine identity/vmgenid, vCPU0 register
 sampling, and sibling survival after QEMU A was killed. They establish that
 this two-vCPU migration configuration restored and ran. The saved HMP output
 contains `CPU#0` only, so it does not independently inspect vCPU1 registers.
+The probe now validates live vCPU indexes with `query-cpus-fast` and records
+them per clone. That new validation has unit and TCG QMP smoke coverage, but no
+successful KVM restore run yet; the first rerun stopped in the conventional
+baseline with `KVM: entry failed, hardware error 0x0`.
 
 ## Reproducing measurements
 

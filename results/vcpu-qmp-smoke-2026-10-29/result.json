@@ -1,0 +1,55 @@
+{
+  "experiment": "qmp-query-cpus-fast-smoke",
+  "status": "verified",
+  "scope": "Two-vCPU TCG QEMU interface smoke test only; it does not validate KVM template restore.",
+  "qemu_version": {
+    "micro": 2,
+    "minor": 1,
+    "major": 11
+  },
+  "command": [
+    "qemu-system-x86_64",
+    "-machine",
+    "q35",
+    "-accel",
+    "tcg",
+    "-cpu",
+    "max",
+    "-smp",
+    "2",
+    "-m",
+    "256M",
+    "-nodefaults",
+    "-display",
+    "none",
+    "-S",
+    "-qmp",
+    "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/vcpu-qmp-smoke-2026-10-29/qmp.sock,server=on,wait=off"
+  ],
+  "query_cpus_fast": [
+    {
+      "thread-id": 671069,
+      "qom-type": "max-x86_64-cpu",
+      "props": {
+        "core-id": 0,
+        "thread-id": 0,
+        "socket-id": 0
+      },
+      "qom-path": "/machine/unattached/device[0]",
+      "cpu-index": 0,
+      "target": "x86_64"
+    },
+    {
+      "thread-id": 671070,
+      "qom-type": "max-x86_64-cpu",
+      "props": {
+        "core-id": 1,
+        "thread-id": 0,
+        "socket-id": 0
+      },
+      "qom-path": "/machine/unattached/device[2]",
+      "cpu-index": 1,
+      "target": "x86_64"
+    }
+  ]
+}
