@@ -1,6 +1,10 @@
-# QMP vCPU topology query smoke test
+# QMP vCPU topology and register smoke test
 
 A paused two-vCPU QEMU 11.1.2 process under TCG returned `cpu-index` values
-`[0, 1]` from `query-cpus-fast`. The exact command and raw structured reply are
-in `result.json`. This confirms the installed QEMU command and response shape;
-it does not establish KVM template-restore behavior.
+`[0, 1]` from `query-cpus-fast`. The HMP command `info registers -a` returned
+separate `CPU#0` and `CPU#1` register blocks. The exact launch command and raw
+monitor text are saved in `result.json`.
+
+This verifies the locally installed QEMU interface and output format. TCG is
+used only for this stopped-interface check; it does not validate the KVM
+snapshot/restore pipeline or prove cross-VM architectural-state isolation.

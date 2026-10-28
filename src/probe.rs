@@ -408,13 +408,29 @@ mod login_tests {
             "CPU#0\nRAX=00000000000000aa RBX=00000000000000bb RCX=00000000000000cc\nR8 = 0x8 R9=0000000000000009\nRIP=ffffffff81000000 RFLAGS=00000246",
         )
         .unwrap();
-        assert_eq!(registers["RAX"], 0xaa);
-        assert_eq!(registers["RBX"], 0xbb);
-        assert_eq!(registers["RCX"], 0xcc);
-        assert_eq!(registers["R8"], 0x8);
-        assert_eq!(registers["R9"], 0x9);
+        assert_eq!(registers["CPU#0:RAX"], 0xaa);
+        assert_eq!(registers["CPU#0:RBX"], 0xbb);
+        assert_eq!(registers["CPU#0:RCX"], 0xcc);
+        assert_eq!(registers["CPU#0:R8"], 0x8);
+        assert_eq!(registers["CPU#0:R9"], 0x9);
         assert!(!registers.contains_key("RIP"));
         assert!(parse_qemu_gprs("no register dump").is_err());
+    }
+
+    #[test]
+    fn parses_general_registers_separately_for_every_monitor_cpu() {
+        let output = "CPU#0\nRAX=00000000000000aa RBX=00000000000000bb\nCPU#1\nRAX=0000000000000011 RBX=0000000000000022\n";
+        let registers = parse_qemu_gprs(output).unwrap();
+        assert_eq!(registers["CPU#0:RAX"], 0xaa);
+        assert_eq!(registers["CPU#0:RBX"], 0xbb);
+        assert_eq!(registers["CPU#1:RAX"], 0x11);
+        assert_eq!(registers["CPU#1:RBX"], 0x22);
+        assert_eq!(
+            parse_qemu_monitor_cpu_indexes(output, 2).unwrap(),
+            vec![0, 1]
+        );
+        assert!(parse_qemu_monitor_cpu_indexes("CPU#0\nRAX=1\n", 2).is_err());
+        assert!(parse_qemu_monitor_cpu_indexes("CPU#0\nRAX=1\nCPU#0\nRAX=2\n", 2).is_err());
     }
 
     #[test]
@@ -461,8 +477,8 @@ mod login_tests {
             "human-monitor-command",
             json!({"return":monitor_text}),
         )]);
-        let (registers, captured_text) = qemu_register_snapshot(&mut qmp).unwrap();
-        assert_eq!(registers["RAX"], 0xaa);
+        let (registers, captured_text) = qemu_register_snapshot(&mut qmp, 1).unwrap();
+        assert_eq!(registers["CPU#0:RAX"], 0xaa);
         assert_eq!(captured_text, monitor_text);
         server.join().unwrap();
         fs::remove_file(path).unwrap();
@@ -1374,9 +1390,18 @@ fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u6
     ];
     let fields: Vec<_> = output.split_ascii_whitespace().collect();
     let mut registers = std::collections::BTreeMap::new();
+    let mut current_cpu = None;
     let mut index = 0;
     while index < fields.len() {
         let field = fields[index];
+        if let Some(cpu) = field.strip_prefix("CPU#") {
+            current_cpu = Some(
+                cpu.parse::<u8>()
+                    .map_err(|error| format!("invalid QEMU monitor CPU header: {error}"))?,
+            );
+            index += 1;
+            continue;
+        }
         let register = if let Some((name, value)) = field.split_once('=') {
             index += 1;
             Some((name, value))
@@ -1414,12 +1439,39 @@ fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u6
             .unwrap_or(value);
         let value = u64::from_str_radix(value, 16)
             .map_err(|error| format!("invalid QEMU {name} register value: {error}"))?;
-        registers.insert(name.to_string(), value);
+        let name = current_cpu
+            .map(|cpu| format!("CPU#{cpu}:{name}"))
+            .unwrap_or_else(|| name.to_string());
+        registers.insert(name, value);
     }
     if registers.is_empty() {
         return Err("QEMU monitor output contained no x86-64 general-purpose registers".into());
     }
     Ok(registers)
+}
+
+fn parse_qemu_monitor_cpu_indexes(output: &str, expected: u8) -> Result<Vec<u8>, String> {
+    let mut indexes = Vec::new();
+    for line in output.lines() {
+        let Some(cpu) = line.trim().strip_prefix("CPU#") else {
+            continue;
+        };
+        let index = cpu
+            .parse::<u8>()
+            .map_err(|error| format!("invalid QEMU monitor CPU header: {error}"))?;
+        if indexes.contains(&index) {
+            return Err(format!("QEMU monitor repeated CPU#{index} register block"));
+        }
+        indexes.push(index);
+    }
+    indexes.sort_unstable();
+    let expected_indexes = (0..expected).collect::<Vec<_>>();
+    if indexes != expected_indexes {
+        return Err(format!(
+            "QEMU monitor reported CPU blocks {indexes:?}, expected {expected_indexes:?}"
+        ));
+    }
+    Ok(indexes)
 }
 
 fn parse_qemu_cpl(output: &str) -> Result<u8, String> {
@@ -1520,22 +1572,25 @@ fn rtc_alarm_observation(reply: &str) -> Value {
 
 fn qemu_register_snapshot(
     qmp: &mut Qmp,
+    expected_vcpus: u8,
 ) -> Result<(std::collections::BTreeMap<String, u64>, String), String> {
     let output = qmp.execute(
         "human-monitor-command",
-        Some(json!({"command-line":"info registers"})),
+        Some(json!({"command-line":"info registers -a"})),
     )?;
     let output = output
         .as_str()
         .ok_or("QMP human-monitor-command returned non-text register output")?;
+    parse_qemu_monitor_cpu_indexes(output, expected_vcpus)?;
     Ok((parse_qemu_gprs(output)?, output.to_string()))
 }
 
 fn qemu_user_register_snapshot(
     qmp: &mut Qmp,
+    expected_vcpus: u8,
 ) -> Result<(std::collections::BTreeMap<String, u64>, String), String> {
     for attempt in 0..100 {
-        let snapshot = qemu_register_snapshot(qmp)?;
+        let snapshot = qemu_register_snapshot(qmp, expected_vcpus)?;
         if parse_qemu_cpl(&snapshot.1)? == 3 {
             return Ok(snapshot);
         }
@@ -2065,8 +2120,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         )?;
         stop_and_verify(&mut aq)?;
         stop_and_verify(&mut bq)?;
-        let (a_vcpu_registers, a_vcpu_register_text) = qemu_user_register_snapshot(&mut aq)?;
-        let (b_vcpu_registers, b_vcpu_register_text) = qemu_user_register_snapshot(&mut bq)?;
+        let (a_vcpu_registers, a_vcpu_register_text) = qemu_user_register_snapshot(&mut aq, vcpus)?;
+        let (b_vcpu_registers, b_vcpu_register_text) = qemu_user_register_snapshot(&mut bq, vcpus)?;
         let a_lapic_text = qemu_lapic_snapshot(&mut aq)?;
         let b_lapic_text = qemu_lapic_snapshot(&mut bq)?;
         let a_gs_base_observed = parse_qemu_segment_base(&a_vcpu_register_text, "GS")?;

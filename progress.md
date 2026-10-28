@@ -26,8 +26,9 @@ the tested QEMU, kernel, guest, devices, and workload.
   the guest overlay.
 - Unique MAC, machine-id, hostname, vmgenid, entropy preparation, and tested
   Alpine OpenSSH/DHCP client identity flows are implemented and measured.
-- Two-vCPU source/template/clone restore runs passed twice. Direct architectural
-  register capture still reports CPU#0 only.
+- Two-vCPU source/template/clone restore runs passed twice. Register capture now
+  requests all monitor CPUs and keeps GPRs under CPU-indexed keys; this update
+  has TCG interface evidence but still needs a successful post-change KVM run.
 - Persistent clone start/stop/reconcile/delete, schema-v4 relocated template
   lineage, and guarded staging recovery have evidence-backed implementations.
 - Conventional KVM and TCG baselines, memory/disk/CPU/network workloads,
@@ -45,9 +46,11 @@ the tested QEMU, kernel, guest, devices, and workload.
 - **Whole-host memory cost: partial.** Process PSS and selected cgroup-v2
   accounting are measured. Some KVM allocations, kernel page tables, and
   allocations outside the cgroup remain outside the reported totals.
-- **CPU/device semantics: partial.** vCPU0 GPR/GS and selected LAPIC TPR state
-  were sampled. Other MSRs, vCPU1 registers, APIC registers, pending interrupts,
-  and precise interrupt timing remain unverified.
+- **CPU/device semantics: partial.** Previous KVM samples captured vCPU0 GPR/GS
+  and selected LAPIC TPR state. The probe now parses all `info registers -a`
+  GPR blocks separately by vCPU, but post-change capture has not yet run in a
+  successful KVM restore experiment. Other MSRs, detailed APIC registers,
+  pending interrupts, and precise interrupt timing remain unverified.
 - **Timers while parked: partial.** QMP pause nearly eliminates host CPU use,
   but guest time and alarms differ. Parking is not semantically equivalent to
   continuous execution.
@@ -80,6 +83,12 @@ the first baseline with `KVM: entry failed, hardware error 0x0`, before
 template creation; thus the new check still needs a successful live KVM run.
 See [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/)
 and [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/).
+
+The optional register-state check now uses HMP `info registers -a`, checks for
+exactly the configured CPU index set, and stores GPRs under keys such as
+`CPU#0:RAX` and `CPU#1:RAX`. QEMU 11.1.2 returned separate blocks for both
+vCPUs in a paused TCG interface smoke. This is not a substitute for a live KVM
+restore and independent-state experiment.
 
 ## Completion criterion
 
