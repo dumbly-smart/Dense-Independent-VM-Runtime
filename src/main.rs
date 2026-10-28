@@ -18,6 +18,7 @@ fn main() {
         Command::Probe {
             out,
             count,
+            vcpus,
             ksm,
             divergence_pages,
             park_idle,
@@ -32,6 +33,7 @@ fn main() {
             &out,
             densevm::probe::ProbeOptions {
                 count,
+                vcpus,
                 ksm,
                 divergence_pages,
                 park_idle,

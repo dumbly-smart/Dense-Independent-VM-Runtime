@@ -729,6 +729,7 @@ fn launch(
     guest: &GuestArtifacts,
     mac_at_boot: Option<&str>,
     incoming: bool,
+    vcpus: u8,
     tcg: bool,
     translation_trace: Option<(&Path, bool)>,
 ) -> Result<Vm, String> {
@@ -742,6 +743,7 @@ fn launch(
         if tcg { "tcg" } else { "kvm" },
         if guest.merge { "on" } else { "off" }
     );
+    let vcpu_arg = vcpus.to_string();
     cmd.args([
         "-machine",
         &machine,
@@ -750,7 +752,7 @@ fn launch(
         "-m",
         "256M",
         "-smp",
-        "1",
+        &vcpu_arg,
     ]);
     if let RamBackend::File { path, source } = backend {
         let opts = if source {
@@ -1593,6 +1595,7 @@ pub fn run_experiment(
         out,
         ProbeOptions {
             count,
+            vcpus: 1,
             ksm,
             divergence_pages,
             park_idle,
@@ -1610,6 +1613,7 @@ pub fn run_experiment(
 #[derive(Clone, Copy)]
 pub struct ProbeOptions<'a> {
     pub count: u32,
+    pub vcpus: u8,
     pub ksm: bool,
     pub divergence_pages: u32,
     pub park_idle: bool,
@@ -1625,6 +1629,7 @@ pub struct ProbeOptions<'a> {
 pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let ProbeOptions {
         count,
+        vcpus,
         ksm,
         divergence_pages,
         ..
@@ -1633,6 +1638,9 @@ pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> 
         return Err(
             "the template restore probe supports clone counts from 2 through 32".to_string(),
         );
+    }
+    if !(1..=4).contains(&vcpus) {
+        return Err("the template restore probe supports 1 through 4 vCPUs".into());
     }
     if divergence_pages > TEST_REGION_PAGES {
         return Err(format!(
@@ -1660,6 +1668,7 @@ pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> 
 fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let ProbeOptions {
         count,
+        vcpus,
         ksm,
         divergence_pages,
         park_idle,
@@ -1699,7 +1708,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         .ok_or("MemAvailable missing from /proc/meminfo")?
         .parse()
         .map_err(|e| format!("invalid MemAvailable: {e}"))?;
-    let estimated_clone_budget_kib = (u64::from(count) * RAM_MIB + 512) * 1024;
+    let vcpu_overhead_mib = 2 * u64::from(count) * u64::from(vcpus.saturating_sub(1)) * 64;
+    let estimated_clone_budget_kib = (u64::from(count) * RAM_MIB + vcpu_overhead_mib + 512) * 1024;
     let required_available_kib = estimated_clone_budget_kib.max(2 * 1024 * 1024);
     if available_kib < required_available_kib {
         return Err(format!(
@@ -1746,6 +1756,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             &guest,
             Some(&mac),
             false,
+            vcpus,
             false,
             None,
         )?;
@@ -1802,6 +1813,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         &guest,
         None,
         false,
+        vcpus,
         false,
         None,
     )?;
@@ -1902,6 +1914,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         &guest,
         None,
         true,
+        vcpus,
         false,
         None,
     )?;
@@ -1916,6 +1929,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         &guest,
         None,
         true,
+        vcpus,
         false,
         None,
     )?;
@@ -1947,6 +1961,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             &guest,
             None,
             true,
+            vcpus,
             false,
             None,
         )?;
@@ -2696,6 +2711,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "qemu_version":output(Command::new("qemu-system-x86_64").arg("--version"))?.lines().next(),
         "kernel_version":output(Command::new("uname").arg("-r"))?.trim(),
         "guest_ram_mib":RAM_MIB,
+        "guest_vcpus":vcpus,
         "divergence_region_bytes":u64::from(TEST_REGION_MIB)*1024*1024,
         "divergence_scope":if divergence_all { "all clones" } else { "clone A only" },
         "divergence_all_verified":divergence_all_verified,
@@ -2989,6 +3005,7 @@ pub fn run_baseline(
             &guest,
             Some(&mac),
             false,
+            1,
             tcg,
             translation_log
                 .as_deref()

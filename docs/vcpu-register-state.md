@@ -8,19 +8,29 @@ the QEMU HMP command `info registers` for the saved x86-64 CPU state. Both
 clones resume and must finish their workloads.
 
 The experiment reads QEMU's reported register state; it does not inspect KVM
-kernel structures. The current QEMU machine has one vCPU per guest. Each guest
-sets a different user GS base (`0x11110000` or `0x22220000`) in its workload
-thread. QEMU reported both values exactly in the paused snapshots. Four of the
-16 reported general-purpose registers also differed. CR0, CR2, CR3, CR4, and
-EFER were reported and matched in this pair. The distinct GS bases and GPR
-values show sampled per-vCPU state; matching control-register values do not
-establish whether independent writes to them would remain isolated.
+kernel structures. The default machine has one vCPU per guest; the probe now
+accepts `--vcpus 1..4` and applies that count to conventional baselines, the
+frozen template, and restored clones. Existing GS-base and GPR sampling still
+captures only QEMU's selected `CPU#0`. Each guest sets a different user GS base
+(`0x11110000` or `0x22220000`) in its workload thread. QEMU reported both
+values exactly in the paused snapshots. Four of the 16 reported
+general-purpose registers also differed. CR0, CR2, CR3, CR4, and EFER were
+reported and matched in this pair. The distinct GS bases and GPR values show
+sampled per-vCPU state; matching control-register values do not establish
+whether independent writes to them would remain isolated.
 Sampling/resume did not prevent the workloads or ordinary RAM/disk isolation
 checks from completing.
 
-The sample does not verify every part of architectural CPU state. Independent
-control-register writes, other MSR writes, APIC registers beyond TPR, pending
-interrupts, and multi-vCPU behavior remain unmeasured. The result preserves
+Two repeated two-vCPU KVM runs saved and restored a template into two clones
+with `-smp 2` on every process. Both runs passed RAM/disk isolation, unique
+identity, vCPU0 register sampling, and sibling-survival checks. The raw records
+are `results/vcpu-multi2/result.json` and
+`results/vcpu-multi2-run2/result.json`. QEMU's HMP output contained only
+`CPU#0`, so this proves the multi-vCPU restore path ran, not independent
+register state for vCPU1. The sample does not verify every part of architectural
+CPU state. Independent control-register writes, other MSR writes, APIC
+registers beyond TPR, pending interrupts, and direct vCPU1 state remain
+unmeasured. The result preserves
 the full HMP output for inspection, while the structured parser compares
 x86-64 general-purpose registers and the GS base. QEMU's output format can
 vary by version and architecture. Do not treat these sampled states as

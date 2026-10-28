@@ -15,6 +15,7 @@ pub enum Command {
     Probe {
         out: PathBuf,
         count: u32,
+        vcpus: u8,
         ksm: bool,
         divergence_pages: u32,
         park_idle: bool,
@@ -128,6 +129,7 @@ where
 {
     let mut out = None;
     let mut count = 2;
+    let mut vcpus = 1;
     let mut ksm = false;
     let mut park_idle = false;
     let mut divergence_all = false;
@@ -147,6 +149,14 @@ where
                     .map_err(|_| "--count must be a positive integer".to_string())?;
                 if count == 0 {
                     return Err("--count must be a positive integer".to_string());
+                }
+            }
+            "--vcpus" => {
+                vcpus = value(args, "--vcpus")?
+                    .parse::<u8>()
+                    .map_err(|_| "--vcpus must be between 1 and 4".to_string())?;
+                if !(1..=4).contains(&vcpus) {
+                    return Err("--vcpus must be between 1 and 4".into());
                 }
             }
             "--ksm" => ksm = true,
@@ -187,6 +197,7 @@ where
     Ok(Command::Probe {
         out: out.ok_or("--out is required")?,
         count,
+        vcpus,
         ksm,
         divergence_pages,
         park_idle,
@@ -339,6 +350,6 @@ where
                 state_dir: state_dir.ok_or("--state-dir is required")?,
             })
         }
-        _ => Err("usage: densevm probe --out DIR [--count N] | densevm benchmark baseline --out DIR --count N [--accel kvm|tcg] [--trace-translations] | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+        _ => Err("usage: densevm probe --out DIR [--count N] [--vcpus 1..4] | densevm benchmark baseline --out DIR --count N [--accel kvm|tcg] [--trace-translations] | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
     }
 }

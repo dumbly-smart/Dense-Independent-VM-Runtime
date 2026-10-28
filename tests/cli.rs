@@ -8,6 +8,7 @@ fn parses_probe_with_count_and_output() {
         Command::Probe {
             out: PathBuf::from("/tmp/run"),
             count: 8,
+            vcpus: 1,
             ksm: false,
             divergence_pages: 8192,
             park_idle: false,
@@ -33,6 +34,7 @@ fn parses_probe_with_count_and_output() {
         Command::Probe {
             out: PathBuf::from("/tmp/run"),
             count: 2,
+            vcpus: 1,
             ksm: false,
             divergence_pages: 2048,
             park_idle: false,
@@ -45,6 +47,17 @@ fn parses_probe_with_count_and_output() {
             rtc_alarm: false
         }
     );
+}
+
+#[test]
+fn accepts_only_supported_probe_vcpu_counts() {
+    assert!(matches!(
+        parse_args(["densevm", "probe", "--out", "/tmp/run", "--vcpus", "2"]),
+        Ok(Command::Probe { vcpus: 2, .. })
+    ));
+    for count in ["0", "5"] {
+        assert!(parse_args(["densevm", "probe", "--out", "/tmp/run", "--vcpus", count]).is_err());
+    }
 }
 
 #[test]
