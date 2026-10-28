@@ -66,8 +66,9 @@ the tested QEMU, kernel, guest, devices, and workload.
   include their verified directory and manifest paths. Deletion, a
   managed catalog, and power-loss recovery remain deferred. A regression test
   now exercises the planner against a hash-verified schema-v3 generation and
-  a persisted running-clone record, confirming the referenced generation is
-  protected in the command's real report path.
+  persisted clone records in all four lifecycle states. Starting/running
+  generations are protected; stopped/failed records do not pin unknown
+  generations. The active references are confirmed in the planner report.
 - **TCG code sharing: deferred.** Translation is measured, but sharing mutable
   QEMU translation blocks across processes is not justified by the current
   safety analysis. This does not affect the KVM COW design.

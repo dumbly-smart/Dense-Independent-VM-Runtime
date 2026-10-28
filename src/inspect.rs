@@ -964,28 +964,71 @@ mod template_tests {
 
         let state_dir = root.join("clone-registry");
         let registry = crate::lifecycle::CloneRegistry::open(&state_dir).unwrap();
-        registry
-            .create(&crate::lifecycle::CloneRecord {
+        let make_clone = |id: &str,
+                          slot: u8,
+                          generation_id: String,
+                          state: crate::lifecycle::CloneState,
+                          qemu_pid: Option<u32>| {
+            crate::lifecycle::CloneRecord {
                 schema_version: 1,
-                id: "active-clone".into(),
-                generation_id: generation_id.clone(),
-                qemu_pid: Some(12345),
+                id: id.into(),
+                generation_id,
+                qemu_pid,
                 qemu_start_ticks: None,
                 qemu_boot_id: None,
                 launcher_pid: None,
                 launcher_start_ticks: None,
                 launcher_boot_id: None,
-                qmp_socket: root.join("active-clone.qmp"),
-                disk_overlay: root.join("active-clone.qcow2"),
-                machine_id: "0123456789abcdef0123456789abcdef".into(),
-                mac: "02:00:00:00:00:01".into(),
-                state: crate::lifecycle::CloneState::Running,
-            })
-            .unwrap();
+                qmp_socket: root.join(format!("{id}.qmp")),
+                disk_overlay: root.join(format!("{id}.qcow2")),
+                machine_id: format!("{slot:032x}"),
+                mac: format!("02:00:00:00:00:{slot:02x}"),
+                state,
+            }
+        };
+        for (slot, (id, state, pid, template_id)) in [
+            (
+                "active-running",
+                crate::lifecycle::CloneState::Running,
+                Some(12345),
+                generation_id.clone(),
+            ),
+            (
+                "active-starting",
+                crate::lifecycle::CloneState::Starting,
+                None,
+                generation_id.clone(),
+            ),
+            (
+                "inactive-stopped",
+                crate::lifecycle::CloneState::Stopped,
+                None,
+                format!("sha256:{}", "f".repeat(64)),
+            ),
+            (
+                "inactive-failed",
+                crate::lifecycle::CloneState::Failed,
+                None,
+                format!("sha256:{}", "e".repeat(64)),
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            registry
+                .create(&make_clone(id, slot as u8 + 1, template_id, state, pid))
+                .unwrap();
+        }
 
         let gc_plan = super::plan_template_gc(&root, &state_dir, &[]).unwrap();
         assert_eq!(gc_plan["status"], "planned");
-        assert_eq!(gc_plan["active_clones"][0]["clone_id"], "active-clone");
+        let active_ids = gc_plan["active_clones"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|clone| clone["clone_id"].as_str().unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(active_ids, ["active-running", "active-starting"]);
         assert_eq!(gc_plan["protected_generation_ids"][0], generation_id);
         assert_eq!(gc_plan["candidate_generation_ids"], serde_json::json!([]));
 
