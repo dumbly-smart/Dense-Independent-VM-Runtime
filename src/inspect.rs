@@ -898,6 +898,33 @@ mod template_tests {
             "verified"
         );
 
+        let state_dir = root.join("clone-registry");
+        let registry = crate::lifecycle::CloneRegistry::open(&state_dir).unwrap();
+        registry
+            .create(&crate::lifecycle::CloneRecord {
+                schema_version: 1,
+                id: "active-clone".into(),
+                generation_id: generation_id.clone(),
+                qemu_pid: Some(12345),
+                qemu_start_ticks: None,
+                qemu_boot_id: None,
+                launcher_pid: None,
+                launcher_start_ticks: None,
+                launcher_boot_id: None,
+                qmp_socket: root.join("active-clone.qmp"),
+                disk_overlay: root.join("active-clone.qcow2"),
+                machine_id: "0123456789abcdef0123456789abcdef".into(),
+                mac: "02:00:00:00:00:01".into(),
+                state: crate::lifecycle::CloneState::Running,
+            })
+            .unwrap();
+
+        let gc_plan = super::plan_template_gc(&root, &state_dir, &[]).unwrap();
+        assert_eq!(gc_plan["status"], "planned");
+        assert_eq!(gc_plan["active_clones"][0]["clone_id"], "active-clone");
+        assert_eq!(gc_plan["protected_generation_ids"][0], generation_id);
+        assert_eq!(gc_plan["candidate_generation_ids"], serde_json::json!([]));
+
         fs::write(child.join("child-memory.img"), "modified child ram").unwrap();
         assert!(
             validate_template_generation(&manifest_path)

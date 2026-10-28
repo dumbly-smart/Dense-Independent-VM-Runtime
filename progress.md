@@ -63,7 +63,10 @@ the tested QEMU, kernel, guest, devices, and workload.
   `densevm template gc-plan ROOT --state-dir DIR [--keep ID]` provides a
   read-only reachability plan; it blocks on unverified or ambiguous catalogs
   and protects active clone generations and their ancestors. Deletion, a
-  managed catalog, and power-loss recovery remain deferred.
+  managed catalog, and power-loss recovery remain deferred. A regression test
+  now exercises the planner against a hash-verified schema-v3 generation and
+  a persisted running-clone record, confirming the referenced generation is
+  protected in the command's real report path.
 - **TCG code sharing: deferred.** Translation is measured, but sharing mutable
   QEMU translation blocks across processes is not justified by the current
   safety analysis. This does not affect the KVM COW design.
