@@ -42,7 +42,7 @@ count recorded by each experiment. The detailed dated history is
 | [`results/tcg/2026-10-26/`](results/tcg/2026-10-26/) | Repeated conventional KVM/TCG baseline, TCG trace, patched code-size/duration, and stock fallback. | TCG and KVM use different CPU models; small sequential samples. |
 | [`results/tcg/2026-10-27/`](results/tcg/2026-10-27/) | Three patched phase traces, three untraced controls, and stock-QEMU phase fallback. | Tracing and QMP phase stops perturb execution; only three sequential samples per patched mode. |
 | [`results/vcpu-multi2/`](results/vcpu-multi2/) and [`run2`](results/vcpu-multi2-run2/) | Two-vCPU template migration, restore, and clone isolation, repeated twice. | HMP register snapshots show CPU#0 only; CPU#1 architectural state is not directly sampled. |
-| [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/) and [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/) | TCG smoke for two-vCPU `query-cpus-fast` and HMP `info registers -a`; attempted post-change KVM rerun. | TCG smoke does not prove template restore or isolation; the KVM attempt failed before template creation with a KVM entry error. |
+| [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/), [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/), and [`results/kvm-entry-2026-10-29/`](results/kvm-entry-2026-10-29/) | TCG smoke for two-vCPU QMP/HMP interfaces; post-change KVM attempts at one and two vCPUs. | TCG smoke does not prove template restore or isolation; both current KVM attempts failed before guest readiness, cause unknown. |
 | [`results/2026-10-24/ksm-comparison-blocked/`](results/2026-10-24/ksm-comparison-blocked/) | Read-only KSM capability/preflight output. | Positive KSM merge requires host-global write permission unavailable to this user. |
 
 ## Selected measured outcomes
@@ -95,8 +95,9 @@ The probe now validates live vCPU indexes with `query-cpus-fast` and records
 them per clone. Optional register capture uses HMP `info registers -a`, checks
 the reported CPU-index set, and stores registers under per-vCPU keys. These
 changes have unit and TCG interface smoke coverage, but no successful
-post-change KVM restore run yet; the first rerun stopped in the conventional
-baseline with `KVM: entry failed, hardware error 0x0`.
+post-change KVM restore run yet. One- and two-vCPU conventional baselines both
+stopped before guest readiness with `KVM: entry failed, hardware error 0x0`;
+the underlying host cause remains unknown.
 
 ## Reproducing measurements
 

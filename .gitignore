@@ -13,3 +13,7 @@
 /results/vcpu-topology-2026-10-29/*
 !/results/vcpu-topology-2026-10-29/README.md
 !/results/vcpu-topology-2026-10-29/baseline-000.qemu.log
+/results/kvm-entry-2026-10-29/*
+!/results/kvm-entry-2026-10-29/README.md
+!/results/kvm-entry-2026-10-29/baseline-000.qemu.log
+/results/kvm-single-entry-recheck-2026-10-29/
