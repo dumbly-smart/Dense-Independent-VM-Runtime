@@ -2,7 +2,8 @@
 /graft/
 /.ignore
 /target/
-/results/vcpu-multi2/*.qcow2
-/results/vcpu-multi2/memory.img
-/results/vcpu-multi2-run2/*.qcow2
-/results/vcpu-multi2-run2/memory.img
+/results/vcpu-multi2/*
+!/results/vcpu-multi2/README.md
+!/results/vcpu-multi2/result.json
+/results/vcpu-multi2-run2/*
+!/results/vcpu-multi2-run2/result.json
