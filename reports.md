@@ -1,0 +1,129 @@
+# DenseVM reports and evidence index
+
+This page is an index to saved experiments, not a replacement for their raw
+JSON and logs. Claims below are bounded by the guest, QEMU, kernel, and sample
+count recorded by each experiment. The detailed dated history is
+[`docs/progress.md`](docs/progress.md); semantic scope is in
+[`docs/semantic-differences.md`](docs/semantic-differences.md).
+
+## How to read a result
+
+- **Configured RAM** is what the guest sees. It is not host physical use.
+- **RSS** counts every resident page in a process, including pages shared with
+  another process. Summing RSS double-counts shared pages.
+- **PSS** divides shared resident pages among mappings. Summed QEMU PSS is a
+  useful user-space comparison, but it is not a complete host-memory total.
+- **Template cache** is resident data from the backing RAM file. A cache upper
+  bound plus process PSS is conservative and may double-count some pages.
+- **Cgroup `memory.current`** includes memory charged to that cgroup, such as
+  some kernel and file-cache pages. It can omit allocations and is sensitive
+  to cache/reclaim behavior.
+- **Private dirty pages** in the clone's exact template-RAM mapping are direct
+  evidence of COW divergence. They are not all private memory in the process.
+- **Virtual disk size** is the guest-visible capacity. Allocated bytes are
+  the host storage consumed by a qcow2 file; base plus overlays and chain
+  relationships must be reported separately.
+- **Translation-block count** is not a count of unique TBs. Repeated guest PC
+  values are only a PC-reuse indicator.
+- **Translation duration** in the QEMU patch is monotonic elapsed wall time
+  around successful `setjmp_gen_code` calls. It is not thread CPU time and can
+  include host scheduling delay.
+
+## Main experiment families
+
+| Evidence | What it covers | Main limit |
+| --- | --- | --- |
+| [`results/probe-2026-09-22-qemu-11.1.1.json`](results/probe-2026-09-22-qemu-11.1.1.json) | Initial QEMU 11.1.1 synthetic two-clone RAM/disk COW proof. | Historical host/QEMU; process PSS and tiny guest do not represent full host cost. |
+| [`results/2026-10-24/`](results/2026-10-24/) | Host capabilities, identity, timers, disk I/O, network, OOM, crash, register/APIC, cgroup, and multi-guest range experiments. | Mostly synthetic guest; individual probes have bounded scope and small sample counts. |
+| [`results/divergence/2026-10-24/`](results/divergence/2026-10-24/) | Eight-clone controlled 0–100% test-buffer divergence curve. | 32 MiB test buffer is only one eighth of configured guest RAM; PSS excludes KVM/kernel memory. |
+| [`results/scale/2026-10-24/`](results/scale/2026-10-24/) | Conventional versus template-clone PSS at 2, 4, 8, and 16 clones. | Process PSS only; 32 clones were declined by the safe-memory preflight. |
+| [`results/template-tree/2026-10-25/`](results/template-tree/2026-10-25/) and [`2026-10-26/`](results/template-tree/2026-10-26/) | Multi-generation RAM/disk template materialization and relocation checks. | Experimental generation workflow, not a complete managed template catalog/lifecycle. |
+| [`results/runtime-clone/2026-10-26/`](results/runtime-clone/2026-10-26/) | Persistent clone lifecycle, 8-clone divergence/cgroup measurements, Alpine range, and 21-VM security range. | KVM/kernel costs are not fully included in process PSS; some range data used tmpfs. |
+| [`results/tcg/2026-10-26/`](results/tcg/2026-10-26/) | Repeated conventional KVM/TCG baseline, TCG trace, patched code-size/duration, and stock fallback. | TCG and KVM use different CPU models; small sequential samples. |
+| [`results/tcg/2026-10-27/`](results/tcg/2026-10-27/) | Three patched phase traces, three untraced controls, and stock-QEMU phase fallback. | Tracing and QMP phase stops perturb execution; only three sequential samples per patched mode. |
+| [`results/vcpu-multi2/`](results/vcpu-multi2/) and [`run2`](results/vcpu-multi2-run2/) | Two-vCPU template migration, restore, and clone isolation, repeated twice. | HMP register snapshots show CPU#0 only; CPU#1 architectural state is not directly sampled. |
+| [`results/2026-10-24/ksm-comparison-blocked/`](results/2026-10-24/ksm-comparison-blocked/) | Read-only KSM capability/preflight output. | Positive KSM merge requires host-global write permission unavailable to this user. |
+
+## Selected measured outcomes
+
+### Shared-memory density
+
+The 21-VM Alpine range comparison used 20 targets plus an attacker. Before
+intentional RAM divergence, aggregate clone QEMU process PSS was 997,844 KiB;
+the equivalent conventional process baseline was 4,222,425 KiB. After a clone
+dirtied its 32 MiB test area, aggregate clone PSS was 1,030,264 KiB. This is a
+large measured process-PSS reduction for that run, not a claim that all 21
+guests' configured RAM fit in 1 GiB. Kernel/KVM memory is excluded, and the
+evidence is one run. See
+[`alpine-twenty-target-range-run1`](results/runtime-clone/2026-10-26/alpine-twenty-target-range-run1/).
+
+The repeated persistent eight-clone sweep showed template-mapping
+`Private_Dirty` growing by approximately 0.3, 13.4, 26.2, 64.7, 128.9, and
+257.2 MiB as every clone dirtied 0%, 5%, 10%, 25%, 50%, and 100% of its 32 MiB
+test region. At the fully dirtied endpoint, QEMU process PSS increased by
+about 259.4 MiB. The 100% value means 100% of the test region, not all guest
+RAM. See the two persistent divergence sweep directories listed above.
+
+### TCG phase traces
+
+Three patched QEMU 11.1.2 phase runs recorded:
+
+| Phase | Translation starts | Completed blocks | Generated bytes (cumulative) | Successful generation wall time |
+| --- | ---: | ---: | ---: | ---: |
+| Boot/readiness | 107,795–108,304 | 107,775–108,284 | 33,724,574–33,900,046 | 1,225,067–1,343,860 µs |
+| Post-ready idle | 189–517 | 189–517 | 65,660–153,949 | 3,824–5,863 µs |
+| Active CPU workload | 711–763 | 711–763 | 226,886–244,054 | 8,920–18,365 µs |
+
+Independent recounts matched each phase's byte range and the complete log.
+The phase boundaries are QMP pause points, not instruction-exact boundaries.
+The stock-QEMU phase sample retained ordinary event counts but reported
+patched code-size and duration metrics as unavailable. The patched, untraced
+controls averaged 8,761 ms readiness and 299,099 KiB PSS; the traced samples
+averaged 8,518 ms readiness and 302,994 KiB PSS. The overlapping ranges and
+sequential n=3 samples do not establish overhead or a startup benefit.
+
+### Two-vCPU restore
+
+Two repeated `--vcpus 2` KVM runs used `-smp 2` for every baseline VM, source
+template, and restored clone. Both passed RAM isolation, disk isolation,
+backing verification, unique MAC/machine identity/vmgenid, vCPU0 register
+sampling, and sibling survival after QEMU A was killed. They establish that
+this two-vCPU migration configuration restored and ran. The saved HMP output
+contains `CPU#0` only, so it does not independently inspect vCPU1 registers.
+
+## Reproducing measurements
+
+Start with host preflight:
+
+```sh
+cargo run -- doctor
+```
+
+Conventional KVM baseline:
+
+```sh
+cargo run -- benchmark baseline --out /path/to/kvm-2 --count 2 --accel kvm
+```
+
+TCG baseline with normal stock events:
+
+```sh
+cargo run -- benchmark baseline --out /path/to/tcg-trace \
+  --count 1 --accel tcg --trace-translations
+```
+
+For generated code bytes and durations, build the versioned QEMU patches using
+[`patches/qemu/README.md`](patches/qemu/README.md), then put the custom QEMU
+binary first in `PATH`. Preserve a fresh output directory for every run.
+
+Two-clone template proof or bounded multi-vCPU probe:
+
+```sh
+cargo run -- probe --out /path/to/two-clone --count 2 --skip-guest-oom
+cargo run -- probe --out /path/to/two-vcpu --count 2 --vcpus 2 --skip-guest-oom
+```
+
+Do not run high VM counts without checking host `MemAvailable`, process/cgroup
+limits, and free disk. DenseVM preflight may refuse unsafe counts. A refusal is
+not a failed optimization result; it is a host-capacity limit.
+
