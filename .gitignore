@@ -17,3 +17,6 @@
 !/results/kvm-entry-2026-10-29/README.md
 !/results/kvm-entry-2026-10-29/baseline-000.qemu.log
 /results/kvm-single-entry-recheck-2026-10-29/
+/results/kvm-cpu-model-smoke-2026-10-29/*
+!/results/kvm-cpu-model-smoke-2026-10-29/README.md
+!/results/kvm-cpu-model-smoke-2026-10-29/result.json

@@ -80,14 +80,13 @@ the expected contiguous vCPU index set, and writes those indexes to each
 clone's result. Unit tests pass, and a two-vCPU TCG smoke test confirmed the
 installed QEMU 11.1.2 reply shape. The attempted post-change KVM run failed in
 the first baseline with `KVM: entry failed, hardware error 0x0`, before
-template creation. A separate short-path one-vCPU baseline failed with the
-same QEMU message, so current KVM guest execution is unavailable for both
-tested CPU counts; the underlying host cause is unknown. The new check still
-needs a successful live KVM run.
+template creation. Separate one-vCPU runs failed with the same error under
+both `-cpu host` and `-cpu qemu64`; the underlying host cause is unknown. The
+new check still needs a successful live KVM run.
 See the [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/),
 [`results/kvm-entry-2026-10-29/`](results/kvm-entry-2026-10-29/), and
 [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/)
-artifacts.
+artifacts, plus the [`results/kvm-cpu-model-smoke-2026-10-29/`](results/kvm-cpu-model-smoke-2026-10-29/) CPU-model comparison.
 
 The optional register-state check now uses HMP `info registers -a`, checks for
 exactly the configured CPU index set, and stores GPRs under keys such as
