@@ -2,8 +2,21 @@ use densevm::qmp::Qmp;
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixListener;
+use std::path::Path;
 use std::thread;
 use std::time::{Duration, SystemTime};
+
+#[test]
+fn validates_linux_unix_socket_path_length() {
+    assert!(
+        densevm::qmp::validate_unix_socket_path(Path::new(&format!("/{}", "s".repeat(106))))
+            .is_ok()
+    );
+    let error =
+        densevm::qmp::validate_unix_socket_path(Path::new(&format!("/{}", "s".repeat(107))))
+            .unwrap_err();
+    assert!(error.contains("108 bytes"), "{error}");
+}
 
 #[test]
 fn qmp_handshake_and_event_do_not_confuse_command_reply() {

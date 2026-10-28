@@ -87,6 +87,12 @@ pub fn start_clone(
         .canonicalize()
         .map_err(|error| format!("resolve clone state directory: {error}"))?;
     let instance_dir = root.join(clone_id);
+    let qmp_socket = instance_dir.join(format!("{clone_id}.qmp.sock"));
+    let serial_socket = instance_dir.join(format!("{clone_id}.serial.sock"));
+    crate::qmp::validate_unix_socket_path(&qmp_socket)
+        .map_err(|error| format!("clone QMP socket path is invalid: {error}"))?;
+    crate::qmp::validate_unix_socket_path(&serial_socket)
+        .map_err(|error| format!("clone serial socket path is invalid: {error}"))?;
     let overlay = instance_dir.join("disk.qcow2");
     let command = build_clone_command(
         &template.qemu_command,
@@ -110,7 +116,7 @@ pub fn start_clone(
         launcher_pid: Some(launcher_pid),
         launcher_start_ticks: Some(launcher_start_ticks),
         launcher_boot_id: Some(launcher_boot_id),
-        qmp_socket: instance_dir.join(format!("{clone_id}.qmp.sock")),
+        qmp_socket,
         disk_overlay: overlay,
         machine_id: identity.machine_id.clone(),
         mac: identity.mac.clone(),
@@ -127,9 +133,8 @@ pub fn start_clone(
         qemu_pid = Some(pid);
         registry.record_starting_qemu_pid(clone_id, pid)?;
         restore_clone_state(pid, clone_id, &record.qmp_socket, &template.machine_state)?;
-        let serial_path = instance_dir.join(format!("{clone_id}.serial.sock"));
         let mut serial =
-            crate::guest_serial::GuestSerial::connect(&serial_path, Duration::from_secs(15))?;
+            crate::guest_serial::GuestSerial::connect(&serial_socket, Duration::from_secs(15))?;
         let _identity_report = crate::guest_serial::prepare_clone_identity(&mut serial, &identity)?;
         registry.transition(
             clone_id,

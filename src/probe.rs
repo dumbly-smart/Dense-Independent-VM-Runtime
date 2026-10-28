@@ -4,7 +4,6 @@ use crate::qmp::Qmp;
 use serde_json::{Value, json};
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read, Write};
-use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
@@ -17,7 +16,6 @@ const RAM_BYTES: u64 = RAM_MIB * 1024 * 1024;
 const TEST_REGION_MIB: u32 = 32;
 const TEST_REGION_PAGES: u32 = TEST_REGION_MIB * 256;
 const ACTIVE_CPU_BURN_MS: u64 = 1500;
-const UNIX_SOCKET_PATH_MAX_BYTES: usize = 107;
 
 struct Vm {
     child: Child,
@@ -2997,13 +2995,8 @@ fn validate_output_socket_paths(out: &Path, count: u32, guest_login: bool) -> Re
         }
         for suffix in suffixes {
             let socket = out.join(format!("{name}.{suffix}"));
-            let bytes = socket.as_os_str().as_bytes().len();
-            if bytes > UNIX_SOCKET_PATH_MAX_BYTES {
-                return Err(format!(
-                    "QEMU Unix socket path is {bytes} bytes (maximum {UNIX_SOCKET_PATH_MAX_BYTES}): {}; choose a shorter output directory",
-                    socket.display()
-                ));
-            }
+            crate::qmp::validate_unix_socket_path(&socket)
+                .map_err(|error| format!("{error}; choose a shorter output directory"))?;
         }
     }
     Ok(())

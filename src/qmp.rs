@@ -1,8 +1,22 @@
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::time::Duration;
+
+pub const UNIX_SOCKET_PATH_MAX_BYTES: usize = 107;
+
+pub fn validate_unix_socket_path(path: &Path) -> Result<(), String> {
+    let length = path.as_os_str().as_bytes().len();
+    if length > UNIX_SOCKET_PATH_MAX_BYTES {
+        return Err(format!(
+            "QEMU Unix socket path is {length} bytes (maximum {UNIX_SOCKET_PATH_MAX_BYTES}): {}",
+            path.display()
+        ));
+    }
+    Ok(())
+}
 
 pub struct Qmp {
     reader: BufReader<UnixStream>,
@@ -12,6 +26,7 @@ pub struct Qmp {
 
 impl Qmp {
     pub fn connect(path: &Path, timeout: Duration) -> Result<Self, String> {
+        validate_unix_socket_path(path)?;
         let writer = UnixStream::connect(path).map_err(|e| format!("QMP connect: {e}"))?;
         writer
             .set_read_timeout(Some(timeout))
