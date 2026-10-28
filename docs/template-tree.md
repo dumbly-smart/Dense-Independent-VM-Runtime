@@ -132,6 +132,31 @@ outside the catalog are shown with `parent_generation_id: null`. The catalog
 is metadata-only and does not verify artifact contents or maintain a separate
 index; each `generation.json` remains the source of truth.
 
+Before considering removal of unreferenced generations, ask DenseVM for a
+read-only reachability plan:
+
+```sh
+cargo run -- template gc-plan /path/to/template-store \
+  --state-dir /var/lib/densevm \
+  --keep sha256:GENERATION_ID
+```
+
+The state directory must already exist. DenseVM reads clone records without
+creating the registry or changing its permissions. Every generation and its
+manifest-referenced artifacts must pass integrity validation before any
+candidates are reported. Generations referenced by `starting` or `running`
+clones and repeated `--keep` IDs are protected, along with their discovered
+ancestors. An empty or invalid catalog, duplicate IDs, malformed or cyclic
+parent links, or an active clone that points to an unknown generation blocks
+all candidates. A planned candidate includes its ID, directory, manifest,
+parent ID, and leaf flag; leaf IDs are listed separately as a possible
+child-first removal order.
+
+This command only reports candidates. It does not remove files, check
+references outside the clone registry and catalog, or lock the catalog while
+hashing. Run it while template publication is quiescent, and treat the output
+as an audit aid rather than authorization to delete a directory.
+
 ### Relocation proof
 
 Three successive schema-v4 generations were created from a 256 MiB synthetic
@@ -226,8 +251,9 @@ crash. This is not durable publication across power loss: artifact and parent
 directory `fsync` ordering has not been implemented or tested. Process
 reference detection covers same-user `/proc` command lines and memory maps; it
 is not a general process supervisor or a persistent template manager. The
-system still lacks template garbage collection, migration compatibility checks
-across QEMU versions, and large multi-level tree benchmarks. It does not
+system still lacks destructive template garbage collection, migration
+compatibility checks across QEMU versions, and large multi-level tree
+benchmarks. It does not
 establish that every machine/device configuration supports the same migration
 sequence. These need separate failure and compatibility tests before
 hierarchical templates become a general runtime feature.
