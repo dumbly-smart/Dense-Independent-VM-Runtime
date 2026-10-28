@@ -64,6 +64,16 @@ fn main() {
         Command::ValidateTemplate { manifest } => {
             densevm::inspect::validate_template_generation(&manifest).and_then(print_json)
         }
+        Command::ValidateTemplateTree { root } => densevm::inspect::validate_template_tree(&root)
+            .and_then(|report| {
+                let verified = report["status"] == "verified";
+                print_json(report)?;
+                if verified {
+                    Ok(())
+                } else {
+                    Err("template tree validation failed; see per-generation results".into())
+                }
+            }),
         Command::TemplateTree { root } => {
             densevm::inspect::template_tree(&root).and_then(print_json)
         }

@@ -1,5 +1,9 @@
 use densevm::cli::{BaselineAccelerator, Command, parse_args};
+use serde_json::Value;
+use std::fs;
 use std::path::PathBuf;
+use std::process::Command as ProcessCommand;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn parses_probe_with_count_and_output() {
@@ -75,6 +79,54 @@ fn parses_persistent_clone_listing() {
         })
     );
     assert!(parse_args(["densevm", "clone", "list"]).is_err());
+}
+
+#[test]
+fn parses_template_tree_validation() {
+    assert_eq!(
+        parse_args(["densevm", "validate", "template-tree", "/templates"]),
+        Ok(Command::ValidateTemplateTree {
+            root: PathBuf::from("/templates"),
+        })
+    );
+}
+
+#[test]
+fn failed_template_tree_validation_prints_report_and_exits_nonzero() {
+    let root = std::env::temp_dir().join(format!(
+        "densevm-invalid-template-tree-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let generation = root.join("generation-a");
+    fs::create_dir_all(&generation).unwrap();
+    fs::write(
+        generation.join("generation.json"),
+        serde_json::to_vec(&serde_json::json!({
+            "schema_version": 2,
+            "generation_id": "sha256:incomplete",
+            "parent": {"template_dir": "/missing/parent"},
+            "ram": {"path": "ram.img", "sha256": "invalid", "logical_size_bytes": 4096},
+            "machine_state": {"path": "state", "sha256": "invalid"},
+            "disk": {"path": "disk.qcow2", "sha256": "invalid", "backing_path": "/missing/parent/base.qcow2"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let output = ProcessCommand::new(env!("CARGO_BIN_EXE_densevm"))
+        .args(["validate", "template-tree"])
+        .arg(&root)
+        .output()
+        .unwrap();
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(!output.status.success());
+    assert_eq!(report["status"], "failed");
+    assert_eq!(report["generations"][0]["validation"]["status"], "failed");
+    fs::remove_dir_all(root).unwrap();
 }
 
 #[test]

@@ -58,7 +58,9 @@ the tested QEMU, kernel, guest, devices, and workload.
   other distributions' entropy, machine-id, DHCP, SSH, and service identity
   behavior remain unknown.
 - **Hierarchical templates: experimental.** Materialization, validation, and
-  relocation proofs exist, but a complete persistent template manager,
+  relocation proofs exist, and `densevm validate template-tree ROOT` now
+  verifies all discovered generation artifacts and reports duplicate IDs. A
+  complete persistent template manager,
   garbage collector, and power-loss recovery are deferred.
 - **TCG code sharing: deferred.** Translation is measured, but sharing mutable
   QEMU translation blocks across processes is not justified by the current

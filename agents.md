@@ -120,6 +120,12 @@ For the template/COW probe:
 cargo run -- probe --out /path/to/run --count 2 --skip-guest-oom
 ```
 
+`cargo run -- template tree ROOT` reads generation and parent-link metadata
+without hashing large artifacts. `cargo run -- validate template-tree ROOT`
+checks each discovered generation's referenced parent and child hashes and
+generation ID; it can read large RAM files and exits nonzero when validation
+fails.
+
 The probe defaults to one vCPU. `--vcpus 1..4` applies the same topology to
 baseline VMs, the template, and restored clones. Trace output can be large;
 `--trace-translations` is restricted to TCG and a small VM count.

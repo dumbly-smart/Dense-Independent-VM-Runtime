@@ -428,6 +428,61 @@ pub fn template_tree(root: &Path) -> Result<Value, String> {
     }))
 }
 
+pub fn validate_template_tree(root: &Path) -> Result<Value, String> {
+    let mut report = template_tree(root)?;
+    let generations = report["generations"]
+        .as_array_mut()
+        .ok_or("template tree omitted its generations array")?;
+    let generation_count = generations.len();
+    let mut all_verified = generation_count > 0;
+    let mut generation_ids = std::collections::HashSet::new();
+    let mut duplicate_generation_ids = Vec::new();
+
+    for generation in generations.iter_mut() {
+        let generation_id = generation["generation_id"]
+            .as_str()
+            .ok_or("template tree generation omitted its ID")?
+            .to_string();
+        if !generation_ids.insert(generation_id.clone()) {
+            duplicate_generation_ids.push(generation_id);
+            all_verified = false;
+        }
+        let manifest_path = generation["manifest_path"]
+            .as_str()
+            .ok_or("template tree generation omitted its manifest path")?;
+        match validate_template_generation(Path::new(manifest_path)) {
+            Ok(validation) => {
+                generation["integrity_verified"] = json!(true);
+                generation["validation"] = validation;
+            }
+            Err(error) => {
+                all_verified = false;
+                generation["integrity_verified"] = json!(false);
+                generation["validation"] = json!({
+                    "status":"failed",
+                    "integrity_verified":false,
+                    "error":error
+                });
+            }
+        }
+    }
+
+    report["status"] = json!(if generation_count == 0 {
+        "empty"
+    } else if all_verified {
+        "verified"
+    } else {
+        "failed"
+    });
+    report["integrity_verified"] = json!(all_verified);
+    report["validated_generation_count"] = json!(generation_count);
+    report["duplicate_generation_ids"] = json!(duplicate_generation_ids);
+    report["validation_scope"] = json!(
+        "hashes and generation ID for each manifest-referenced child and parent artifact; parent directory links are reported separately"
+    );
+    Ok(report)
+}
+
 pub fn memory_map(pid: u32, path: &Path) -> Result<Value, String> {
     let smaps = fs::read_to_string(format!("/proc/{pid}/smaps"))
         .map_err(|e| format!("read smaps for {pid}: {e}"))?;
@@ -464,7 +519,9 @@ pub fn ksm_status() -> Result<Value, String> {
 
 #[cfg(test)]
 mod template_tests {
-    use super::{template_generation, template_tree, validate_template_generation};
+    use super::{
+        template_generation, template_tree, validate_template_generation, validate_template_tree,
+    };
     use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
@@ -532,6 +589,7 @@ mod template_tests {
     #[test]
     fn verifies_generation_artifacts_and_rejects_modified_ram() {
         let (root, _) = fixture("{}");
+        fs::remove_file(root.join("generation.json")).unwrap();
         let parent = root.join("parent");
         let child = root.join("child");
         fs::create_dir_all(&parent).unwrap();
@@ -592,12 +650,26 @@ mod template_tests {
         let report = validate_template_generation(&manifest_path).unwrap();
         assert_eq!(report["status"], "verified");
         assert_eq!(report["checked_artifacts"], 7);
+        let tree_report = validate_template_tree(&root).unwrap();
+        assert_eq!(tree_report["status"], "verified");
+        assert_eq!(tree_report["integrity_verified"], true);
+        assert_eq!(
+            tree_report["generations"][0]["validation"]["status"],
+            "verified"
+        );
 
         fs::write(child.join("child-memory.img"), "modified child ram").unwrap();
         assert!(
             validate_template_generation(&manifest_path)
                 .unwrap_err()
                 .contains("hash mismatch")
+        );
+        let tree_report = validate_template_tree(&root).unwrap();
+        assert_eq!(tree_report["status"], "failed");
+        assert_eq!(tree_report["integrity_verified"], false);
+        assert_eq!(
+            tree_report["generations"][0]["validation"]["status"],
+            "failed"
         );
         fs::remove_dir_all(root).unwrap();
     }
@@ -732,6 +804,43 @@ mod template_tests {
             tree["generations"][1]["parent_generation_id"],
             "sha256:first"
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn marks_empty_template_tree_unverified() {
+        let (root, manifest) = fixture("{}");
+        fs::remove_file(manifest).unwrap();
+        let report = validate_template_tree(&root).unwrap();
+        assert_eq!(report["status"], "empty");
+        assert_eq!(report["integrity_verified"], false);
+        assert_eq!(report["validated_generation_count"], 0);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn reports_duplicate_generation_ids_in_template_tree() {
+        let (root, manifest) = fixture("{}");
+        fs::remove_file(manifest).unwrap();
+        let metadata = serde_json::to_vec(&serde_json::json!({
+            "schema_version": 2,
+            "generation_id": "sha256:duplicate",
+            "parent": {"template_dir": "/external/root"},
+            "ram": {"path": "ram.img", "sha256": "ram-hash", "logical_size_bytes": 12},
+            "machine_state": {"path": "state", "sha256": "state-hash"},
+            "disk": {"path": "disk.qcow2", "sha256": "disk-hash", "backing_path": "/external/root/base.qcow2"}
+        }))
+        .unwrap();
+        for name in ["generation-a", "generation-b"] {
+            let directory = root.join(name);
+            fs::create_dir_all(&directory).unwrap();
+            fs::write(directory.join("generation.json"), &metadata).unwrap();
+        }
+
+        let report = validate_template_tree(&root).unwrap();
+        assert_eq!(report["status"], "failed");
+        assert_eq!(report["integrity_verified"], false);
+        assert_eq!(report["duplicate_generation_ids"][0], "sha256:duplicate");
         fs::remove_dir_all(root).unwrap();
     }
 }

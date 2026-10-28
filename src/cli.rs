@@ -42,6 +42,9 @@ pub enum Command {
     ValidateTemplate {
         manifest: PathBuf,
     },
+    ValidateTemplateTree {
+        root: PathBuf,
+    },
     TemplateTree {
         root: PathBuf,
     },
@@ -254,13 +257,28 @@ where
                 Ok(Command::InspectDisk { image })
             }
         }
-        Some("validate") if args.next().as_deref() == Some("template") => {
-            let manifest = PathBuf::from(args.next().ok_or("template manifest path is required")?);
-            if args.next().is_some() {
-                return Err("usage: densevm validate template MANIFEST".to_string());
+        Some("validate") => match args.next().as_deref() {
+            Some("template") => {
+                let manifest =
+                    PathBuf::from(args.next().ok_or("template manifest path is required")?);
+                if args.next().is_some() {
+                    return Err("usage: densevm validate template MANIFEST".to_string());
+                }
+                Ok(Command::ValidateTemplate { manifest })
             }
-            Ok(Command::ValidateTemplate { manifest })
-        }
+            Some("template-tree") => {
+                let root =
+                    PathBuf::from(args.next().ok_or("template catalog root is required")?);
+                if args.next().is_some() {
+                    return Err("usage: densevm validate template-tree ROOT".to_string());
+                }
+                Ok(Command::ValidateTemplateTree { root })
+            }
+            _ => Err(
+                "usage: densevm validate template MANIFEST | densevm validate template-tree ROOT"
+                    .to_string(),
+            ),
+        },
         Some("template") if args.next().as_deref() == Some("tree") => {
             let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
             if args.next().is_some() {

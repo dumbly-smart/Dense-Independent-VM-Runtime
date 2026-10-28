@@ -52,6 +52,10 @@ cargo run -- benchmark baseline --count 1 --accel tcg --trace-translations --out
 cargo run -- inspect /tmp/densevm-my-run/clone-a.qcow2 disk
 cargo run -- memory-map QEMU_PID /tmp/densevm-my-run/memory.img
 cargo run -- ksm status
+# Inspect lineage metadata without hashing large RAM files:
+cargo run -- template tree /path/to/templates
+# Verify every generation and its manifest-referenced parent/child artifacts:
+cargo run -- validate template-tree /path/to/templates
 ```
 
 The command prints the path to `result.json`. It leaves the RAM, migration,
@@ -86,7 +90,9 @@ The probe defaults to one vCPU per guest; `--vcpus 1..4` applies the selected
 count to baseline guests, the template, and all restored clones. Two-vCPU
 restore samples are saved under `results/vcpu-multi2/` and
 `results/vcpu-multi2-run2/`. QMP register snapshots in those samples cover
-CPU#0 only, so direct vCPU1 register isolation remains unverified.
+CPU#0 only. The optional register probe now requests all CPU blocks with
+`info registers -a`; its post-change KVM result remains unverified because the
+current host fails before guest readiness.
 `--divergence-mib` controls how much of A's 32 MiB test region is dirtied;
 `--divergence-percent` supports exact page-count sweeps from 0% to 100%.
 
@@ -96,9 +102,9 @@ CPU#0 only, so direct vCPU1 register isolation remains unverified.
 | --- | --- |
 | Demonstrated | Separate QEMU/KVM guests resume from one frozen state, share unchanged RAM pages, COW private RAM writes, and use private qcow2 overlays. Live 2/4/8/16 synthetic-clone scale measurements and a six-point 8-clone divergence sweep are saved under `results/`. |
 | Isolation tested | Guest RAM and disk writes, unique MAC/machine-id/hostname/vmgenid, guest OOM, guest kernel panic, guest reboot, QEMU process termination, and a six-guest Alpine range. A four-clone Alpine run starts a process in one guest and verifies zero matching processes in all three siblings. |
-| Partial | The opt-in Alpine profile verifies unique OpenSSH host-key fingerprints, DHCP option 61 identity, and the tested kernel's VMGenID reaction. QMP snapshots captured distinct user GS bases and differing general-purpose registers. Two-vCPU template restore and clone isolation passed twice, but HMP register snapshots show CPU#0 only; direct vCPU1 state remains unknown. Two initial LAPIC snapshot runs matched at TPR 0x10. Two later guest-write runs changed A's TPR from 0x10 to 0x11 while B stayed 0x10, then changed B to 0x12 while A reported 0x10; both original values were restored. This demonstrates TPR subpriority isolation only. Other APIC registers, pending interrupts, and other MSRs remain unverified. CR0/CR2/CR3/CR4 and EFER matched in the first sample. Two parked-guest samples record wall clock, uptime, timerfd expirations, aggregate local-timer interrupts, and RTC epoch but cannot locate timer events within the pause. In four repeated RTC-alarm probes, each running clone fired once; all eight alarms armed before a seven-second QMP pause missed the 20-second post-resume wait on QEMU 11.1.2 / Linux 7.2.11. Timeout diagnostics show the alarm stayed enabled (`alarm_IRQ: yes`) but no event was pending (`alrm_pending: no`) after RTC time passed the alarm. Cgroup-v2 samples include charged kernel/KVM memory, but they do not cover every host allocation. Other distributions' identity behavior remains unverified. QMP parking nearly stops guest clock progress. |
+| Partial | The opt-in Alpine profile verifies unique OpenSSH host-key fingerprints, DHCP option 61 identity, and the tested kernel's VMGenID reaction. Historical KVM snapshots captured CPU#0 only; the optional probe now requests all vCPU register blocks, but the post-change path has not yet run under KVM because current host guest entry fails. Two initial LAPIC snapshot runs matched at TPR 0x10. Two later guest-write runs changed A's TPR from 0x10 to 0x11 while B stayed 0x10, then changed B to 0x12 while A reported 0x10; both original values were restored. This demonstrates TPR subpriority isolation only. Other APIC registers, pending interrupts, and other MSRs remain unverified. CR0/CR2/CR3/CR4 and EFER matched in the first sample. Two parked-guest samples record wall clock, uptime, timerfd expirations, aggregate local-timer interrupts, and RTC epoch but cannot locate timer events within the pause. In four repeated RTC-alarm probes, each running clone fired once; all eight alarms armed before a seven-second QMP pause missed the 20-second post-resume wait on QEMU 11.1.2 / Linux 7.2.11. Timeout diagnostics show the alarm stayed enabled (`alarm_IRQ: yes`) but no event was pending (`alrm_pending: no`) after RTC time passed the alarm. Cgroup-v2 samples include charged kernel/KVM memory, but they do not cover every host allocation. Other distributions' identity behavior remains unverified. QMP parking nearly stops guest clock progress. |
 | Host blocked | Positive KSM measurements require write access to host-global `/sys/kernel/mm/ksm/run`; this user cannot change it. Current KSM state is `run=0`; no positive KSM result is claimed. |
-| Experimental | Repeated migration proofs materialize v2/v3/v4 child RAM/disk templates; v4 stores relative lineage and qcow2 backing references. A moved three-generation synthetic tree passed Python/Rust validation, qcow2 chain inspection, and a fresh QEMU restore/COW run. Marked orphan staging directories can now be inspected and safely removed after process-reference checks. Persistent template lifecycle, power-loss durability, partial moves, and legacy v1-v3 relocation remain open. See [`docs/template-tree.md`](docs/template-tree.md). |
+| Experimental | Repeated migration proofs materialize v2/v3/v4 child RAM/disk templates; v4 stores relative lineage and qcow2 backing references. A moved three-generation synthetic tree passed Python/Rust validation, qcow2 chain inspection, and a fresh QEMU restore/COW run. `densevm validate template-tree ROOT` now hashes every discovered generation's referenced artifacts and reports duplicate IDs. Marked orphan staging directories can be inspected and safely removed after process-reference checks. Persistent template lifecycle, power-loss durability, partial moves, and legacy v1-v3 relocation remain open. See [`docs/template-tree.md`](docs/template-tree.md). |
 | Deferred | General template-tree lifecycle management and TCG translated-code sharing. KVM guests still execute their own instructions. |
 
 The paired KSM harness and its output format are documented in
