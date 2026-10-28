@@ -153,6 +153,14 @@ paths inside that clone's directory. Hierarchical template generation is an
 experimental Python workflow with hashed manifests and relative v4 lineage;
 it is not yet a full persistent template manager.
 
+`densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID]` reads
+the existing clone registry without changing it, validates every generation,
+marks explicit keeps and starting/running clone generations, then protects
+their local ancestors. It reports unmarked generations and candidate leaves
+as a dry run. Any integrity failure, duplicate ID, broken local parent link,
+cycle, or unresolved clone reference blocks all candidates. There is no
+template deletion command yet.
+
 ## Measurement path
 
 `src/metrics.rs`, `src/inspect.rs`, and `src/report.rs` collect or summarize:

@@ -48,6 +48,11 @@ pub enum Command {
     TemplateTree {
         root: PathBuf,
     },
+    TemplateGcPlan {
+        root: PathBuf,
+        state_dir: PathBuf,
+        keep_ids: Vec<String>,
+    },
     MemoryMap {
         pid: u32,
         path: PathBuf,
@@ -279,13 +284,33 @@ where
                     .to_string(),
             ),
         },
-        Some("template") if args.next().as_deref() == Some("tree") => {
-            let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
-            if args.next().is_some() {
-                return Err("usage: densevm template tree ROOT".to_string());
+        Some("template") => match args.next().as_deref() {
+            Some("tree") => {
+                let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
+                if args.next().is_some() {
+                    return Err("usage: densevm template tree ROOT".to_string());
+                }
+                Ok(Command::TemplateTree { root })
             }
-            Ok(Command::TemplateTree { root })
-        }
+            Some("gc-plan") => {
+                let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
+                let mut state_dir = None;
+                let mut keep_ids = Vec::new();
+                while let Some(arg) = args.next() {
+                    match arg.as_str() {
+                        "--state-dir" => state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?)),
+                        "--keep" => keep_ids.push(value(&mut args, "--keep")?),
+                        flag => return Err(format!("unknown option {flag}")),
+                    }
+                }
+                Ok(Command::TemplateGcPlan {
+                    root,
+                    state_dir: state_dir.ok_or("--state-dir is required")?,
+                    keep_ids,
+                })
+            }
+            _ => Err("usage: densevm template tree ROOT | densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID]".into()),
+        },
         Some("memory-map") => {
             let pid = args.next().ok_or("PID is required")?.parse().map_err(|_| "PID must be an integer")?;
             let path = PathBuf::from(args.next().ok_or("RAM path is required")?);

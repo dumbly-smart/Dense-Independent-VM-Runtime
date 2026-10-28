@@ -59,9 +59,11 @@ the tested QEMU, kernel, guest, devices, and workload.
   behavior remain unknown.
 - **Hierarchical templates: experimental.** Materialization, validation, and
   relocation proofs exist, and `densevm validate template-tree ROOT` now
-  verifies all discovered generation artifacts and reports duplicate IDs. A
-  complete persistent template manager,
-  garbage collector, and power-loss recovery are deferred.
+  verifies all discovered generation artifacts and reports duplicate IDs.
+  `densevm template gc-plan ROOT --state-dir DIR [--keep ID]` provides a
+  read-only reachability plan; it blocks on unverified or ambiguous catalogs
+  and protects active clone generations and their ancestors. Deletion, a
+  managed catalog, and power-loss recovery remain deferred.
 - **TCG code sharing: deferred.** Translation is measured, but sharing mutable
   QEMU translation blocks across processes is not justified by the current
   safety analysis. This does not affect the KVM COW design.

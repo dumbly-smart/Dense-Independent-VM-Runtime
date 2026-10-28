@@ -483,6 +483,151 @@ pub fn validate_template_tree(root: &Path) -> Result<Value, String> {
     Ok(report)
 }
 
+/// Produce a read-only mark-and-sweep plan. No files are removed by this API.
+pub fn plan_template_gc(
+    root: &Path,
+    state_dir: &Path,
+    keep_ids: &[String],
+) -> Result<Value, String> {
+    let tree = validate_template_tree(root)?;
+    let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
+    let clones = registry.list()?;
+    let active_clones = clones
+        .iter()
+        .filter(|clone| {
+            matches!(
+                clone.state,
+                crate::lifecycle::CloneState::Starting | crate::lifecycle::CloneState::Running
+            )
+        })
+        .map(|clone| (clone.id.clone(), clone.generation_id.clone()))
+        .collect::<Vec<_>>();
+    let active_ids = active_clones
+        .iter()
+        .map(|(_, id)| id.clone())
+        .collect::<Vec<_>>();
+    let mut report = plan_template_gc_report(tree, keep_ids, &active_ids);
+    report["active_clones"] = json!(
+        active_clones
+            .iter()
+            .map(|(clone_id, generation_id)| {
+                json!({"clone_id":clone_id,"generation_id":generation_id})
+            })
+            .collect::<Vec<_>>()
+    );
+    report["state_dir"] = json!(state_dir);
+    Ok(report)
+}
+
+fn plan_template_gc_report(tree: Value, keep_ids: &[String], active_ids: &[String]) -> Value {
+    let mut blockers = Vec::new();
+    let generations = tree["generations"].as_array().cloned().unwrap_or_default();
+    let mut parents = std::collections::BTreeMap::<String, Option<String>>::new();
+
+    if tree["status"] != "verified" || tree["integrity_verified"] != true || generations.is_empty()
+    {
+        blockers.push("template tree is empty or its integrity is not fully verified".to_string());
+    }
+    for generation in &generations {
+        let Some(id) = generation["generation_id"].as_str() else {
+            blockers.push("generation is missing a valid generation_id".to_string());
+            continue;
+        };
+        if generation["integrity_verified"] != true {
+            blockers.push(format!("generation {id} is not integrity-verified"));
+        }
+        let parent = generation["parent_generation_id"]
+            .as_str()
+            .map(str::to_string);
+        if parents.insert(id.to_string(), parent).is_some() {
+            blockers.push(format!("duplicate generation ID {id}"));
+        }
+    }
+    for (id, parent) in &parents {
+        if let Some(parent) = parent
+            && !parents.contains_key(parent)
+        {
+            blockers.push(format!(
+                "generation {id} references missing parent generation {parent}"
+            ));
+        }
+    }
+    for id in parents.keys() {
+        let mut seen = std::collections::HashSet::new();
+        let mut current = Some(id.as_str());
+        while let Some(node) = current {
+            if !seen.insert(node) {
+                blockers.push(format!("parent-generation cycle includes {node}"));
+                break;
+            }
+            current = parents.get(node).and_then(Option::as_deref);
+        }
+    }
+
+    let mut roots = Vec::new();
+    roots.extend(keep_ids.iter().map(|id| (id, "explicit_keep")));
+    roots.extend(active_ids.iter().map(|id| (id, "active_clone")));
+    for (id, _) in &roots {
+        if !parents.contains_key(id.as_str()) {
+            blockers.push(format!(
+                "protected generation {id} is absent from the verified catalog"
+            ));
+        }
+    }
+    if !blockers.is_empty() {
+        blockers.sort();
+        blockers.dedup();
+        return json!({
+            "status":"blocked", "dry_run":true, "deletes_files":false,
+            "candidate_generation_ids":[], "candidate_leaves":[], "protected_generation_ids":[],
+            "blockers":blockers,
+            "safety":"No candidates are reported unless the complete catalog is verified and every protected reference resolves."
+        });
+    }
+
+    let mut protected = std::collections::BTreeSet::new();
+    let mut reasons = std::collections::BTreeMap::<String, Vec<String>>::new();
+    for (root, reason) in roots {
+        let mut current = Some(root.as_str());
+        let mut first = true;
+        while let Some(id) = current {
+            protected.insert(id.to_string());
+            reasons.entry(id.to_string()).or_default().push(if first {
+                reason.to_string()
+            } else {
+                format!("ancestor_of:{root}")
+            });
+            first = false;
+            current = parents.get(id).and_then(Option::as_deref);
+        }
+    }
+    let candidates = parents
+        .keys()
+        .filter(|id| !protected.contains(*id))
+        .cloned()
+        .collect::<Vec<_>>();
+    let candidate_set = candidates
+        .iter()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    let leaves = candidates
+        .iter()
+        .filter(|id| {
+            !parents.iter().any(|(child, parent)| {
+                candidate_set.contains(child) && parent.as_deref() == Some(id.as_str())
+            })
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    json!({
+        "status":"planned", "dry_run":true, "deletes_files":false,
+        "candidate_generation_ids":candidates, "candidate_leaves":leaves,
+        "protected_generation_ids":protected, "protection_reasons":reasons,
+        "blockers":[],
+        "safety":"Candidates are unreferenced by active clones and explicit keeps; this report does not delete or detach files."
+    })
+}
+
 pub fn memory_map(pid: u32, path: &Path) -> Result<Value, String> {
     let smaps = fs::read_to_string(format!("/proc/{pid}/smaps"))
         .map_err(|e| format!("read smaps for {pid}: {e}"))?;
@@ -520,12 +665,107 @@ pub fn ksm_status() -> Result<Value, String> {
 #[cfg(test)]
 mod template_tests {
     use super::{
-        template_generation, template_tree, validate_template_generation, validate_template_tree,
+        plan_template_gc_report, template_generation, template_tree, validate_template_generation,
+        validate_template_tree,
     };
     use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn verified_tree(nodes: &[(&str, Option<&str>)]) -> serde_json::Value {
+        serde_json::json!({
+            "status": "verified",
+            "integrity_verified": true,
+            "generations": nodes.iter().map(|(id, parent)| serde_json::json!({
+                "generation_id": id,
+                "parent_generation_id": parent,
+                "integrity_verified": true,
+            })).collect::<Vec<_>>(),
+        })
+    }
+
+    #[test]
+    fn template_gc_protects_kept_generation_and_its_ancestors() {
+        let report = plan_template_gc_report(
+            verified_tree(&[
+                ("root", None),
+                ("web", Some("root")),
+                ("web-child", Some("web")),
+                ("db", None),
+            ]),
+            &["web-child".to_string()],
+            &[],
+        );
+
+        assert_eq!(report["status"], "planned");
+        assert_eq!(
+            report["protected_generation_ids"],
+            serde_json::json!(["root", "web", "web-child"])
+        );
+        assert_eq!(
+            report["candidate_generation_ids"],
+            serde_json::json!(["db"])
+        );
+        assert_eq!(report["candidate_leaves"], serde_json::json!(["db"]));
+        assert_eq!(report["dry_run"], true);
+    }
+
+    #[test]
+    fn template_gc_protects_active_clone_generation_and_its_ancestors() {
+        let report = plan_template_gc_report(
+            verified_tree(&[("root", None), ("running", Some("root")), ("orphan", None)]),
+            &[],
+            &["running".to_string()],
+        );
+
+        assert_eq!(report["status"], "planned");
+        assert_eq!(
+            report["protected_generation_ids"],
+            serde_json::json!(["root", "running"])
+        );
+        assert_eq!(
+            report["candidate_generation_ids"],
+            serde_json::json!(["orphan"])
+        );
+    }
+
+    #[test]
+    fn template_gc_blocks_candidates_when_tree_integrity_is_unverified() {
+        let mut tree = verified_tree(&[("root", None), ("leaf", Some("root"))]);
+        tree["status"] = serde_json::json!("failed");
+        tree["integrity_verified"] = serde_json::json!(false);
+
+        let report = plan_template_gc_report(tree, &[], &[]);
+
+        assert_eq!(report["status"], "blocked");
+        assert_eq!(report["candidate_generation_ids"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn template_gc_blocks_candidates_for_unknown_clone_generation() {
+        let report = plan_template_gc_report(
+            verified_tree(&[("root", None), ("leaf", Some("root"))]),
+            &[],
+            &["missing".to_string()],
+        );
+
+        assert_eq!(report["status"], "blocked");
+        assert_eq!(report["candidate_generation_ids"], serde_json::json!([]));
+        assert!(report["blockers"][0].as_str().unwrap().contains("missing"));
+    }
+
+    #[test]
+    fn template_gc_blocks_cycles_and_duplicate_generation_ids() {
+        for tree in [
+            verified_tree(&[("a", Some("b")), ("b", Some("a"))]),
+            verified_tree(&[("a", None), ("a", None)]),
+        ] {
+            let report = plan_template_gc_report(tree, &[], &[]);
+            assert_eq!(report["status"], "blocked");
+            assert_eq!(report["candidate_generation_ids"], serde_json::json!([]));
+        }
+    }
 
     fn fixture(contents: &str) -> (PathBuf, PathBuf) {
         let root = std::env::temp_dir().join(format!(

@@ -136,6 +136,22 @@ pub struct CloneRegistry {
 }
 
 impl CloneRegistry {
+    /// Open an existing registry without creating it or changing its permissions.
+    pub fn open_read_only(root: &Path) -> Result<Self, String> {
+        let metadata = fs::symlink_metadata(root)
+            .map_err(|error| format!("inspect clone registry {}: {error}", root.display()))?;
+        if !metadata.file_type().is_dir() {
+            return Err(format!(
+                "clone registry root must be a real directory: {}",
+                root.display()
+            ));
+        }
+        let root = root
+            .canonicalize()
+            .map_err(|error| format!("resolve clone registry: {error}"))?;
+        Ok(Self { root })
+    }
+
     pub fn open(root: &Path) -> Result<Self, String> {
         fs::create_dir_all(root)
             .map_err(|error| format!("create clone registry {}: {error}", root.display()))?;
@@ -666,6 +682,22 @@ mod tests {
             reopened.get("alpha").unwrap().generation_id,
             loaded.generation_id
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn read_only_registry_open_does_not_create_or_change_permissions() {
+        let root = temp_dir("read-only");
+        assert!(CloneRegistry::open_read_only(&root).is_err());
+        assert!(!root.exists());
+
+        fs::create_dir(&root).unwrap();
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o750)).unwrap();
+        let before = fs::metadata(&root).unwrap().permissions().mode() & 0o777;
+        let _registry = CloneRegistry::open_read_only(&root).unwrap();
+        let after = fs::metadata(&root).unwrap().permissions().mode() & 0o777;
+        assert_eq!(before, 0o750);
+        assert_eq!(after, before);
         fs::remove_dir_all(root).unwrap();
     }
 

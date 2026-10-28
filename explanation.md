@@ -265,6 +265,18 @@ the chance that PID reuse looks like a still-running VM. Stop waits for QMP
 closure and process exit. Reconcile handles crashes conservatively. Delete
 refuses live/ambiguous clones and only removes that clone's own artifacts.
 
+The read-only `template gc-plan` command checks that every discovered
+generation is integrity-verified before suggesting candidates. Explicit
+`--keep` IDs and clones recorded as `starting` or `running` are roots; each
+root's parent generations are roots too because a descendant may need those
+artifacts. Unmarked generations are candidate orphans, with leaf candidates
+listed for a hypothetical deletion order. A duplicate ID, bad hash, missing
+in-catalog parent, cycle, empty catalog, or active clone that points outside
+the catalog blocks all candidates. The command only prints a plan: it does
+not delete files, detach backing disks, acquire a catalog-wide lock, or
+prevent files changing after validation. Run it against a quiescent catalog;
+no destructive collector is implemented.
+
 ## 12. What the memory numbers mean
 
 - **RSS:** all resident pages mapped by one process. If three processes share
@@ -391,7 +403,7 @@ The repository intentionally leaves several questions open:
 - ordinary distro behavior beyond the tested Alpine identity profile;
 - precise wall-clock, RTC alarm, and interrupt behavior during QMP parking;
 - broad QEMU version, machine type, CPU model, and device compatibility;
-- persistent hierarchical-template garbage collection and power-loss recovery;
+- destructive hierarchical-template garbage collection and power-loss recovery;
 - density when every guest's full RAM and disk diverge.
 
 These are limits on what the saved experiments demonstrate, not implied

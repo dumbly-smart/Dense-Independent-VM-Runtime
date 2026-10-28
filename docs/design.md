@@ -131,3 +131,8 @@ can inspect metadata, verify hashes, and catalog parent links. A persistent
 runtime lifecycle, relocation, crash recovery, and broader machine/device
 compatibility remain deferred; TCG sharing remains deferred too.
 Explicit parking is measured but changes guest time.
+
+The Rust CLI also provides a read-only `template gc-plan`. It requires a fully
+verified catalog, protects starting/running clone generations and explicit
+keeps plus their ancestors, and reports candidate leaves without deleting
+files. This is a conservative planning step, not a destructive collector.

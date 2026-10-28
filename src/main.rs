@@ -77,6 +77,11 @@ fn main() {
         Command::TemplateTree { root } => {
             densevm::inspect::template_tree(&root).and_then(print_json)
         }
+        Command::TemplateGcPlan {
+            root,
+            state_dir,
+            keep_ids,
+        } => densevm::inspect::plan_template_gc(&root, &state_dir, &keep_ids).and_then(print_json),
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }
