@@ -1,0 +1,13 @@
+{
+  "status": "diagnostic_failure",
+  "observed_at": "2026-10-30",
+  "command": "cargo run -- probe --skip-guest-oom --vcpus 2 --vcpu-register-state --divergence-percent 0 --out /tmp/densevm-vcpu2-kvm-20261030-retry",
+  "host": {
+    "qemu_version": "11.1.2",
+    "kernel_version": "7.2.11-arch1-1",
+    "kvm_device_present": true
+  },
+  "guest_vcpus": 2,
+  "error": "QEMU could not pause the guest in userspace after 100 attempts; last CPL by CPU: {0: 0, 1: 3}",
+  "interpretation": "At the final snapshot CPU 0 was in CPL 0 and CPU 1 was in CPL 3. The capture gate had accepted only the first reported CPU's CPL, so it retried despite a guest vCPU already being in userspace."
+}

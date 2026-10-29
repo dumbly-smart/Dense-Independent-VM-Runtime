@@ -455,10 +455,21 @@ mod login_tests {
     }
 
     #[test]
-    fn parses_privilege_level_from_qemu_register_output() {
-        assert_eq!(parse_qemu_cpl("RIP=1234 RFL=2 CPL=3 II=0").unwrap(), 3);
-        assert_eq!(parse_qemu_cpl("RIP=ffff RFL=2 CPL=0 II=0").unwrap(), 0);
-        assert!(parse_qemu_cpl("no CPL field").is_err());
+    fn parses_privilege_level_for_each_qemu_cpu_block() {
+        let output = "CPU#0\nRIP=1 RFL=2 CPL=0 II=0\nCPU#1\nRIP=2 RFL=2 CPL=3 II=0\n";
+        assert_eq!(
+            parse_qemu_cpls_by_cpu(output).unwrap(),
+            std::collections::BTreeMap::from([(0, 0), (1, 3)])
+        );
+    }
+
+    #[test]
+    fn selects_expected_user_segment_base_from_any_vcpu() {
+        let output = "CPU#0\nRIP=1 RFL=2 CPL=0 II=0\nGS =0000 0000000000001111 ffffffff 00c00100\nCPU#1\nRIP=2 RFL=2 CPL=3 II=0\nGS =0000 0000000011110000 ffffffff 00c00100\n";
+        assert_eq!(
+            parse_qemu_user_segment_base(output, "GS", 0x1111_0000).unwrap(),
+            (1, 0x1111_0000)
+        );
     }
 
     #[test]
@@ -1482,13 +1493,36 @@ fn parse_qemu_monitor_cpu_indexes(output: &str, expected: u8) -> Result<Vec<u8>,
     Ok(indexes)
 }
 
-fn parse_qemu_cpl(output: &str) -> Result<u8, String> {
-    output
-        .split_ascii_whitespace()
-        .find_map(|field| field.strip_prefix("CPL="))
-        .ok_or_else(|| "QEMU register output omitted CPL".to_string())?
-        .parse::<u8>()
-        .map_err(|error| format!("invalid QEMU CPL: {error}"))
+fn parse_qemu_cpls_by_cpu(output: &str) -> Result<std::collections::BTreeMap<u8, u8>, String> {
+    let mut current_cpu = None;
+    let mut cpls = std::collections::BTreeMap::new();
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(index) = trimmed.strip_prefix("CPU#") {
+            current_cpu = Some(
+                index
+                    .parse::<u8>()
+                    .map_err(|error| format!("invalid QEMU CPU header {trimmed:?}: {error}"))?,
+            );
+        }
+        let Some(value) = trimmed
+            .split_ascii_whitespace()
+            .find_map(|field| field.strip_prefix("CPL="))
+        else {
+            continue;
+        };
+        let cpu = current_cpu.ok_or("QEMU CPL appeared before a CPU header")?;
+        let cpl = value
+            .parse::<u8>()
+            .map_err(|error| format!("invalid QEMU CPL for CPU {cpu}: {error}"))?;
+        if cpls.insert(cpu, cpl).is_some() {
+            return Err(format!("QEMU register output repeated CPL for CPU {cpu}"));
+        }
+    }
+    if cpls.is_empty() {
+        return Err("QEMU register output omitted per-CPU CPL fields".into());
+    }
+    Ok(cpls)
 }
 
 fn parse_qemu_lapic_tpr(output: &str) -> Result<u8, String> {
@@ -1526,6 +1560,33 @@ fn parse_qemu_segment_base(output: &str, segment: &str) -> Result<u64, String> {
             .map_err(|error| format!("invalid QEMU {segment} segment base: {error}"));
     }
     Err(format!("QEMU monitor output omitted the {segment} segment"))
+}
+
+fn parse_qemu_user_segment_base(
+    output: &str,
+    segment: &str,
+    expected_base: u64,
+) -> Result<(u8, u64), String> {
+    let cpls = parse_qemu_cpls_by_cpu(output)?;
+    let mut current_cpu = None;
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(index) = trimmed.strip_prefix("CPU#") {
+            current_cpu = Some(index.parse::<u8>().map_err(|error| error.to_string())?);
+            continue;
+        }
+        if !trimmed.starts_with(segment) {
+            continue;
+        }
+        let cpu = current_cpu.ok_or("QEMU segment appeared before a CPU header")?;
+        let base = parse_qemu_segment_base(&format!("{trimmed}\n"), segment)?;
+        if cpls.get(&cpu) == Some(&3) && base == expected_base {
+            return Ok((cpu, base));
+        }
+    }
+    Err(format!(
+        "QEMU did not report expected {segment} base 0x{expected_base:x} on a userspace vCPU; CPL by CPU: {cpls:?}"
+    ))
 }
 
 fn parse_rtc_alarm_reply(reply: &str) -> Result<(u64, u8), String> {
@@ -1599,11 +1660,21 @@ fn qemu_user_register_snapshot(
 ) -> Result<(std::collections::BTreeMap<String, u64>, String), String> {
     for attempt in 0..100 {
         let snapshot = qemu_register_snapshot(qmp, expected_vcpus)?;
-        if parse_qemu_cpl(&snapshot.1)? == 3 {
+        if parse_qemu_cpls_by_cpu(&snapshot.1)?
+            .values()
+            .any(|cpl| *cpl == 3)
+        {
             return Ok(snapshot);
         }
         if attempt == 99 {
-            return Err("QEMU could not pause the guest in userspace after 100 attempts".into());
+            let cpls = parse_qemu_cpls_by_cpu(&snapshot.1)
+                .map(|values| format!("; last CPL by CPU: {values:?}"))
+                .unwrap_or_else(|error| {
+                    format!("; could not parse last per-CPU CPL values: {error}")
+                });
+            return Err(format!(
+                "QEMU could not pause the guest in userspace after 100 attempts{cpls}"
+            ));
         }
         resume_and_verify(qmp)?;
         thread::sleep(Duration::from_millis(2));
@@ -2134,8 +2205,10 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         let (b_vcpu_registers, b_vcpu_register_text) = qemu_user_register_snapshot(&mut bq, vcpus)?;
         let a_lapic_text = qemu_lapic_snapshot(&mut aq)?;
         let b_lapic_text = qemu_lapic_snapshot(&mut bq)?;
-        let a_gs_base_observed = parse_qemu_segment_base(&a_vcpu_register_text, "GS")?;
-        let b_gs_base_observed = parse_qemu_segment_base(&b_vcpu_register_text, "GS")?;
+        let (a_gs_vcpu_index, a_gs_base_observed) =
+            parse_qemu_user_segment_base(&a_vcpu_register_text, "GS", a_gs_base)?;
+        let (b_gs_vcpu_index, b_gs_base_observed) =
+            parse_qemu_user_segment_base(&b_vcpu_register_text, "GS", b_gs_base)?;
         let differing_vcpu_registers: Vec<_> = a_vcpu_registers
             .iter()
             .filter_map(|(name, a_value)| {
@@ -2215,8 +2288,6 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             && b_register_workload_armed.starts_with("CPU-REGISTER-ARMED")
             && a_register_workload_done.contains(&format!("seed={a_register_seed}"))
             && b_register_workload_done.contains(&format!("seed={b_register_seed}"))
-            && a_gs_base_observed == a_gs_base
-            && b_gs_base_observed == b_gs_base
             && a_gs_base_observed != b_gs_base_observed
             && !differing_vcpu_registers.is_empty()
             && lapic_tpr_state_verified.unwrap_or(true);
@@ -2226,8 +2297,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                 "status":if verified {"verified"} else {"failed"},
                 "capture":"QMP human-monitor-command info registers and info lapic while each clone was paused",
                 "workload":"guest CPU arithmetic with clone-specific seed and user GS base, stopped after both workloads announced readiness",
-                "a":{"seed":a_register_seed,"gs_base_expected":a_gs_base,"gs_base_observed":a_gs_base_observed,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"lapic_output":a_lapic_text,"workload_done":a_register_workload_done},
-                "b":{"seed":b_register_seed,"gs_base_expected":b_gs_base,"gs_base_observed":b_gs_base_observed,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"lapic_output":b_lapic_text,"workload_done":b_register_workload_done},
+                "a":{"seed":a_register_seed,"gs_base_expected":a_gs_base,"gs_base_observed":a_gs_base_observed,"gs_base_vcpu_index":a_gs_vcpu_index,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"lapic_output":a_lapic_text,"workload_done":a_register_workload_done},
+                "b":{"seed":b_register_seed,"gs_base_expected":b_gs_base,"gs_base_observed":b_gs_base_observed,"gs_base_vcpu_index":b_gs_vcpu_index,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"lapic_output":b_lapic_text,"workload_done":b_register_workload_done},
                 "differing_general_purpose_registers":differing_vcpu_registers,
                 "lapic_tpr_state":lapic_tpr_state
             }),

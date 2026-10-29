@@ -50,9 +50,9 @@ the tested QEMU, kernel, guest, devices, and workload.
 - **CPU/device semantics: partial.** Previous KVM samples captured vCPU0 GPR/GS
   and selected LAPIC TPR state. The probe now parses all `info registers -a`
   GPR blocks separately by vCPU, and a two-clone KVM restore succeeded on
-  2026-10-30. One-vCPU register capture also passed; a two-vCPU capture started
-  guests but failed to catch a userspace snapshot after 100 attempts. CPU 1
-  register isolation remains unverified. Other MSRs, detailed APIC registers,
+  2026-10-30. One- and two-vCPU register capture passed; both vCPU indexes had
+  differing GPR snapshots and the guest-specific user GS bases were observed
+  on CPU 0 and CPU 1 respectively. Other MSRs, detailed APIC registers,
   pending interrupts, and precise interrupt timing remain unverified.
 - **Timers while parked: partial.** QMP pause nearly eliminates host CPU use,
   but guest time and alarms differ. Parking is not semantically equivalent to

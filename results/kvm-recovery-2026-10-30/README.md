@@ -40,10 +40,15 @@ for a particular density at larger guest sizes.
 
 The same host also passed the opt-in register capture with one vCPU per clone;
 its raw result is [`one-vcpu-register-capture.json`](one-vcpu-register-capture.json).
-A follow-up with two vCPUs per clone started the VMs but did not complete
-register capture: after 100 resume/pause attempts, the probe had not caught the
-guest in userspace. The failed attempt is recorded in
-[`two-vcpu-register-capture-failure.json`](two-vcpu-register-capture-failure.json).
-It does not verify or refute CPU 1 register isolation. The current capture gate
-looks for a userspace privilege level in the monitor output; diagnosing how
-that gate behaves with two guest vCPUs remains open.
+A two-vCPU attempt first exposed a capture-gate bug: it checked CPU 0's
+privilege level, while the paused output showed CPU 0 at CPL 0 and CPU 1 at
+CPL 3. The corrected gate accepts a userspace vCPU and checks the expected GS
+base on that same CPU. The successful result is
+[`two-vcpu-register-capture.json`](two-vcpu-register-capture.json); both clones
+reported CPU indexes `[0, 1]`, the guest-specific GS bases matched on CPUs 0
+and 1 respectively, and the snapshots contained differing GPRs for both CPU
+indexes. The initial failed attempt remains recorded as
+[`two-vcpu-register-capture-initial-failure.json`](two-vcpu-register-capture-initial-failure.json)
+and the follow-up diagnostic
+[`two-vcpu-register-capture-diagnostic.json`](two-vcpu-register-capture-diagnostic.json).
+This is one sample and still covers GPR/GS state only.
