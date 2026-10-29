@@ -500,18 +500,18 @@ pub fn plan_template_gc(
                 crate::lifecycle::CloneState::Starting | crate::lifecycle::CloneState::Running
             )
         })
-        .map(|clone| (clone.id.clone(), clone.generation_id.clone()))
+        .map(|clone| (clone.id.clone(), clone.generation_id.clone(), clone.state))
         .collect::<Vec<_>>();
     let active_ids = active_clones
         .iter()
-        .map(|(_, id)| id.clone())
+        .map(|(_, id, _)| id.clone())
         .collect::<Vec<_>>();
     let mut report = plan_template_gc_report(tree, keep_ids, &active_ids);
     report["active_clones"] = json!(
         active_clones
             .iter()
-            .map(|(clone_id, generation_id)| {
-                json!({"clone_id":clone_id,"generation_id":generation_id})
+            .map(|(clone_id, generation_id, state)| {
+                json!({"clone_id":clone_id,"generation_id":generation_id,"state":state})
             })
             .collect::<Vec<_>>()
     );
@@ -1029,6 +1029,8 @@ mod template_tests {
             .map(|clone| clone["clone_id"].as_str().unwrap())
             .collect::<Vec<_>>();
         assert_eq!(active_ids, ["active-running", "active-starting"]);
+        assert_eq!(gc_plan["active_clones"][0]["state"], "running");
+        assert_eq!(gc_plan["active_clones"][1]["state"], "starting");
         assert_eq!(gc_plan["protected_generation_ids"][0], generation_id);
         assert_eq!(gc_plan["candidate_generation_ids"], serde_json::json!([]));
 

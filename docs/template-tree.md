@@ -150,7 +150,8 @@ ancestors. An empty or invalid catalog, duplicate IDs, malformed or cyclic
 parent links, or an active clone that points to an unknown generation blocks
 all candidates. A planned candidate includes its ID, directory, manifest,
 parent ID, and leaf flag; leaf IDs are listed separately as a possible
-child-first removal order.
+child-first removal order. The report lists each active clone's registry state
+alongside its generation reference.
 
 This command only reports candidates. It does not remove files, check
 references outside the clone registry and catalog, or lock the catalog while
