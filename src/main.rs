@@ -81,7 +81,15 @@ fn main() {
             root,
             state_dir,
             keep_ids,
-        } => densevm::inspect::plan_template_gc(&root, &state_dir, &keep_ids).and_then(print_json),
+        } => densevm::inspect::plan_template_gc(&root, &state_dir, &keep_ids).and_then(|report| {
+            let planned = report["status"] == "planned";
+            print_json(report)?;
+            if planned {
+                Ok(())
+            } else {
+                Err("template GC planning blocked; see report blockers".into())
+            }
+        }),
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }

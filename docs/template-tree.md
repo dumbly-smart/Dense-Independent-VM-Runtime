@@ -155,7 +155,9 @@ child-first removal order.
 This command only reports candidates. It does not remove files, check
 references outside the clone registry and catalog, or lock the catalog while
 hashing. Run it while template publication is quiescent, and treat the output
-as an audit aid rather than authorization to delete a directory.
+as an audit aid rather than authorization to delete a directory. A blocked
+plan still prints its JSON blockers and exits nonzero, so automation cannot
+mistake it for a usable candidate plan.
 
 ### Relocation proof
 

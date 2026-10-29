@@ -501,6 +501,39 @@ fn parses_read_only_template_gc_plan() {
 }
 
 #[test]
+fn blocked_template_gc_plan_prints_report_and_exits_nonzero() {
+    let root = std::env::temp_dir().join(format!(
+        "densevm-blocked-gc-plan-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let catalog = root.join("catalog");
+    let state_dir = root.join("state");
+    fs::create_dir_all(&catalog).unwrap();
+    fs::create_dir_all(&state_dir).unwrap();
+
+    let output = ProcessCommand::new(env!("CARGO_BIN_EXE_densevm"))
+        .args(["template", "gc-plan"])
+        .arg(&catalog)
+        .args(["--state-dir"])
+        .arg(&state_dir)
+        .output()
+        .unwrap();
+    let report: Value = serde_json::from_slice(&output.stdout).unwrap();
+
+    assert!(!output.status.success());
+    assert_eq!(report["status"], "blocked");
+    assert_eq!(report["dry_run"], true);
+    assert_eq!(report["candidate_generation_ids"], serde_json::json!([]));
+    assert!(report["blockers"].as_array().unwrap().len() > 0);
+    assert_eq!(fs::read_dir(&state_dir).unwrap().count(), 0);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn rejects_unknown_commands_and_invalid_counts() {
     assert!(parse_args(["densevm", "unknown"]).is_err());
     for value in ["33", "not-a-number"] {
