@@ -93,8 +93,9 @@ count to baseline guests, the template, and all restored clones. Two-vCPU
 restore samples are saved under `results/vcpu-multi2/` and
 `results/vcpu-multi2-run2/`. QMP register snapshots in those samples cover
 CPU#0 only. The optional register probe now requests all CPU blocks with
-`info registers -a`; its post-change KVM result remains unverified because the
-current host fails before guest readiness.
+`info registers -a`; its post-change KVM result remains unverified. The
+two-clone KVM RAM/disk isolation probe succeeded again on 2026-10-30; see
+[`results/kvm-recovery-2026-10-30/`](results/kvm-recovery-2026-10-30/).
 `--divergence-mib` controls how much of A's 32 MiB test region is dirtied;
 `--divergence-percent` supports exact page-count sweeps from 0% to 100%.
 

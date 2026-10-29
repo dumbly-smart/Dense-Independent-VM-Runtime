@@ -1,0 +1,22 @@
+{
+  "status": "failed",
+  "observed_at": "2026-10-30",
+  "command": "cargo run -- probe --skip-guest-oom --vcpus 2 --vcpu-register-state --divergence-percent 0 --out /tmp/densevm-vcpu2-kvm-20261030",
+  "host": {
+    "qemu_version": "11.1.2",
+    "kernel_version": "7.2.11-arch1-1",
+    "kvm_device_present": true
+  },
+  "guest_vcpus": 2,
+  "failure_phase": "vcpu register snapshot after clones resumed",
+  "error": "QEMU could not pause the guest in userspace after 100 attempts",
+  "qemu_logs": {
+    "baseline-000.qemu.log": "empty",
+    "baseline-001.qemu.log": "empty",
+    "template.qemu.log": "qemu-system-x86_64: warning: netdev net0 has no peer",
+    "clone-000.qemu.log": "qemu-system-x86_64: warning: netdev net0 has no peer",
+    "clone-001.qemu.log": "qemu-system-x86_64: warning: netdev net0 has no peer"
+  },
+  "result_json_written": false,
+  "interpretation": "The guests started, but the probe did not obtain the expected userspace register snapshot. This is not evidence of a guest-entry failure or a register-isolation failure."
+}
