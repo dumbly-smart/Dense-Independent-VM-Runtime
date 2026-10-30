@@ -35,9 +35,9 @@ advance during suspension. See the official [QEMU 11.1.2 `-rtc` documentation](h
 
 ## Result
 
-One run per mode was collected on QEMU 11.1.2 / Linux 7.2.11-arch1-1. In every
-mode, the running control alarms fired once in both clones with flags 160
-(`RTC_IRQF | RTC_AF`).
+Two sequential runs per mode were collected on QEMU 11.1.2 / Linux
+7.2.11-arch1-1. In all six runs, each running control alarm fired once in
+both clones with flags 160 (`RTC_IRQF | RTC_AF`).
 
 | QEMU RTC clock | Running controls | Alarms after 7-second QMP stop | Result |
 | --- | --- | --- | --- |
@@ -45,12 +45,12 @@ mode, the running control alarms fired once in both clones with flags 160
 | `rt` | A and B delivered | A and B missed | RTC was past the programmed alarm; `alarm_IRQ: yes`, `alrm_pending: no` |
 | `vm` | A and B delivered | A and B delivered | One event per clone with `RTC_AF` |
 
-The virtual-clock result is consistent with pausing RTC progress during QMP
-stop: the alarm remains ahead of guest RTC time and fires after resume. The
-host and monotonic clock results reproduce the missed-alarm behavior. This is
-an observation from one machine and one trial per mode, not a general claim
-that QEMU loses RTC alarms whenever it is paused. The exact loss point for the
-host and monotonic trials remains unknown.
+Both virtual-clock runs delivered after resume. The four host and monotonic
+clock paused trials missed. The virtual-clock result is consistent with
+pausing RTC progress during QMP stop: the alarm remains ahead of guest RTC
+time and fires after resume. This pattern repeated on one machine, but does
+not establish behavior across QEMU versions, guests, or other pause types.
+The exact loss point for host and monotonic trials remains unknown.
 
 ## Reproduction and raw data
 
@@ -65,10 +65,13 @@ cargo run -- probe --out /tmp/rtc-vm --skip-guest-oom --rtc-alarm --rtc-clock vm
 The captured raw QEMU command for the template and both clones must contain
 the requested `-rtc clock=...` value. Results from this host are in
 [`rtc-clock-comparison.json`](../results/kvm-recovery-2026-10-30/rtc-clock-comparison.json),
-with the full per-run results beside it:
+with the first sample per mode and full repeat results beside it:
 [`host`](../results/kvm-recovery-2026-10-30/rtc-clock-host.json),
 [`rt`](../results/kvm-recovery-2026-10-30/rtc-clock-rt.json), and
-[`vm`](../results/kvm-recovery-2026-10-30/rtc-clock-vm.json).
+[`vm`](../results/kvm-recovery-2026-10-30/rtc-clock-vm.json), plus
+[`host repeat`](../results/kvm-recovery-2026-10-30/rtc-clock-host-repeat.json),
+[`rt repeat`](../results/kvm-recovery-2026-10-30/rtc-clock-rt-repeat.json),
+and [`vm repeat`](../results/kvm-recovery-2026-10-30/rtc-clock-vm-repeat.json).
 
 The ignored live integration test
 `probe_records_guest_rtc_alarm_delivery_with_virtual_clock` checks the

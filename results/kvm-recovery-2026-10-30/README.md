@@ -120,3 +120,9 @@ private-dirty estimate rose by 8,208 pages (32,832 KiB); B rose by 52 pages
 (208 KiB). These are `/proc/smaps` classifications, not guest-physical page
 identities. Raw result: [`page-estimates-cow.json`](page-estimates-cow.json);
 extracted values: [`page-estimates-cow-summary.json`](page-estimates-cow-summary.json).
+
+The RTC mode comparison was repeated sequentially once per mode. Running
+controls again delivered in all six guest trials; both paused alarms missed
+in host and `rt`, and both delivered in `vm`. Summary data includes these
+second samples, with separate raw JSON records linked from
+[`docs/rtc-clock-experiment.md`](../../docs/rtc-clock-experiment.md).
