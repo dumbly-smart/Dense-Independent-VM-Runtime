@@ -50,6 +50,7 @@ cargo run -- benchmark baseline --count 2 --accel tcg --out /tmp/densevm-tcg-2
 cargo run -- benchmark baseline --count 1 --accel tcg --trace-translations --out /tmp/densevm-tcg-traced-1
 # Inspect saved disk and aggregate/page-estimated live RAM metadata:
 cargo run -- inspect /tmp/densevm-my-run/clone-a.qcow2 disk
+cargo run -- inspect clone vm01 disk --state-dir /var/lib/densevm
 cargo run -- memory-map QEMU_PID /tmp/densevm-my-run/memory.img
 cargo run -- memory-map clone vm01 --state-dir /var/lib/densevm
 cargo run -- ksm status

@@ -54,6 +54,10 @@ pub enum Command {
     InspectDisk {
         image: PathBuf,
     },
+    InspectCloneDisk {
+        id: String,
+        state_dir: PathBuf,
+    },
     InspectTemplate {
         manifest: PathBuf,
     },
@@ -289,7 +293,23 @@ where
         }
         Some("inspect") => {
             let first = args.next().ok_or("image path or inspect target is required")?;
-            if first == "template" {
+            if first == "clone" {
+                let id = args.next().ok_or("clone ID is required")?;
+                if args.next().as_deref() != Some("disk") {
+                    return Err("usage: densevm inspect clone ID disk --state-dir DIR".into());
+                }
+                let mut state_dir = None;
+                while let Some(arg) = args.next() {
+                    match arg.as_str() {
+                        "--state-dir" => state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?)),
+                        flag => return Err(format!("unknown option {flag}")),
+                    }
+                }
+                Ok(Command::InspectCloneDisk {
+                    id,
+                    state_dir: state_dir.ok_or("--state-dir is required")?,
+                })
+            } else if first == "template" {
                 let manifest = PathBuf::from(args.next().ok_or("template manifest path is required")?);
                 if args.next().is_some() {
                     return Err("usage: densevm inspect template MANIFEST".to_string());

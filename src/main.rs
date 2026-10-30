@@ -60,6 +60,9 @@ fn main() {
             trace_translations,
         ),
         Command::InspectDisk { image } => densevm::inspect::disk(&image).and_then(print_json),
+        Command::InspectCloneDisk { id, state_dir } => {
+            densevm::inspect::inspect_clone_disk(&id, &state_dir).and_then(print_json)
+        }
         Command::InspectTemplate { manifest } => {
             densevm::inspect::template_generation(&manifest).and_then(print_json)
         }

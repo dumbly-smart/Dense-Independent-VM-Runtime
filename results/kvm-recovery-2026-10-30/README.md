@@ -151,3 +151,10 @@ collectible; `template gc ... --apply` removed the RAM, machine-state, disk,
 and manifest links from the scratch catalog, preserved its log/result files,
 and left the source artifacts and parent disk hash unchanged. Raw plan and
 delete reports: [`template-gc-cli-smoke.json`](template-gc-cli-smoke.json).
+
+The new `inspect clone ID disk` command was run against both stopped persistent
+clones. It resolved separate overlay paths, each with 200,704 bytes actual
+size and 64 MiB virtual capacity, and displayed the shared generation backing
+chain. This is a metadata smoke only; the backing-chain sizes are repeated in
+each report and must not be summed as private storage. Raw output:
+[`persistent-clone-disk-inspect.json`](persistent-clone-disk-inspect.json).

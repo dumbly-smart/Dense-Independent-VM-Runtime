@@ -1,0 +1,282 @@
+{
+  "experiment": "persistent clone disk inspection by clone ID",
+  "date": "2026-10-30",
+  "host_kernel": "7.2.11-arch1-1",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "clones": {
+    "mapclone": {
+      "command": [
+        "densevm",
+        "inspect",
+        "clone",
+        "mapclone",
+        "disk",
+        "--state-dir",
+        "/tmp/mmstate"
+      ],
+      "report": {
+        "clone": {
+          "disk_overlay": "/tmp/mmstate/mapclone/disk.qcow2",
+          "generation_id": "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+          "id": "mapclone",
+          "state": "stopped"
+        },
+        "disk": [
+          {
+            "actual-size": 200704,
+            "backing-filename": "/tmp/mmtree/parent.qcow2",
+            "backing-filename-format": "qcow2",
+            "children": [
+              {
+                "info": {
+                  "actual-size": 200704,
+                  "children": [],
+                  "dirty-flag": false,
+                  "filename": "/tmp/mmstate/mapclone/disk.qcow2",
+                  "format": "file",
+                  "format-specific": {
+                    "data": {},
+                    "type": "file"
+                  },
+                  "virtual-size": 197120
+                },
+                "name": "file"
+              }
+            ],
+            "cluster-size": 65536,
+            "dirty-flag": false,
+            "filename": "/tmp/mmstate/mapclone/disk.qcow2",
+            "format": "qcow2",
+            "format-specific": {
+              "data": {
+                "compat": "1.1",
+                "compression-type": "zlib",
+                "corrupt": false,
+                "extended-l2": false,
+                "lazy-refcounts": false,
+                "refcount-bits": 16
+              },
+              "type": "qcow2"
+            },
+            "full-backing-filename": "/tmp/mmtree/parent.qcow2",
+            "virtual-size": 67108864
+          },
+          {
+            "actual-size": 331776,
+            "backing-filename": "../mmroot/base.qcow2",
+            "backing-filename-format": "qcow2",
+            "children": [
+              {
+                "info": {
+                  "actual-size": 331776,
+                  "children": [],
+                  "dirty-flag": false,
+                  "filename": "/tmp/mmtree/parent.qcow2",
+                  "format": "file",
+                  "format-specific": {
+                    "data": {},
+                    "type": "file"
+                  },
+                  "virtual-size": 393216
+                },
+                "name": "file"
+              }
+            ],
+            "cluster-size": 65536,
+            "dirty-flag": false,
+            "filename": "/tmp/mmtree/parent.qcow2",
+            "format": "qcow2",
+            "format-specific": {
+              "data": {
+                "compat": "1.1",
+                "compression-type": "zlib",
+                "corrupt": false,
+                "extended-l2": false,
+                "lazy-refcounts": false,
+                "refcount-bits": 16
+              },
+              "type": "qcow2"
+            },
+            "full-backing-filename": "/tmp/mmtree/../mmroot/base.qcow2",
+            "virtual-size": 67108864
+          },
+          {
+            "actual-size": 200704,
+            "children": [
+              {
+                "info": {
+                  "actual-size": 200704,
+                  "children": [],
+                  "dirty-flag": false,
+                  "filename": "/tmp/mmtree/../mmroot/base.qcow2",
+                  "format": "file",
+                  "format-specific": {
+                    "data": {},
+                    "type": "file"
+                  },
+                  "virtual-size": 197120
+                },
+                "name": "file"
+              }
+            ],
+            "cluster-size": 65536,
+            "dirty-flag": false,
+            "filename": "/tmp/mmtree/../mmroot/base.qcow2",
+            "format": "qcow2",
+            "format-specific": {
+              "data": {
+                "compat": "1.1",
+                "compression-type": "zlib",
+                "corrupt": false,
+                "extended-l2": false,
+                "lazy-refcounts": false,
+                "refcount-bits": 16
+              },
+              "type": "qcow2"
+            },
+            "virtual-size": 67108864
+          }
+        ],
+        "measurement_limit": "qemu-img metadata sampled while the guest is running may race concurrent guest writes"
+      }
+    },
+    "mapclone2": {
+      "command": [
+        "densevm",
+        "inspect",
+        "clone",
+        "mapclone2",
+        "disk",
+        "--state-dir",
+        "/tmp/mmstate"
+      ],
+      "report": {
+        "clone": {
+          "disk_overlay": "/tmp/mmstate/mapclone2/disk.qcow2",
+          "generation_id": "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+          "id": "mapclone2",
+          "state": "stopped"
+        },
+        "disk": [
+          {
+            "actual-size": 200704,
+            "backing-filename": "/tmp/mmtree/parent.qcow2",
+            "backing-filename-format": "qcow2",
+            "children": [
+              {
+                "info": {
+                  "actual-size": 200704,
+                  "children": [],
+                  "dirty-flag": false,
+                  "filename": "/tmp/mmstate/mapclone2/disk.qcow2",
+                  "format": "file",
+                  "format-specific": {
+                    "data": {},
+                    "type": "file"
+                  },
+                  "virtual-size": 197120
+                },
+                "name": "file"
+              }
+            ],
+            "cluster-size": 65536,
+            "dirty-flag": false,
+            "filename": "/tmp/mmstate/mapclone2/disk.qcow2",
+            "format": "qcow2",
+            "format-specific": {
+              "data": {
+                "compat": "1.1",
+                "compression-type": "zlib",
+                "corrupt": false,
+                "extended-l2": false,
+                "lazy-refcounts": false,
+                "refcount-bits": 16
+              },
+              "type": "qcow2"
+            },
+            "full-backing-filename": "/tmp/mmtree/parent.qcow2",
+            "virtual-size": 67108864
+          },
+          {
+            "actual-size": 331776,
+            "backing-filename": "../mmroot/base.qcow2",
+            "backing-filename-format": "qcow2",
+            "children": [
+              {
+                "info": {
+                  "actual-size": 331776,
+                  "children": [],
+                  "dirty-flag": false,
+                  "filename": "/tmp/mmtree/parent.qcow2",
+                  "format": "file",
+                  "format-specific": {
+                    "data": {},
+                    "type": "file"
+                  },
+                  "virtual-size": 393216
+                },
+                "name": "file"
+              }
+            ],
+            "cluster-size": 65536,
+            "dirty-flag": false,
+            "filename": "/tmp/mmtree/parent.qcow2",
+            "format": "qcow2",
+            "format-specific": {
+              "data": {
+                "compat": "1.1",
+                "compression-type": "zlib",
+                "corrupt": false,
+                "extended-l2": false,
+                "lazy-refcounts": false,
+                "refcount-bits": 16
+              },
+              "type": "qcow2"
+            },
+            "full-backing-filename": "/tmp/mmtree/../mmroot/base.qcow2",
+            "virtual-size": 67108864
+          },
+          {
+            "actual-size": 200704,
+            "children": [
+              {
+                "info": {
+                  "actual-size": 200704,
+                  "children": [],
+                  "dirty-flag": false,
+                  "filename": "/tmp/mmtree/../mmroot/base.qcow2",
+                  "format": "file",
+                  "format-specific": {
+                    "data": {},
+                    "type": "file"
+                  },
+                  "virtual-size": 197120
+                },
+                "name": "file"
+              }
+            ],
+            "cluster-size": 65536,
+            "dirty-flag": false,
+            "filename": "/tmp/mmtree/../mmroot/base.qcow2",
+            "format": "qcow2",
+            "format-specific": {
+              "data": {
+                "compat": "1.1",
+                "compression-type": "zlib",
+                "corrupt": false,
+                "extended-l2": false,
+                "lazy-refcounts": false,
+                "refcount-bits": 16
+              },
+              "type": "qcow2"
+            },
+            "virtual-size": 67108864
+          }
+        ],
+        "measurement_limit": "qemu-img metadata sampled while the guest is running may race concurrent guest writes"
+      }
+    }
+  },
+  "interpretation": "Both stopped clone records resolved to their own qcow2 overlay and the same template-derived backing chain. Each overlay reported 200704 bytes actual-size at sample time; this metadata sample is not a controlled disk-write divergence experiment and must not be summed with each repeated backing-chain entry.",
+  "limitations": "qemu-img metadata sampled while a guest is running may race concurrent guest writes; these overlays were stopped. Saved records reference a temporary template under /tmp."
+}

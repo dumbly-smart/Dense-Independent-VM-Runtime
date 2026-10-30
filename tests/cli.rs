@@ -553,6 +553,26 @@ fn parses_read_only_template_gc_plan() {
 }
 
 #[test]
+fn parses_disk_inspection_for_a_persistent_clone_id() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "inspect",
+            "clone",
+            "alpha",
+            "disk",
+            "--state-dir",
+            "/var/lib/densevm",
+        ]),
+        Ok(Command::InspectCloneDisk {
+            id: "alpha".into(),
+            state_dir: "/var/lib/densevm".into(),
+        })
+    );
+    assert!(parse_args(["densevm", "inspect", "clone", "alpha", "disk"]).is_err());
+}
+
+#[test]
 fn parses_explicit_leaf_template_collection_command() {
     assert_eq!(
         parse_args([

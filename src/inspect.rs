@@ -28,6 +28,58 @@ pub fn disk(image: &Path) -> Result<Value, String> {
     serde_json::from_str(&output).map_err(|e| format!("invalid qemu-img JSON: {e}"))
 }
 
+fn clone_disk_path(id: &str, state_dir: &Path, recorded_path: &Path) -> Result<PathBuf, String> {
+    let id_path = Path::new(id);
+    if id_path.components().count() != 1
+        || !matches!(id_path.components().next(), Some(Component::Normal(_)))
+    {
+        return Err("clone ID is not a local path component".into());
+    }
+    if !recorded_path.is_absolute() {
+        return Err("recorded clone disk path is not absolute".into());
+    }
+    let state_root = state_dir
+        .canonicalize()
+        .map_err(|error| format!("resolve clone state directory: {error}"))?;
+    let instance = state_root
+        .join(id)
+        .canonicalize()
+        .map_err(|error| format!("resolve clone instance directory: {error}"))?;
+    if instance.parent() != Some(state_root.as_path()) {
+        return Err("clone instance directory escapes the state directory".into());
+    }
+    let expected = instance.join("disk.qcow2");
+    let metadata = fs::symlink_metadata(recorded_path)
+        .map_err(|error| format!("inspect recorded clone disk: {error}"))?;
+    if !metadata.file_type().is_file() {
+        return Err("recorded clone disk is not a regular file".into());
+    }
+    let recorded = recorded_path
+        .canonicalize()
+        .map_err(|error| format!("resolve recorded clone disk: {error}"))?;
+    if recorded != expected {
+        return Err("recorded clone disk path is outside its private instance directory".into());
+    }
+    Ok(recorded)
+}
+
+pub fn inspect_clone_disk(id: &str, state_dir: &Path) -> Result<Value, String> {
+    let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
+    let record = registry.get(id)?;
+    let path = clone_disk_path(id, state_dir, &record.disk_overlay)?;
+    let disk_info = disk(&path)?;
+    Ok(json!({
+        "clone": {
+            "id":record.id,
+            "generation_id":record.generation_id,
+            "state":record.state,
+            "disk_overlay":path,
+        },
+        "disk":disk_info,
+        "measurement_limit":"qemu-img metadata sampled while the guest is running may race concurrent guest writes",
+    }))
+}
+
 pub fn template_generation(manifest_path: &Path) -> Result<Value, String> {
     let contents = fs::read_to_string(manifest_path).map_err(|error| {
         format!(
@@ -1058,6 +1110,9 @@ mod template_tests {
                 .unwrap();
         assert_eq!(protected["status"], "blocked");
         assert!(child.join("generation.json").exists());
+        let lock_probe = crate::template_lock::TemplateTreeLock::acquire_exclusive(&catalog, true)
+            .expect("first GC call must release its catalog lock");
+        drop(lock_probe);
 
         let report =
             super::delete_template_gc_leaf(&catalog, &state_dir, &generation_id, &[]).unwrap();
@@ -1589,6 +1644,32 @@ mod template_tests {
 mod memory_map_tests {
     use super::qemu_ram_file_from_args;
     use std::path::Path;
+
+    #[test]
+    fn resolves_persistent_clone_disk_only_inside_its_instance_directory() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let root = std::env::temp_dir().join(format!(
+            "densevm-clone-disk-inspect-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let instance = root.join("alpha");
+        fs::create_dir_all(&instance).unwrap();
+        let overlay = instance.join("disk.qcow2");
+        fs::write(&overlay, b"overlay").unwrap();
+
+        assert_eq!(
+            super::clone_disk_path("alpha", &root, &overlay).unwrap(),
+            overlay.canonicalize().unwrap()
+        );
+        assert!(super::clone_disk_path("alpha", &root, &root.join("outside.qcow2")).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn resolves_one_absolute_ram_file_from_qemu_object_arguments() {
