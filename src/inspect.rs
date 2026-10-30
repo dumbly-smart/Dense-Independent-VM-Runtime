@@ -1374,6 +1374,13 @@ mod template_tests {
         )
         .unwrap();
         fs::remove_file(child.join("disk.qcow2")).unwrap();
+        fs::write(child.join("machine-state"), "unexpected replacement").unwrap();
+
+        let error = super::recover_template_gc(&catalog, &state_dir).unwrap_err();
+        assert!(error.contains("GC artifact is unsafe or changed"));
+        assert!(journal_path.exists());
+        assert!(child.join("memory.img").exists());
+        fs::write(child.join("machine-state"), "state payload").unwrap();
 
         let report = super::recover_template_gc(&catalog, &state_dir).unwrap();
 
@@ -1388,6 +1395,37 @@ mod template_tests {
             fs::read_to_string(child.join("experiment.log")).unwrap(),
             "preserve me"
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn template_gc_plan_blocks_while_a_recovery_journal_is_pending() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-template-gc-pending-plan-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let catalog = root.join("catalog");
+        let state_dir = root.join("state");
+        fs::create_dir_all(&catalog).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        let journal = catalog.join(format!(".densevm-gc-{}.json", "c".repeat(64)));
+        fs::write(&journal, "pending recovery").unwrap();
+
+        let report = plan_template_gc(&catalog, &state_dir, &[]).unwrap();
+
+        assert_eq!(report["status"], "blocked");
+        assert_eq!(report["candidate_generations"], serde_json::json!([]));
+        assert!(
+            report["blockers"][0]
+                .as_str()
+                .unwrap()
+                .contains("gc-recover")
+        );
+        assert!(journal.exists());
         fs::remove_dir_all(root).unwrap();
     }
 
