@@ -66,3 +66,14 @@ guest-visible MACs differed, both machine IDs differed, their memory maps
 resolved to the same template RAM file, and both stopped cleanly. The run
 reported 2,307.88 ms to start both clones. Raw command and measurement data:
 [`persistent-nic-identity-gating.json`](../results/kvm-recovery-2026-10-30/persistent-nic-identity-gating.json).
+
+A subsequent eight-clone run using the same startup path verified eight
+distinct MACs and machine IDs. Clone 1 dirtied all of the 32 MiB test region;
+its QEMU PSS rose 32,718 KiB while sibling changes were small measurement
+noise. After isolation checks, stopping clone 1 left all seven siblings
+responsive with their own RAM and disk markers. Starting all eight took
+9,236.98 ms. Aggregate QEMU-process PSS was 305,209 KiB before divergence and
+338,986 KiB afterward; this excludes KVM/kernel memory and has no matched
+conventional baseline, so it is not a host-wide density claim. The 2 GiB
+configured total is eight guests configured with 256 MiB each, not measured
+physical use. Raw run: [`persistent-eight-sibling-stop.json`](../results/kvm-recovery-2026-10-30/persistent-eight-sibling-stop.json).

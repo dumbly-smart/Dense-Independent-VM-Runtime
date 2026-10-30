@@ -63,7 +63,9 @@ not guest-level isolation or memory savings.
 The persistent-tree runner also performs a sibling-stop check when it starts
 at least two clones. It stops clone 1, verifies that QEMU reports `stopped` and
 its PID has exited, then reads RAM and disk markers from every remaining
-clone. The 2026-10-30 two-clone run passed with clone 2 still responsive and
-no leftover QEMU processes. This tests independent process and guest response
-for the synthetic profile; it does not cover every device or network setup.
-Raw run: [`persistent-sibling-stop.json`](../results/kvm-recovery-2026-10-30/persistent-sibling-stop.json).
+clone. A two-clone run and an eight-clone run passed; in the latter, clone 1
+stopped and all seven remaining guests returned their own markers. No QEMU
+processes remained after cleanup. This tests independent process and guest
+response for the synthetic profile; it does not cover every device or network
+setup. Raw runs: [`two-clone result`](../results/kvm-recovery-2026-10-30/persistent-sibling-stop.json)
+and [`eight-clone result`](../results/kvm-recovery-2026-10-30/persistent-eight-sibling-stop.json).

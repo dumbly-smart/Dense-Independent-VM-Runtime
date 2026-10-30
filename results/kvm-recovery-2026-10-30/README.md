@@ -158,3 +158,13 @@ size and 64 MiB virtual capacity, and displayed the shared generation backing
 chain. This is a metadata smoke only; the backing-chain sizes are repeated in
 each report and must not be summed as private storage. Raw output:
 [`persistent-clone-disk-inspect.json`](persistent-clone-disk-inspect.json).
+
+The persistent clone runner now stops clone 1 after its RAM/disk isolation
+check and reads the sibling markers again. In the two-clone sample, clone 2
+remained responsive after clone 1's QEMU PID exited. The eight-clone sample
+verified all seven siblings, unique MACs/machine IDs, and a first-clone 32 MiB
+RAM divergence. Aggregate QEMU process PSS changed from 305,209 to 338,986 KiB
+in that run; KVM/kernel memory and a matched conventional baseline were not
+measured there. Both samples cleaned up all QEMU processes. Raw records:
+[`two-clone`](persistent-sibling-stop.json) and
+[`eight-clone`](persistent-eight-sibling-stop.json).
