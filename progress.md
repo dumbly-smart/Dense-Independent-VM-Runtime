@@ -166,3 +166,4 @@ For a complete beginner-to-technical explanation, read
 [`explanation.md`](explanation.md). For the system map, read
 [`architecture.md`](architecture.md).
 
+- 2026-10-30 RTC alarm repeat: the running controls again delivered alarms, and both paused trials again missed. The output now records the same late RTC time and no pending alarm; the QEMU command uses the documented default host clock because it supplies no `-rtc` option. Root cause remains unknown, and `clock=vm` / `clock=rt` are unmeasured. See `results/kvm-recovery-2026-10-30/rtc-alarm-pause-repeat.json`.

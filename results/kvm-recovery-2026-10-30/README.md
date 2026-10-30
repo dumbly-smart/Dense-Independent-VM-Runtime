@@ -86,3 +86,23 @@ clone A. Its PSS and private-mapping changes were about 32 MiB while clone B
 remained nearly stable; cgroup `memory.current` rose by 28,975,104 bytes. This
 does not mean 100% of the 256 MiB guest RAM was dirtied. The exact table and
 limits are in [`cg100/`](cg100/).
+
+A repeated RTC alarm trial was run on the same host with:
+
+```sh
+cargo test --test probe probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials -- --ignored --nocapture
+```
+
+Both running controls received one RTC alarm interrupt (flags 160). Both
+alarms armed before a seven-second QMP `stop` timed out during the 20-second
+post-resume wait. After the timeout, guest RTC time was 22 seconds beyond the
+programmed alarm; `/proc/driver/rtc` reported `alarm_IRQ: yes` and
+`alrm_pending: no`. This repeats the previously observed behavior and still
+does not locate the lost event in QEMU's timer, interrupt injection, or the
+Linux guest handler. Raw output: [`rtc-alarm-pause-repeat.json`](rtc-alarm-pause-repeat.json).
+
+The captured QEMU command does not specify `-rtc`, so QEMU's documented default
+clock applies. QEMU documentation says the RTC defaults to host system time;
+`clock=vm` instead stops RTC progress during suspension. This result therefore
+only characterizes the default clock configuration of this probe. It does not
+establish behavior under `-rtc clock=vm` or `clock=rt`.
