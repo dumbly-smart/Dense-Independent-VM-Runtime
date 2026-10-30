@@ -105,3 +105,20 @@ was killed, then reached a surviving target afterward. Its evidence is in
 used a tmpfs output directory because the persistent filesystem was nearly
 full; its `st_blocks` values describe tmpfs allocation and are not a
 persistent-storage benchmark.
+
+## Persistent runtime identity-gated sweep
+
+The persistent runtime now uses post-identity NIC hotplug for each clone. To
+check the same COW behavior with that startup path, run the separate
+`experiments/runtime-clone/persistent_sweep.py` driver. It creates a fresh
+eight-clone set for each percentage, dirties that fraction of a 32 MiB test
+region in every clone, checks RAM/disk isolation and template hashes, stops
+clone 1, and confirms all seven siblings still answer. The 2026-10-30 sweep
+reported aggregate QEMU-process PSS increases of 0.8, 15.6, 28.6, 66.9, 130.7,
+and 259.5 MiB at 0%, 5%, 10%, 25%, 50%, and 100% per-clone divergence.
+Template-RAM-mapping `Private_Dirty` increased by 0.1, 12.7, 25.9, 64.4,
+128.6, and 256.8 MiB respectively. Each guest has 256 MiB configured RAM, so
+the 32 MiB test region is one eighth of guest RAM. These are six single runs on
+one host; PSS excludes KVM/kernel memory and this sweep has no matched
+conventional baseline. Raw JSON, command records, and graph:
+[`persistent divergence sweep`](../results/kvm-recovery-2026-10-30/persistent-divergence-sweep/).

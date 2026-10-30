@@ -168,3 +168,12 @@ in that run; KVM/kernel memory and a matched conventional baseline were not
 measured there. Both samples cleaned up all QEMU processes. Raw records:
 [`two-clone`](persistent-sibling-stop.json) and
 [`eight-clone`](persistent-eight-sibling-stop.json).
+
+The six-point identity-gated persistent sweep then dirtied the same percentage
+of a 32 MiB test region in every clone. QEMU process PSS increased by
+0.8/15.6/28.6/66.9/130.7/259.5 MiB across 0/5/10/25/50/100%; template RAM
+mapping `Private_Dirty` increased by 0.1/12.7/25.9/64.4/128.6/256.8 MiB.
+Each point verified that all seven siblings remained responsive after clone 1
+stopped. The results are single samples and exclude host KVM/kernel memory.
+See the per-run details, reproduction command, and plot in
+[`persistent-divergence-sweep/`](persistent-divergence-sweep/).
