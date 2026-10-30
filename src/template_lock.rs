@@ -8,6 +8,7 @@ const LOCK_FILE: &str = ".densevm-template-tree.lock";
 const LOCK_SHARED: i32 = 1;
 const LOCK_EXCLUSIVE: i32 = 2;
 const LOCK_NONBLOCKING: i32 = 4;
+const LOCK_UNLOCK: i32 = 8;
 
 #[link(name = "c")]
 unsafe extern "C" {
@@ -17,6 +18,15 @@ unsafe extern "C" {
 /// Holds the advisory lock used by publishers, clone startup, and collection.
 pub struct TemplateTreeLock {
     _file: File,
+}
+
+impl Drop for TemplateTreeLock {
+    fn drop(&mut self) {
+        // Unlock explicitly as well as closing the file. This prevents an
+        // inherited descriptor in a subprocess from extending the lock past
+        // the lifetime of the Rust guard.
+        let _ = unsafe { flock(self._file.as_raw_fd(), LOCK_UNLOCK) };
+    }
 }
 
 impl TemplateTreeLock {
