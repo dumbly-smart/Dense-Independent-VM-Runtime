@@ -74,6 +74,57 @@ def capture_clone_memory_maps(
     return reports
 
 
+def validate_sibling_survival_after_stop(
+    stop_result: dict[str, Any],
+    stopped_clone: dict[str, Any],
+    siblings: list[dict[str, Any]],
+    serials: dict[str, GuestSerial],
+    expected_state: dict[str, dict[str, int]],
+) -> dict[str, Any]:
+    clone_id = stopped_clone.get("id")
+    stopped_pid = stopped_clone.get("qemu_pid")
+    if stop_result.get("state") != "stopped":
+        raise RuntimeError(f"clone {clone_id} stop did not report stopped state")
+    if not isinstance(stopped_pid, int) or stop_result.get("pid_gone_on_return") is not True:
+        raise RuntimeError(f"clone {clone_id} QEMU process did not exit after stop")
+    if pathlib.Path(f"/proc/{stopped_pid}").exists():
+        raise RuntimeError(f"stopped clone {clone_id} QEMU PID {stopped_pid} is still present")
+
+    survivors = {}
+    for sibling in siblings:
+        sibling_id = sibling.get("id")
+        sibling_pid = sibling.get("qemu_pid")
+        if not isinstance(sibling_id, str) or not isinstance(sibling_pid, int):
+            raise RuntimeError("sibling clone is missing its ID or QEMU PID")
+        if not pathlib.Path(f"/proc/{sibling_pid}").exists():
+            raise RuntimeError(f"sibling QEMU process for clone {sibling_id} exited")
+        serial = serials.get(sibling_id)
+        if serial is None:
+            raise RuntimeError(f"sibling serial connection for clone {sibling_id} is unavailable")
+        expected = expected_state.get(sibling_id)
+        if (
+            not isinstance(expected, dict)
+            or not isinstance(expected.get("ram"), int)
+            or not isinstance(expected.get("disk"), int)
+        ):
+            raise RuntimeError(f"expected guest markers for sibling {sibling_id} are unavailable")
+        ram = serial.command("ram-read", "RAM ")
+        disk = serial.command("disk-read", "DISK ")
+        if ram != f"RAM {expected['ram']}" or disk != f"DISK {expected['disk']}":
+            raise RuntimeError(
+                f"sibling {sibling_id} guest stopped responding correctly after clone {clone_id} stopped: RAM={ram}, DISK={disk}"
+            )
+        survivors[sibling_id] = {
+            "qemu_pid": sibling_pid,
+            "process_present": True,
+            "ram_reply": ram,
+            "disk_reply": disk,
+        }
+    if not survivors:
+        raise RuntimeError("sibling survival validation requires at least one sibling")
+    return {"stopped_clone": clone_id, "stopped_qemu_pid": stopped_pid, "survivors": survivors}
+
+
 def run(args: argparse.Namespace) -> pathlib.Path:
     binary = args.densevm.resolve()
     manifest = args.manifest.resolve()
@@ -273,6 +324,38 @@ def run(args: argparse.Namespace) -> pathlib.Path:
         }
         if result["template_artifact_hashes_before"] != result["template_artifact_hashes_after"]:
             raise RuntimeError("a persistent clone changed an immutable template artifact")
+        if len(clones) > 1:
+            stopped_clone = clones[0]
+            _, stop_text = run_command(
+                result,
+                binary,
+                ["clone", "stop", stopped_clone["id"], "--state-dir", str(state_dir)],
+            )
+            stop_result = json.loads(stop_text)
+            stop_result["pid_gone_on_return"] = not pathlib.Path(
+                f"/proc/{stopped_clone['qemu_pid']}"
+            ).exists()
+            result.setdefault("stops", []).append(
+                {
+                    "id": stopped_clone["id"],
+                    "state": stop_result.get("state"),
+                    "pid_gone_on_return": stop_result["pid_gone_on_return"],
+                }
+            )
+            expected_state = {
+                name: {
+                    "ram": dirty_values.get(name, args.expected_marker),
+                    "disk": dirty_values.get(name, args.expected_marker),
+                }
+                for name in names
+            }
+            result["sibling_survival_after_stop"] = validate_sibling_survival_after_stop(
+                stop_result,
+                stopped_clone,
+                clones[1:],
+                serials,
+                expected_state,
+            )
         result["status"] = "verified"
     except Exception as error:  # Preserve failure evidence for interrupted experiments.
         result["status"] = "failed"
