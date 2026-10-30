@@ -193,3 +193,7 @@ The CLI smoke was also run against disposable hard-linked copies of a real gener
 ## Persistent clone disk inspection
 
 `densevm inspect clone ID disk --state-dir DIR` resolves the registry overlay, checks it remains the clone's regular private `disk.qcow2`, and reports `qemu-img info --backing-chain`. In a two-clone stopped sample, both overlays measured 200,704 bytes actual size and 64 MiB virtual size, with the same template-derived chain. Repeated backing files should not be counted once per clone. This inspects metadata and does not demonstrate disk-write isolation. See [method and limits](docs/disk-inspection.md) and [raw JSON](results/kvm-recovery-2026-10-30/persistent-clone-disk-inspect.json).
+
+## Persistent clone network identity gating
+
+Persistent clones now restore paused without a NIC, prepare entropy and machine identity, then add a fresh virtio NIC through QMP. Startup verifies the unique MAC through QMP and inside the guest. The live two-clone QEMU 11.1.2 run completed in 2,307.88 ms, recorded distinct MACs and machine IDs, and stopped both QEMU processes cleanly. This verifies only the tested synthetic guest and user-network backend; arbitrary DHCP clients and other network configurations remain unknown. See [method and limits](docs/clone-network-identity.md) and [raw JSON](results/kvm-recovery-2026-10-30/persistent-nic-identity-gating.json).

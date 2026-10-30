@@ -2,9 +2,14 @@
 
 `densevm clone start ID --template MANIFEST --state-dir DIR` creates a
 per-clone registry record and qcow2 overlay, starts a separate QEMU process,
-restores the machine state, prepares guest identity, and records the clone as
-`running`. `densevm clone stop ID --state-dir DIR` asks that clone's QMP
-endpoint to quit and waits for it to close.
+starts a separate QEMU process, restores the machine state while paused,
+prepares guest entropy and identity, then attaches a new virtio NIC through
+QMP and records the clone as `running`. The restored template must not contain
+a NIC device; the template QEMU command must provide one `pcie-root-port` and a
+restricted user-network backend. DenseVM checks the guest-visible MAC after
+hotplug. See [`clone-network-identity.md`](clone-network-identity.md) for the
+ordering and proof limits. `densevm clone stop ID --state-dir DIR` asks that
+clone's QMP endpoint to quit and waits for it to close.
 
 After QMP closes, stop also waits for the recorded QEMU PID to disappear from
 `/proc` before marking the clone `stopped`. Closing QMP can precede process exit

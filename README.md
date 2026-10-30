@@ -75,8 +75,8 @@ The probe first boots the requested number of ordinary QEMU/KVM guests from
 equivalent independent qcow2 images and measures them after each reports ready.
 It then boots the template, freezes it with QMP, migrates nonshared state to
 `machine-state`, and starts the same number of clones. Clone NICs are
-hotplugged after restore so migrated NIC
-state cannot duplicate the template MAC. The guest commands verify RAM and
+hotplugged after guest entropy and identity setup, so migrated device state
+cannot restore the template MAC or transmit under the template identity. The guest commands verify RAM and
 disk isolation, guest-visible MACs, and continued operation of B after A's
 QEMU process is killed. Results include whole-process RSS/PSS/private/shared
 metrics, the exact RAM-file mapping, disk allocation, and template file cache
@@ -85,6 +85,13 @@ residency.
 This prototype currently targets mechanisms verified on QEMU 11.1.2.
 `x-ignore-shared` is experimental. Do not treat this probe as evidence that
 arbitrary distributions, devices, or QEMU versions can be cloned safely.
+
+Persistent `densevm clone start` uses the same identity ordering. Its template
+must be frozen without a NIC device and include one hotpluggable PCIe root port
+plus a restricted QEMU user-network backend. DenseVM rejects templates with a
+migrated NIC rather than risk restoring its MAC; after migration, it prepares
+guest identity, adds a new virtio NIC through QMP, and checks its guest-visible
+MAC. See [`docs/clone-network-identity.md`](docs/clone-network-identity.md).
 
 The 15-item acceptance record is in [docs/milestone1.md](docs/milestone1.md).
 
