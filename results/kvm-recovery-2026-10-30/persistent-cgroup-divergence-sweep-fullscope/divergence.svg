@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" viewBox="0 0 1000 700">
+<style>text{font-family:Arial,sans-serif;fill:#172033}.title{font-size:18px;font-weight:bold}.axis{font-size:12px}.grid{stroke:#d8dee9;stroke-width:1}.foot{font-size:13px;fill:#475569}</style>
+<text x="500" y="35" text-anchor="middle" class="title">Eight persistent clones: RAM divergence</text>
+<text x="120" y="81" class="title">Aggregate QEMU process PSS</text>
+<line x1="120" y1="295.0" x2="940" y2="295.0" class="grid"/>
+<text x="108" y="299.0" text-anchor="end" class="axis">288 MiB</text>
+<line x1="120" y1="247.5" x2="940" y2="247.5" class="grid"/>
+<text x="108" y="251.5" text-anchor="end" class="axis">363 MiB</text>
+<line x1="120" y1="200.0" x2="940" y2="200.0" class="grid"/>
+<text x="108" y="204.0" text-anchor="end" class="axis">439 MiB</text>
+<line x1="120" y1="152.5" x2="940" y2="152.5" class="grid"/>
+<text x="108" y="156.5" text-anchor="end" class="axis">514 MiB</text>
+<line x1="120" y1="105.0" x2="940" y2="105.0" class="grid"/>
+<text x="108" y="109.0" text-anchor="end" class="axis">590 MiB</text>
+<line x1="120.0" y1="105" x2="120.0" y2="295" class="grid"/>
+<text x="120.0" y="317" text-anchor="middle" class="axis">0%</text>
+<line x1="325.0" y1="105" x2="325.0" y2="295" class="grid"/>
+<text x="325.0" y="317" text-anchor="middle" class="axis">25%</text>
+<line x1="530.0" y1="105" x2="530.0" y2="295" class="grid"/>
+<text x="530.0" y="317" text-anchor="middle" class="axis">50%</text>
+<line x1="735.0" y1="105" x2="735.0" y2="295" class="grid"/>
+<text x="735.0" y="317" text-anchor="middle" class="axis">75%</text>
+<line x1="940.0" y1="105" x2="940.0" y2="295" class="grid"/>
+<text x="940.0" y="317" text-anchor="middle" class="axis">100%</text>
+<circle cx="120.0" cy="281.8" r="5" fill="#2563eb"/>
+<circle cx="161.0" cy="281.3" r="5" fill="#2563eb"/>
+<circle cx="202.0" cy="281.9" r="5" fill="#2563eb"/>
+<circle cx="325.0" cy="281.8" r="5" fill="#2563eb"/>
+<circle cx="530.0" cy="281.8" r="5" fill="#2563eb"/>
+<circle cx="940.0" cy="281.8" r="5" fill="#2563eb"/>
+<polyline points="120.0,281.8 161.0,281.3 202.0,281.9 325.0,281.8 530.0,281.8 940.0,281.8" fill="none" stroke="#2563eb" stroke-width="3"/>
+<line x1="710" y1="95" x2="732" y2="95" stroke="#2563eb" stroke-width="3"/>
+<text x="738" y="99" class="axis">Before writes</text>
+<circle cx="120.0" cy="281.3" r="5" fill="#dc2626"/>
+<circle cx="161.0" cy="271.4" r="5" fill="#dc2626"/>
+<circle cx="202.0" cy="263.8" r="5" fill="#dc2626"/>
+<circle cx="325.0" cy="239.5" r="5" fill="#dc2626"/>
+<circle cx="530.0" cy="199.2" r="5" fill="#dc2626"/>
+<circle cx="940.0" cy="118.1" r="5" fill="#dc2626"/>
+<polyline points="120.0,281.3 161.0,271.4 202.0,263.8 325.0,239.5 530.0,199.2 940.0,118.1" fill="none" stroke="#dc2626" stroke-width="3"/>
+<line x1="835" y1="95" x2="857" y2="95" stroke="#dc2626" stroke-width="3"/>
+<text x="863" y="99" class="axis">After writes</text>
+<text x="120" y="406" class="title">Template RAM mapping Private_Dirty increase</text>
+<line x1="120" y1="590.0" x2="940" y2="590.0" class="grid"/>
+<text x="108" y="594.0" text-anchor="end" class="axis">0 MiB</text>
+<line x1="120" y1="550.0" x2="940" y2="550.0" class="grid"/>
+<text x="108" y="554.0" text-anchor="end" class="axis">70 MiB</text>
+<line x1="120" y1="510.0" x2="940" y2="510.0" class="grid"/>
+<text x="108" y="514.0" text-anchor="end" class="axis">139 MiB</text>
+<line x1="120" y1="470.0" x2="940" y2="470.0" class="grid"/>
+<text x="108" y="474.0" text-anchor="end" class="axis">209 MiB</text>
+<line x1="120" y1="430.0" x2="940" y2="430.0" class="grid"/>
+<text x="108" y="434.0" text-anchor="end" class="axis">278 MiB</text>
+<line x1="120.0" y1="430" x2="120.0" y2="590" class="grid"/>
+<text x="120.0" y="612" text-anchor="middle" class="axis">0%</text>
+<line x1="325.0" y1="430" x2="325.0" y2="590" class="grid"/>
+<text x="325.0" y="612" text-anchor="middle" class="axis">25%</text>
+<line x1="530.0" y1="430" x2="530.0" y2="590" class="grid"/>
+<text x="530.0" y="612" text-anchor="middle" class="axis">50%</text>
+<line x1="735.0" y1="430" x2="735.0" y2="590" class="grid"/>
+<text x="735.0" y="612" text-anchor="middle" class="axis">75%</text>
+<line x1="940.0" y1="430" x2="940.0" y2="590" class="grid"/>
+<text x="940.0" y="612" text-anchor="middle" class="axis">100%</text>
+<circle cx="120.0" cy="590.0" r="5" fill="#059669"/>
+<circle cx="161.0" cy="582.5" r="5" fill="#059669"/>
+<circle cx="202.0" cy="575.0" r="5" fill="#059669"/>
+<circle cx="325.0" cy="552.9" r="5" fill="#059669"/>
+<circle cx="530.0" cy="516.0" r="5" fill="#059669"/>
+<circle cx="940.0" cy="441.8" r="5" fill="#059669"/>
+<polyline points="120.0,590.0 161.0,582.5 202.0,575.0 325.0,552.9 530.0,516.0 940.0,441.8" fill="none" stroke="#059669" stroke-width="3"/>
+<line x1="710" y1="420" x2="732" y2="420" stroke="#059669" stroke-width="3"/>
+<text x="738" y="424" class="axis">All clones</text>
+<text x="500" y="665" text-anchor="middle" class="foot">PSS and smaps only; KVM/kernel memory is excluded. Each clone dirties the stated fraction of a 32 MiB test region.</text>
+</svg>

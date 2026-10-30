@@ -123,13 +123,23 @@ one host; PSS excludes KVM/kernel memory and this sweep has no matched
 conventional baseline. Raw JSON, command records, and graph:
 [`persistent divergence sweep`](../results/kvm-recovery-2026-10-30/persistent-divergence-sweep/).
 
-A repeat of that sweep also ran inside a dedicated transient user systemd
-scope with `MemoryAccounting=yes` and a recorded 3 GiB `MemoryMax`. The
-persistent runner sampled cgroup memory before clone creation, after all eight
-clones started, after divergence, and after clone 1 stopped. From clone start
-to post-divergence, `memory.current` rose 2.5/18.4/31.1/70.2/133.9/260.8 MiB
-across the six percentages; at 100%, the `memory.stat` anonymous-memory delta
-was 261.35 MiB. These values include charged page-cache and kernel state for
-the isolated scope, not all host memory. Full samples and a capped
-reproduction command are in
-[`persistent cgroup sweep results`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep/).
+An initial cgroup sweep ran only the persistent clone phase inside its capped
+scope, after template creation had already occurred elsewhere. Its process
+PSS and smaps data are valid, but its cgroup samples omit the shared template
+file-cache charge. The limitation is recorded in
+[`the initial cgroup results`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep/).
+
+A corrected repeat built the seed, nested template, and all clones inside one
+transient systemd scope with `MemoryAccounting=yes` and a recorded 3 GiB
+`MemoryMax`. From clone start to post-divergence, cgroup `memory.current` rose
+1.6/18.6/32.5/70.7/134.8/261.9 MiB across 0/5/10/25/50/100%; at 100%,
+`memory.stat` anonymous memory increased 261.3 MiB. The shared template file
+cache remained charged in the cgroup at about 583 MiB. A separate conventional
+eight-VM run measured 1,660,567,552 bytes cgroup `memory.current` at readiness
+and 1,618,782 KiB aggregate QEMU PSS; the full-scope clone run at 100% measured
+1,167.7 MiB cgroup memory and 568.9 MiB QEMU PSS. This is one sequential
+comparison on one host, with different file-cache conditions between scopes.
+It excludes charges outside each cgroup and is not a general density bound.
+Full results and reproduction are in
+[`the corrected cgroup sweep`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep-fullscope/)
+and [`the conventional baseline`](../results/kvm-recovery-2026-10-30/baseline-cgroup-eight.json).

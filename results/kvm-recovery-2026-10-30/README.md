@@ -178,10 +178,14 @@ stopped. The results are single samples and exclude host KVM/kernel memory.
 See the per-run details, reproduction command, and plot in
 [`persistent-divergence-sweep/`](persistent-divergence-sweep/).
 
-A second copy of the six-point sweep sampled cgroup v2 inside a transient
-systemd scope with a 3 GiB memory cap. It records `memory.current` and the
-full `memory.stat` at each lifecycle stage; the current-memory delta from clone
-start to post-divergence ranged from 2.5 to 260.8 MiB. These are scope charges,
-including file cache and kernel memory, not whole-host totals. Raw data and a
-reproduction command are in
-[`persistent-cgroup-divergence-sweep/`](persistent-cgroup-divergence-sweep/).
+An initial cgroup sweep reused a template built outside the measured cgroup and
+therefore omitted shared template page-cache charges; its process PSS/smaps
+measurements remain valid. The corrected full-scope rerun built seed, template,
+and clones inside one capped systemd scope. At 100% divergence it measured
+1,167.7 MiB cgroup `memory.current`, including about 583 MiB of template cache.
+A separate conventional eight-VM baseline under the same 3 GiB cap measured
+1,583.6 MiB cgroup memory and 1,580.8 MiB aggregate QEMU PSS. This is one
+sequential comparison with different cache conditions, not a general density
+bound. See the [corrected sweep](persistent-cgroup-divergence-sweep-fullscope/),
+[initial limited sweep](persistent-cgroup-divergence-sweep/), and
+[`baseline-cgroup-eight.json`](baseline-cgroup-eight.json).

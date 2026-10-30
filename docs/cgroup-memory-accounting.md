@@ -86,14 +86,30 @@ JSON for the full values.
 
 ## Persistent eight-clone divergence
 
-A 2026-10-30 repeat sampled eight identity-gated persistent clones inside a
-dedicated transient systemd scope capped at 3 GiB. At 0%, 5%, 10%, 25%, 50%,
-and 100% divergence of each 32 MiB test region, the cgroup `memory.current`
-increase from clone startup to post-divergence was 2.5, 18.4, 31.1, 70.2,
-133.9, and 260.8 MiB. At 100%, `memory.stat` anonymous memory rose 261.35 MiB,
-file memory 0.50 MiB, `kernel` 0.26 MiB, and `sec_pagetables` 0.38 MiB. The
-experiment limit was recorded as 3,221,225,472 bytes at every sample. This
-captures only charges assigned to that cgroup, not total host memory; the
-baseline includes cached template artifacts, and no matched ordinary-VM
-cgroup baseline was collected. Full per-stage values and commands:
-[`persistent cgroup divergence sweep`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep/).
+The first cgroup sweep at
+[`persistent-cgroup-divergence-sweep`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep/)
+created its template before entering the measured scope. Its cgroup deltas
+captured private clone growth but missed the shared template cache charge.
+Its PSS/smaps records are valid; its cgroup totals are incomplete for total
+clone footprint.
+
+A corrected 2026-10-30 sweep built the conventional seed, nested template, and
+all eight persistent clones inside one transient systemd cgroup capped at 3
+GiB. The cgroup's `memory.stat file` was about 583 MiB after clone startup,
+showing that shared template file-cache pages were charged inside the same
+scope. At 0%, 5%, 10%, 25%, 50%, and 100% divergence of each 32 MiB test
+region, cgroup `memory.current` from clone startup to post-divergence rose
+1.6, 18.6, 32.5, 70.7, 134.8, and 261.9 MiB. At 100%, `memory.stat` anonymous
+memory rose 261.3 MiB, file memory 1.7 MiB, `kernel` 0.30 MiB, and
+`sec_pagetables` 0.38 MiB. Full staged data, limit values, and reproduction:
+[`full-scope cgroup sweep`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep-fullscope/).
+
+A separate conventional eight-VM KVM baseline under the same 3 GiB scope cap
+measured 1,618,782 KiB QEMU-process PSS and cgroup `memory.current` of
+1,660,567,552 bytes at guest readiness. The full-scope 100%-divergence clone
+point measured 568.9 MiB QEMU PSS and 1,167.7 MiB cgroup memory. This is one
+sequential comparison on one host; the clone cgroup includes about 585 MiB of
+shared template file cache, while the baseline cgroup did not. Cgroup charges
+can also depend on which scope first faults a shared page. Treat these values
+as measured samples, not a general density bound. Raw baseline:
+[`baseline-cgroup-eight.json`](../results/kvm-recovery-2026-10-30/baseline-cgroup-eight.json).
