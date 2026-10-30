@@ -70,6 +70,25 @@ found its RAM path and process identity; no guest pages were resident, so this
 is lookup coverage only, not COW evidence:
 [`results/memory-map-live-qemu-smoke.json`](../results/memory-map-live-qemu-smoke.json).
 
+The command was then exercised against two actual persistent clones created
+from the same template-tree generation. Each clone had its own registry record,
+QEMU process, QMP endpoint, and disk overlay, while both mapped the same RAM
+file. At sampling time, both process records resolved to the expected distinct
+QEMU PIDs and the same generation and RAM path. Each reported 3,515 shared
+pages; clone `mapclone` reported 1,501 private pages (1,395 private-dirty), and
+`mapclone2` reported 260 private/private-dirty pages. Both clones were stopped
+cleanly after sampling. These per-process smaps counts support that the ID
+lookup reaches the real persistent processes and that the kernel classifies
+part of each mapping as shared. The counts do not prove that the same exact
+host pages back corresponding guest-physical addresses, and the private-count
+difference can include unrelated QEMU startup and runtime state. This is one
+sample on QEMU 11.1.2 and Linux 7.2.11-arch1-1. The temporary source template
+was under `/tmp`; the saved JSON preserves the measured records but that
+source tree is not a durable fixture. See the
+[comparison](../results/kvm-recovery-2026-10-30/memory-map-persistent-comparison.json)
+and [raw outputs](../results/kvm-recovery-2026-10-30/memory-map-persistent-a.json),
+[clone B](../results/kvm-recovery-2026-10-30/memory-map-persistent-b.json).
+
 The QEMU COW experiment provides guest evidence in the same schema. In a
 fresh two-clone run that dirtied 100% of the 32 MiB test region in A, its
 private-dirty estimate rose by 8,208 pages (32,832 KiB), while B rose by 52

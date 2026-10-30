@@ -1,0 +1,22 @@
+{
+  "clone": {
+    "generation_id": "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+    "id": "mapclone",
+    "qemu_pid": 213837,
+    "ram_file": "/tmp/mmtree/child-memory.img"
+  },
+  "page_estimates": {
+    "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+    "page_size_bytes": 4096,
+    "private_dirty_pages_estimate": 1395,
+    "private_pages_estimate": 1501,
+    "resident_pages_estimate": 5016,
+    "shared_pages_estimate": 3515
+  },
+  "private_clean_kib": 424,
+  "private_dirty_kib": 5580,
+  "pss_kib": 13034,
+  "rss_kib": 20064,
+  "shared_clean_kib": 1820,
+  "shared_dirty_kib": 12240
+}

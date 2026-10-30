@@ -1,0 +1,33 @@
+{
+  "experiment": "live persistent DenseVM clone ID memory-map lookup",
+  "date": "2026-10-30",
+  "host_kernel": "7.2.11-arch1-1",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "template_generation_id": "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+  "shared_ram_file": "/tmp/mmtree/child-memory.img",
+  "clones": {
+    "mapclone": {
+      "raw_result": "memory-map-persistent-a.json",
+      "qemu_pid": 213837,
+      "shared_pages_estimate": 3515,
+      "private_pages_estimate": 1501,
+      "private_dirty_pages_estimate": 1395,
+      "resident_pages_estimate": 5016
+    },
+    "mapclone2": {
+      "raw_result": "memory-map-persistent-b.json",
+      "qemu_pid": 214530,
+      "shared_pages_estimate": 3515,
+      "private_pages_estimate": 260,
+      "private_dirty_pages_estimate": 260,
+      "resident_pages_estimate": 3775
+    }
+  },
+  "assertions": {
+    "distinct_qemu_pids": true,
+    "same_generation": true,
+    "same_ram_backing_file": true,
+    "both_report_nonzero_shared_pages": true
+  },
+  "interpretation": "Both real persistent clones were resolved from their read-only state registry, matched to live QEMU process fingerprints, and sampled against the same RAM backing file. This confirms command integration and observed shared smaps mappings; the command samples aggregates and does not prove per-GPA page identity."
+}

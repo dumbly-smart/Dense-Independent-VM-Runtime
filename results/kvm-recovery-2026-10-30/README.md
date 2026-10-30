@@ -126,3 +126,14 @@ controls again delivered in all six guest trials; both paused alarms missed
 in host and `rt`, and both delivered in `vm`. Summary data includes these
 second samples, with separate raw JSON records linked from
 [`docs/rtc-clock-experiment.md`](../../docs/rtc-clock-experiment.md).
+
+The persistent clone-ID memory-map command was also tested against two real
+DenseVM-managed clones from one template-tree generation. Each lookup resolved
+a distinct QEMU PID and the same RAM path. Both mappings reported 3,515 shared
+pages; private/private-dirty estimates were 1,501/1,395 pages for `mapclone`
+and 260/260 pages for `mapclone2`. Both clones were stopped cleanly. This
+validates the lookup against live persistent records and records smaps sharing
+classifications only; it does not establish guest-physical page identity. The
+source template was temporary. See [`memory-map-persistent-comparison.json`](memory-map-persistent-comparison.json)
+and its [raw A](memory-map-persistent-a.json) / [raw B](memory-map-persistent-b.json)
+outputs.
