@@ -179,3 +179,7 @@ A live run started two persistent clones from the same template-tree generation 
 ## Persistent template-tree RAM mapping by clone ID
 
 The persistent-tree experiment runner now records `densevm memory-map clone ID` for each clone before divergence. It checks that each report matches the started clone ID and generation. A live two-clone run from the same generation reported 3,598 shared pages in each mapping, used separate QEMU PIDs, and stopped both clones cleanly. These are `/proc/smaps` classifications and do not identify guest-physical page numbers. The result file includes commands, measurements, and cleanup state: [JSON](results/kvm-recovery-2026-10-30/persistent-tree-memory-map-by-id.json). Reproduction steps are in [the method page](docs/memory-map.md).
+
+## Template-tree planning lock
+
+The non-destructive candidate planner now shares the publication/recovery advisory lock while validating and hashing the tree, and returns an immediate error if that lock is already held. Unit coverage and a Python `fcntl.flock` interoperability check passed. The planner may create `.densevm-template-tree.lock` (mode 0600) in a catalog root and cannot serialize external writers that ignore the lock. It still does not delete artifacts. See [`docs/template-tree.md`](docs/template-tree.md).

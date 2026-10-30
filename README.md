@@ -57,7 +57,7 @@ cargo run -- ksm status
 cargo run -- template tree /path/to/templates
 # Verify every generation and its manifest-referenced parent/child artifacts:
 cargo run -- validate template-tree /path/to/templates
-# Print a conservative, read-only template garbage-collection plan:
+# Print a conservative, non-destructive template garbage-collection plan:
 cargo run -- template gc-plan /path/to/templates --state-dir /var/lib/densevm --keep sha256:GENERATION_ID
 ```
 

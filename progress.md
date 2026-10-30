@@ -98,7 +98,7 @@ the tested QEMU, kernel, guest, devices, and workload.
   relocation proofs exist, and `densevm validate template-tree ROOT` now
   verifies all discovered generation artifacts and reports duplicate IDs.
   `densevm template gc-plan ROOT --state-dir DIR [--keep ID]` provides a
-  read-only reachability plan; it blocks on unverified or ambiguous catalogs
+  non-destructive reachability plan; it blocks on unverified or ambiguous catalogs
   and protects active clone generations and their ancestors. Candidate entries
   include their verified directory and manifest paths; active clone records
   include lifecycle state. A blocked plan prints its report and exits nonzero.
@@ -178,3 +178,5 @@ For a complete beginner-to-technical explanation, read
 - Persistent clone memory-map command now has a live test using two actual DenseVM-managed clones from one template generation. Each resolved to its own QEMU PID and the same RAM file; `/proc/smaps` classified 3,515 pages as shared in each process. Private/private-dirty estimates were 1,501/1,395 pages in A and 260/260 in B. Both clones were stopped cleanly. This confirms persistent registry integration and reported sharing classifications, not exact page identity or host-wide physical savings. See `docs/memory-map.md` and `results/kvm-recovery-2026-10-30/memory-map-persistent-comparison.json`.
 
 - The persistent template-tree runner now captures RAM-map reports by clone ID and verifies the reported identity/generation against each started clone. A live two-clone rerun reported 3,598 smaps-shared pages per process from the common RAM file; both processes were distinct and stopped cleanly. The runner's Python tests and all Rust tests pass. Reproduction commands and limitations: `docs/memory-map.md`; raw result: `results/kvm-recovery-2026-10-30/persistent-tree-memory-map-by-id.json`.
+
+- `template gc-plan` now shares the template-tree publication/recovery flock and fails immediately if another cooperating operation is active. Unit coverage and a live Python-lock/Rust-planner check passed. It may create a mode-0600 lock file in the catalog root; external writers are not coordinated. This is read/report synchronization, not deletion.

@@ -11,3 +11,4 @@ pub mod metrics;
 pub mod probe;
 pub mod qmp;
 pub mod report;
+pub mod template_lock;

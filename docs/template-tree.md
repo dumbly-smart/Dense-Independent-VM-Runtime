@@ -133,7 +133,7 @@ is metadata-only and does not verify artifact contents or maintain a separate
 index; each `generation.json` remains the source of truth.
 
 Before considering removal of unreferenced generations, ask DenseVM for a
-read-only reachability plan:
+non-destructive reachability plan:
 
 ```sh
 cargo run -- template gc-plan /path/to/template-store \
@@ -153,12 +153,17 @@ parent ID, and leaf flag; leaf IDs are listed separately as a possible
 child-first removal order. The report lists each active clone's registry state
 alongside its generation reference.
 
-This command only reports candidates. It does not remove files, check
-references outside the clone registry and catalog, or lock the catalog while
-hashing. Run it while template publication is quiescent, and treat the output
-as an audit aid rather than authorization to delete a directory. A blocked
-plan still prints its JSON blockers and exits nonzero, so automation cannot
-mistake it for a usable candidate plan.
+This command only reports candidates; it does not remove files or check
+references outside the clone registry and catalog. It now takes the same
+nonblocking `.densevm-template-tree.lock` used by the Python publisher and
+staging recovery while it walks and hashes the catalog. If another cooperating
+publication/recovery holds the lock, planning fails immediately. Creating the
+lock for a catalog that has never been published by the experiment tool leaves
+that mode-0600 lock file in the catalog root. The lock is advisory, so external
+writers that do not use it are not serialized. Treat the plan as an audit aid,
+not authorization to delete a directory. A blocked integrity plan still
+prints its JSON blockers and exits nonzero, so automation cannot mistake it
+for a usable candidate plan.
 
 ### Relocation proof
 

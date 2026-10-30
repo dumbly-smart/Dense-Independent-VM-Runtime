@@ -489,6 +489,7 @@ pub fn plan_template_gc(
     state_dir: &Path,
     keep_ids: &[String],
 ) -> Result<Value, String> {
+    let _tree_lock = crate::template_lock::TemplateTreeLock::acquire(root, true)?;
     let tree = validate_template_tree(root)?;
     let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
     let clones = registry.list()?;
@@ -780,8 +781,8 @@ pub fn ksm_status() -> Result<Value, String> {
 #[cfg(test)]
 mod template_tests {
     use super::{
-        plan_template_gc_report, template_generation, template_tree, validate_template_generation,
-        validate_template_tree,
+        plan_template_gc, plan_template_gc_report, template_generation, template_tree,
+        validate_template_generation, validate_template_tree,
     };
     use std::fs;
     use std::path::PathBuf;
@@ -800,6 +801,27 @@ mod template_tests {
                 "manifest_path": format!("/catalog/{id}/generation.json"),
             })).collect::<Vec<_>>(),
         })
+    }
+
+    #[test]
+    fn template_gc_plan_refuses_to_race_an_active_publication() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-template-gc-lock-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let state_dir = root.join("state");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        let _publication_lock =
+            crate::template_lock::TemplateTreeLock::acquire(&root, false).unwrap();
+
+        let error = plan_template_gc(&root, &state_dir, &[]).unwrap_err();
+        assert!(error.contains("template-tree operation is already active"));
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
