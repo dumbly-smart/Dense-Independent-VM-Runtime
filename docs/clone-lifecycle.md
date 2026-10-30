@@ -2,7 +2,7 @@
 
 `densevm clone start ID --template MANIFEST --state-dir DIR` creates a
 per-clone registry record and qcow2 overlay, starts a separate QEMU process,
-starts a separate QEMU process, restores the machine state while paused,
+restores the machine state while paused,
 prepares guest entropy and identity, then attaches a new virtio NIC through
 QMP and records the clone as `running`. The restored template must not contain
 a NIC device; the template QEMU command must provide one `pcie-root-port` and a
@@ -59,3 +59,11 @@ exercises both a normal stop and a `SIGKILL` followed by reconciliation. The
 normal stop returned only after its PID disappeared; the killed clone was
 marked `failed`. This check verifies process lifecycle and registry behavior,
 not guest-level isolation or memory savings.
+
+The persistent-tree runner also performs a sibling-stop check when it starts
+at least two clones. It stops clone 1, verifies that QEMU reports `stopped` and
+its PID has exited, then reads RAM and disk markers from every remaining
+clone. The 2026-10-30 two-clone run passed with clone 2 still responsive and
+no leftover QEMU processes. This tests independent process and guest response
+for the synthetic profile; it does not cover every device or network setup.
+Raw run: [`persistent-sibling-stop.json`](../results/kvm-recovery-2026-10-30/persistent-sibling-stop.json).

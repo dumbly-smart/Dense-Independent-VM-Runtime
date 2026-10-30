@@ -197,3 +197,7 @@ The CLI smoke was also run against disposable hard-linked copies of a real gener
 ## Persistent clone network identity gating
 
 Persistent clones now restore paused without a NIC, prepare entropy and machine identity, then add a fresh virtio NIC through QMP. Startup verifies the unique MAC through QMP and inside the guest. The live two-clone QEMU 11.1.2 run completed in 2,307.88 ms, recorded distinct MACs and machine IDs, and stopped both QEMU processes cleanly. This verifies only the tested synthetic guest and user-network backend; arbitrary DHCP clients and other network configurations remain unknown. See [method and limits](docs/clone-network-identity.md) and [raw JSON](results/kvm-recovery-2026-10-30/persistent-nic-identity-gating.json).
+
+## Persistent clone sibling survival
+
+The persistent-tree runner now stops clone 1 after the marker-isolation checks, verifies the stop reply and QEMU PID exit, then reads RAM and disk markers from each sibling. In the QEMU 11.1.2 two-clone run, clone 2 remained responsive with its original markers; both processes were later stopped and no PIDs remained. This is evidence for the tested synthetic guest profile, not arbitrary hardware or network configurations. See [lifecycle details](docs/clone-lifecycle.md) and [raw JSON](results/kvm-recovery-2026-10-30/persistent-sibling-stop.json).
