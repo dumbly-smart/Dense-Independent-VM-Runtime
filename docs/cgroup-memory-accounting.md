@@ -131,3 +131,14 @@ host. At readiness the 3 GiB scope reported `memory.current` and
 `memory.peak` of 427,380,736 bytes, with all `memory.events` counters zero.
 This is a telemetry smoke sample, not a matched density comparison:
 [`cgroup-pressure-telemetry-baseline-2`](../results/kvm-recovery-2026-10-30/cgroup-pressure-telemetry-baseline-2/).
+
+A live eight-clone persistent run then exercised the Python stage sampler at
+100% divergence across all clones, with a 2 GiB cgroup limit. `memory.current`
+was 948,772,864 bytes after startup and 1,224,478,720 bytes after divergence;
+`memory.peak` reached 1,226,051,584 bytes by the post-stop sample. The delta
+for every `memory.events` counter from startup through divergence was zero,
+including `max`, `oom`, and `oom_kill`. All seven surviving clones returned
+their own RAM and disk markers after clone 1 stopped, and cleanup left no QEMU
+processes. This is one run on one host; the cap and zero event counters do not
+establish host-wide memory headroom. Raw data and summary:
+[`persistent cgroup pressure run`](../results/kvm-recovery-2026-10-30/persistent-cgroup-pressure-eight/).

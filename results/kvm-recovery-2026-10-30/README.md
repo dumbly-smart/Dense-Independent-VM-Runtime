@@ -196,3 +196,12 @@ recorded 427,380,736 bytes for both current and peak usage at readiness, with
 all memory event counters zero. This smoke validates the new fields on the
 installed kernel; it is not a density comparison. See
 [`cgroup-pressure-telemetry-baseline-2/`](cgroup-pressure-telemetry-baseline-2/).
+
+A separate eight-clone persistent run exercised all cgroup stages under a 2
+GiB cap while every clone dirtied 32 MiB. `memory.current` rose from 948.8 MiB
+after clone startup to 1,167.7 MiB after divergence, and cgroup-lifetime
+`memory.peak` reached 1,169.2 MiB after sibling stop. `memory.events` counters
+did not increase; all seven surviving guests retained their RAM/disk markers.
+This validates the new persistent sampler for one capped run, not a host-wide
+headroom claim. See
+[`persistent-cgroup-pressure-eight/`](persistent-cgroup-pressure-eight/).
