@@ -102,10 +102,11 @@ the tested QEMU, kernel, guest, devices, and workload.
   and protects active clone generations and their ancestors. Candidate entries
   include their verified directory and manifest paths; active clone records
   include lifecycle state. A blocked plan prints its report and exits nonzero.
-  Explicit leaf collection now removes only verified manifest-listed files
-  after rechecking reachability under publisher/clone-start locks. It preserves
-  unknown files and has no power-loss journal; a managed catalog and durable
-  recovery remain deferred. A regression test now exercises the planner against
+  Explicit leaf collection removes verified manifest-listed files only after
+  rechecking reachability under publisher/clone-start locks. It preserves
+  unknown files and writes a hash-checked roll-forward journal; `template
+  gc-recover --apply` resumes process-interrupted deletions. Power-loss
+  durability and a managed catalog with general recovery remain deferred. A regression test now exercises the planner against
   a hash-verified schema-v3 generation and
   persisted clone records in all four lifecycle states. Starting/running
   generations are protected; stopped/failed records do not pin unknown

@@ -112,6 +112,20 @@ fn main() {
                     }
                 })
         }
+        Command::TemplateGcRecover { root, state_dir } => {
+            densevm::inspect::recover_template_gc(&root, &state_dir).and_then(|report| {
+                let completed = matches!(
+                    report["status"].as_str(),
+                    Some("recovered" | "nothing_to_recover")
+                );
+                print_json(report)?;
+                if completed {
+                    Ok(())
+                } else {
+                    Err("template GC recovery failed; see report".into())
+                }
+            })
+        }
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }

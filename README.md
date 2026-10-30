@@ -62,6 +62,8 @@ cargo run -- validate template-tree /path/to/templates
 cargo run -- template gc-plan /path/to/templates --state-dir /var/lib/densevm --keep sha256:GENERATION_ID
 # Remove one unreferenced leaf only after reviewing the plan above:
 cargo run -- template gc /path/to/templates --state-dir /var/lib/densevm --generation sha256:LEAF_ID --keep sha256:GENERATION_ID --apply
+# Finish a previously journaled deletion after an interrupted process:
+cargo run -- template gc-recover /path/to/templates --state-dir /var/lib/densevm --apply
 ```
 
 The command prints the path to `result.json`. It leaves the RAM, migration,

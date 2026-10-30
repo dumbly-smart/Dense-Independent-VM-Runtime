@@ -81,6 +81,10 @@ pub enum Command {
         generation_id: String,
         keep_ids: Vec<String>,
     },
+    TemplateGcRecover {
+        root: PathBuf,
+        state_dir: PathBuf,
+    },
     MemoryMap {
         pid: u32,
         path: PathBuf,
@@ -346,6 +350,25 @@ where
             ),
         },
         Some("template") => match args.next().as_deref() {
+            Some("gc-recover") => {
+                let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
+                let mut state_dir = None;
+                let mut apply = false;
+                while let Some(arg) = args.next() {
+                    match arg.as_str() {
+                        "--state-dir" => state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?)),
+                        "--apply" => apply = true,
+                        flag => return Err(format!("unknown option {flag}")),
+                    }
+                }
+                if !apply {
+                    return Err("template gc-recover requires explicit --apply".into());
+                }
+                Ok(Command::TemplateGcRecover {
+                    root,
+                    state_dir: state_dir.ok_or("--state-dir is required")?,
+                })
+            }
             Some("gc") => {
                 let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
                 let mut state_dir = None;
@@ -395,7 +418,7 @@ where
                     keep_ids,
                 })
             }
-            _ => Err("usage: densevm template tree ROOT | densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID] | densevm template gc ROOT --state-dir DIR --generation ID [--keep ID] --apply".into()),
+            _ => Err("usage: densevm template tree ROOT | densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID] | densevm template gc ROOT --state-dir DIR --generation ID [--keep ID] --apply | densevm template gc-recover ROOT --state-dir DIR --apply".into()),
         },
         Some("memory-map") => {
             let target = args.next().ok_or("PID or clone is required")?;
@@ -498,5 +521,44 @@ where
             })
         }
         _ => Err("usage: densevm probe --out DIR [--count N] [--vcpus 1..4] | densevm benchmark baseline --out DIR --count N [--accel kvm|tcg] [--trace-translations] | densevm inspect IMAGE disk | densevm inspect template MANIFEST | densevm validate template MANIFEST | densevm template tree ROOT | densevm clone list --state-dir DIR | densevm clone reconcile --state-dir DIR | densevm clone start ID --template MANIFEST --state-dir DIR | densevm clone stop ID --state-dir DIR | densevm clone delete ID --state-dir DIR | densevm memory-map PID RAM_FILE | densevm ksm status".to_string()),
+    }
+}
+
+#[cfg(test)]
+mod template_gc_cli_tests {
+    use super::{Command, parse_args};
+    use std::path::PathBuf;
+
+    #[test]
+    fn template_gc_recovery_requires_apply_and_state_dir() {
+        assert!(
+            parse_args(["densevm", "template", "gc-recover", "/catalog"].map(str::to_string))
+                .is_err()
+        );
+        assert!(
+            parse_args(
+                ["densevm", "template", "gc-recover", "/catalog", "--apply"].map(str::to_string)
+            )
+            .is_err()
+        );
+        assert_eq!(
+            parse_args(
+                [
+                    "densevm",
+                    "template",
+                    "gc-recover",
+                    "/catalog",
+                    "--state-dir",
+                    "/state",
+                    "--apply"
+                ]
+                .map(str::to_string)
+            )
+            .unwrap(),
+            Command::TemplateGcRecover {
+                root: PathBuf::from("/catalog"),
+                state_dir: PathBuf::from("/state")
+            }
+        );
     }
 }

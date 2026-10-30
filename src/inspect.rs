@@ -1,9 +1,26 @@
 use crate::metrics::{parse_smaps_for_path, ram_mapping_report};
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::fs;
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
+
+#[derive(Debug, Deserialize, Serialize)]
+struct TemplateGcJournal {
+    schema_version: u32,
+    generation_id: String,
+    generation_dir: PathBuf,
+    manifest_sha256: String,
+    artifacts: Vec<TemplateGcArtifact>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct TemplateGcArtifact {
+    kind: String,
+    name: String,
+    sha256: String,
+}
 
 fn command_output(command: &mut Command) -> Result<String, String> {
     let output = command
@@ -195,6 +212,244 @@ fn sha256_bytes(bytes: &[u8]) -> Result<String, String> {
         .next()
         .map(str::to_string)
         .ok_or_else(|| "sha256sum returned no digest for input bytes".to_string())
+}
+
+fn sync_directory(path: &Path) -> Result<(), String> {
+    fs::File::open(path)
+        .and_then(|directory| directory.sync_all())
+        .map_err(|error| format!("sync directory {}: {error}", path.display()))
+}
+
+fn template_gc_journals(root: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut journals = Vec::new();
+    for entry in fs::read_dir(root)
+        .map_err(|error| format!("list template GC journals in {}: {error}", root.display()))?
+    {
+        let entry = entry.map_err(|error| format!("read template catalog entry: {error}"))?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with(".densevm-gc-") && name.ends_with(".json") {
+            let metadata = fs::symlink_metadata(entry.path()).map_err(|error| {
+                format!("inspect GC journal {}: {error}", entry.path().display())
+            })?;
+            if !metadata.file_type().is_file() {
+                return Err(format!(
+                    "GC journal is not a regular file: {}",
+                    entry.path().display()
+                ));
+            }
+            journals.push(entry.path());
+        }
+    }
+    journals.sort();
+    Ok(journals)
+}
+
+fn gc_journal_path(root: &Path, generation_id: &str) -> Result<PathBuf, String> {
+    let digest = generation_id
+        .strip_prefix("sha256:")
+        .ok_or("GC generation ID must use sha256:<64 hex digits>")?;
+    if digest.len() != 64 || !digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err("GC generation ID must use sha256:<64 hex digits>".into());
+    }
+    Ok(root.join(format!(".densevm-gc-{digest}.json")))
+}
+
+fn write_gc_journal(
+    root: &Path,
+    journal_path: &Path,
+    journal: &TemplateGcJournal,
+) -> Result<(), String> {
+    let bytes =
+        serde_json::to_vec(journal).map_err(|error| format!("encode GC journal: {error}"))?;
+    let temporary = root.join(format!(
+        ".densevm-gc-tmp-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| format!("clock for GC journal: {error}"))?
+            .as_nanos()
+    ));
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|error| format!("create GC journal {}: {error}", temporary.display()))?;
+    file.write_all(&bytes)
+        .and_then(|_| file.sync_all())
+        .map_err(|error| format!("persist GC journal {}: {error}", temporary.display()))?;
+    fs::rename(&temporary, journal_path)
+        .map_err(|error| format!("publish GC journal {}: {error}", journal_path.display()))?;
+    sync_directory(root)
+}
+
+fn read_gc_journal(root: &Path, path: &Path) -> Result<TemplateGcJournal, String> {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|error| format!("inspect GC journal {}: {error}", path.display()))?;
+    if !metadata.file_type().is_file() {
+        return Err(format!(
+            "GC journal is not a regular file: {}",
+            path.display()
+        ));
+    }
+    let journal: TemplateGcJournal = serde_json::from_slice(
+        &fs::read(path).map_err(|error| format!("read GC journal {}: {error}", path.display()))?,
+    )
+    .map_err(|error| format!("parse GC journal {}: {error}", path.display()))?;
+    if journal.schema_version != 1 || gc_journal_path(root, &journal.generation_id)? != path {
+        return Err(format!(
+            "unsupported or mismatched GC journal {}",
+            path.display()
+        ));
+    }
+    let directory = journal
+        .generation_dir
+        .canonicalize()
+        .map_err(|error| format!("resolve journal generation directory: {error}"))?;
+    if !directory.starts_with(root) || directory == root || directory != journal.generation_dir {
+        return Err(
+            "GC journal generation directory escapes the catalog or is not canonical".into(),
+        );
+    }
+    let mut kinds = std::collections::BTreeSet::new();
+    for artifact in &journal.artifacts {
+        if !matches!(artifact.kind.as_str(), "disk" | "machine_state" | "ram")
+            || !kinds.insert(artifact.kind.as_str())
+            || artifact.name.is_empty()
+            || Path::new(&artifact.name).components().count() != 1
+            || !matches!(
+                Path::new(&artifact.name).components().next(),
+                Some(Component::Normal(_))
+            )
+            || artifact.sha256.len() != 64
+            || !artifact.sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            return Err(format!(
+                "invalid artifact entry in GC journal {}",
+                path.display()
+            ));
+        }
+    }
+    if kinds.len() != 3 {
+        return Err(format!(
+            "GC journal {} must list disk, machine_state, and ram",
+            path.display()
+        ));
+    }
+    Ok(journal)
+}
+
+fn resume_gc_journal_locked(root: &Path, state_dir: &Path, path: &Path) -> Result<Value, String> {
+    let journal = read_gc_journal(root, path)?;
+    let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
+    let referenced = registry.list()?.into_iter().any(|clone| {
+        clone.generation_id == journal.generation_id
+            && matches!(
+                clone.state,
+                crate::lifecycle::CloneState::Starting | crate::lifecycle::CloneState::Running
+            )
+    });
+    if referenced {
+        return Err(format!(
+            "generation {} is referenced by an active clone",
+            journal.generation_id
+        ));
+    }
+    let manifest_path = journal.generation_dir.join("generation.json");
+    let manifest_exists = match fs::symlink_metadata(&manifest_path) {
+        Ok(_) => true,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+        Err(error) => return Err(format!("inspect journal manifest: {error}")),
+    };
+    if manifest_exists {
+        let metadata = fs::symlink_metadata(&manifest_path)
+            .map_err(|error| format!("inspect journal manifest: {error}"))?;
+        if !metadata.file_type().is_file()
+            || sha256_file(&manifest_path)? != journal.manifest_sha256
+        {
+            return Err("GC journal manifest is not the recorded regular file".into());
+        }
+        let manifest: Value = serde_json::from_slice(
+            &fs::read(&manifest_path).map_err(|error| format!("read journal manifest: {error}"))?,
+        )
+        .map_err(|error| format!("parse journal manifest: {error}"))?;
+        if manifest["generation_id"] != journal.generation_id {
+            return Err("GC journal generation ID does not match its manifest".into());
+        }
+        for artifact in &journal.artifacts {
+            if manifest[&artifact.kind]["path"].as_str() != Some(&artifact.name) {
+                return Err(format!(
+                    "GC journal {} path does not match manifest",
+                    artifact.kind
+                ));
+            }
+        }
+    }
+    let mut remaining_artifact = false;
+    for artifact in &journal.artifacts {
+        let artifact_path = journal.generation_dir.join(&artifact.name);
+        match fs::symlink_metadata(&artifact_path) {
+            Ok(metadata) => {
+                remaining_artifact = true;
+                if !metadata.file_type().is_file()
+                    || sha256_file(&artifact_path)? != artifact.sha256
+                {
+                    return Err(format!(
+                        "GC artifact is unsafe or changed: {}",
+                        artifact_path.display()
+                    ));
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(format!(
+                    "inspect GC artifact {}: {error}",
+                    artifact_path.display()
+                ));
+            }
+        }
+    }
+    if !manifest_exists && remaining_artifact {
+        return Err("GC manifest is missing while artifacts remain; refusing recovery".into());
+    }
+    for artifact in &journal.artifacts {
+        let artifact_path = journal.generation_dir.join(&artifact.name);
+        if artifact_path.exists() {
+            fs::remove_file(&artifact_path).map_err(|error| {
+                format!("resume GC unlink {}: {error}", artifact_path.display())
+            })?;
+        }
+    }
+    sync_directory(&journal.generation_dir)?;
+    if manifest_path.exists() {
+        fs::remove_file(&manifest_path).map_err(|error| format!("remove GC manifest: {error}"))?;
+        sync_directory(&journal.generation_dir)?;
+    }
+    fs::remove_file(path)
+        .map_err(|error| format!("remove completed GC journal {}: {error}", path.display()))?;
+    sync_directory(root)?;
+    Ok(
+        json!({"generation_id":journal.generation_id,"generation_dir":journal.generation_dir,"status":"recovered"}),
+    )
+}
+
+pub fn recover_template_gc(root: &Path, state_dir: &Path) -> Result<Value, String> {
+    let _tree_lock = crate::template_lock::TemplateTreeLock::acquire_exclusive(root, true)?;
+    let root = root
+        .canonicalize()
+        .map_err(|error| format!("resolve template-tree root: {error}"))?;
+    let journals = template_gc_journals(&root)?;
+    let mut recovered = Vec::new();
+    for journal in journals {
+        let record = read_gc_journal(&root, &journal)?;
+        let _generation_lock = crate::template_lock::TemplateTreeLock::acquire_exclusive(
+            &record.generation_dir,
+            true,
+        )?;
+        recovered.push(resume_gc_journal_locked(&root, state_dir, &journal)?);
+    }
+    Ok(
+        json!({"status":if recovered.is_empty() {"nothing_to_recover"} else {"recovered"},"recovered":recovered,"power_loss_durability":"not proven; recovery is designed for process interruption and uses file/directory sync calls"}),
+    )
 }
 
 pub fn validate_template_generation(manifest_path: &Path) -> Result<Value, String> {
@@ -550,6 +805,21 @@ fn plan_template_gc_locked(
     state_dir: &Path,
     keep_ids: &[String],
 ) -> Result<Value, String> {
+    let pending_journals = template_gc_journals(root)?;
+    if !pending_journals.is_empty() {
+        return Ok(json!({
+            "status":"blocked",
+            "dry_run":true,
+            "deletes_files":false,
+            "candidate_generation_ids":[],
+            "candidate_leaves":[],
+            "candidate_generations":[],
+            "blockers":pending_journals.iter().map(|path| format!(
+                "pending GC journal {}; run template gc-recover before planning",
+                path.display()
+            )).collect::<Vec<_>>(),
+        }));
+    }
     let tree = validate_template_tree(root)?;
     let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
     let clones = registry.list()?;
@@ -699,17 +969,36 @@ pub fn delete_template_gc_leaf(
                 artifact.display()
             ));
         }
-        if !artifacts.contains(&artifact) {
-            artifacts.push(artifact);
+        if !artifacts
+            .iter()
+            .any(|(existing, _): &(PathBuf, TemplateGcArtifact)| existing == &artifact)
+        {
+            artifacts.push((
+                artifact,
+                TemplateGcArtifact {
+                    kind: section.to_string(),
+                    name: filename.to_string(),
+                    sha256: sha256_file(&directory.join(relative))?,
+                },
+            ));
         }
     }
-    artifacts.push(manifest_path.clone());
-    let mut deleted_files = Vec::new();
-    for artifact in artifacts {
-        fs::remove_file(&artifact)
-            .map_err(|error| format!("remove GC artifact {}: {error}", artifact.display()))?;
-        deleted_files.push(artifact);
-    }
+    let manifest_sha256 = sha256_file(&manifest_path)?;
+    let journal_path = gc_journal_path(&root, generation_id)?;
+    let journal = TemplateGcJournal {
+        schema_version: 1,
+        generation_id: generation_id.to_string(),
+        generation_dir: directory.clone(),
+        manifest_sha256,
+        artifacts: artifacts.iter().map(|(_, entry)| entry.clone()).collect(),
+    };
+    write_gc_journal(&root, &journal_path, &journal)?;
+    let recovery = resume_gc_journal_locked(&root, state_dir, &journal_path)?;
+    let mut deleted_files = artifacts
+        .iter()
+        .map(|(path, _)| path.clone())
+        .collect::<Vec<_>>();
+    deleted_files.push(manifest_path.clone());
     let mut preserved_entries = fs::read_dir(&directory)
         .map_err(|error| format!("read remaining generation directory: {error}"))?
         .filter_map(Result::ok)
@@ -722,8 +1011,9 @@ pub fn delete_template_gc_leaf(
         "deleted_files":deleted_files,
         "generation_directory_preserved":true,
         "unrecognized_entries_preserved":preserved_entries,
+        "journal_recovery":recovery,
         "deletes_files":true,
-        "safety":"Only manifest-referenced RAM, machine-state, disk, and manifest files were removed from an unreferenced leaf. Other entries were preserved.",
+        "safety":"A synced journal records exact hashes before unlink. Only manifest-referenced RAM, machine-state, disk, and manifest files were removed from an unreferenced leaf. Other entries were preserved.",
     }))
 }
 
@@ -1028,6 +1318,137 @@ mod template_tests {
 
         let error = plan_template_gc(&root, &state_dir, &[]).unwrap_err();
         assert!(error.contains("template-tree operation is already active"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn template_gc_recovery_finishes_a_journaled_partial_unlink() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-template-gc-recover-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let catalog = root.join("catalog");
+        let child = catalog.join("leaf");
+        let state_dir = root.join("state");
+        fs::create_dir_all(&child).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        let generation_id = format!("sha256:{}", "a".repeat(64));
+        let artifacts = [
+            ("disk", "disk.qcow2", "disk payload"),
+            ("machine_state", "machine-state", "state payload"),
+            ("ram", "memory.img", "RAM payload"),
+        ];
+        let mut journal_artifacts = Vec::new();
+        for (kind, name, contents) in artifacts {
+            fs::write(child.join(name), contents).unwrap();
+            journal_artifacts.push(serde_json::json!({
+                "kind":kind,
+                "name":name,
+                "sha256":digest(&child.join(name)),
+            }));
+        }
+        let manifest = serde_json::json!({
+            "generation_id":generation_id,
+            "disk":{"path":"disk.qcow2"},
+            "machine_state":{"path":"machine-state"},
+            "ram":{"path":"memory.img"},
+        });
+        let manifest_path = child.join("generation.json");
+        fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        fs::write(child.join("experiment.log"), "preserve me").unwrap();
+        let journal_path = catalog.join(format!(".densevm-gc-{}.json", &generation_id[7..]));
+        fs::write(
+            &journal_path,
+            serde_json::to_vec(&serde_json::json!({
+                "schema_version":1,
+                "generation_id":generation_id,
+                "generation_dir":child,
+                "manifest_sha256":digest(&manifest_path),
+                "artifacts":journal_artifacts,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::remove_file(child.join("disk.qcow2")).unwrap();
+
+        let report = super::recover_template_gc(&catalog, &state_dir).unwrap();
+
+        assert_eq!(report["status"], "recovered");
+        assert_eq!(report["recovered"][0]["generation_id"], generation_id);
+        assert!(!journal_path.exists());
+        assert!(!manifest_path.exists());
+        for (_, name, _) in artifacts {
+            assert!(!child.join(name).exists());
+        }
+        assert_eq!(
+            fs::read_to_string(child.join("experiment.log")).unwrap(),
+            "preserve me"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn template_gc_recovery_clears_journal_after_manifest_unlink() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-template-gc-recover-finalize-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let catalog = root.join("catalog");
+        let child = catalog.join("leaf");
+        let state_dir = root.join("state");
+        fs::create_dir_all(&child).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        let generation_id = format!("sha256:{}", "b".repeat(64));
+        let artifacts = [
+            ("disk", "disk.qcow2", "disk"),
+            ("machine_state", "machine-state", "state"),
+            ("ram", "memory.img", "ram"),
+        ];
+        let mut entries = Vec::new();
+        for (kind, name, contents) in artifacts {
+            fs::write(child.join(name), contents).unwrap();
+            entries.push(
+                serde_json::json!({"kind":kind,"name":name,"sha256":digest(&child.join(name))}),
+            );
+        }
+        let manifest = serde_json::json!({
+            "generation_id":generation_id,
+            "disk":{"path":"disk.qcow2"},
+            "machine_state":{"path":"machine-state"},
+            "ram":{"path":"memory.img"},
+        });
+        let manifest_path = child.join("generation.json");
+        fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+        let journal_path = catalog.join(format!(".densevm-gc-{}.json", &generation_id[7..]));
+        fs::write(
+            &journal_path,
+            serde_json::to_vec(&serde_json::json!({
+                "schema_version":1,
+                "generation_id":generation_id,
+                "generation_dir":child,
+                "manifest_sha256":digest(&manifest_path),
+                "artifacts":entries,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        for (_, name, _) in artifacts {
+            fs::remove_file(child.join(name)).unwrap();
+        }
+        fs::remove_file(manifest_path).unwrap();
+
+        let report = super::recover_template_gc(&catalog, &state_dir).unwrap();
+
+        assert_eq!(report["status"], "recovered");
+        assert!(!journal_path.exists());
         fs::remove_dir_all(root).unwrap();
     }
 

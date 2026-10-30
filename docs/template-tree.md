@@ -178,13 +178,26 @@ time.
 
 The lock only coordinates DenseVM's publisher, collector, and clone-start
 paths. It cannot detect or serialize external QEMU processes or unrelated
-references outside the supplied clone registry/catalog. An interrupted unlink
-has no recovery journal and may leave an invalid manifest/artifact set; the
-validator will fail closed afterward and manual recovery may be required. A
-disposable CLI smoke using hard-linked copies of generated artifacts removed
-the four child files while preserving the source and parent hash:
+references outside the supplied clone registry/catalog. Before unlinking any
+file, the collector writes and syncs a journal containing the generation
+directory, manifest hash, and each artifact's name and hash. If the process
+stops during deletion, run
+`densevm template gc-recover ROOT --state-dir DIR --apply` to validate the
+journal and remaining files, then finish the same deletion. The command is
+idempotent across partial artifact removal and a crash after manifest removal.
+It refuses malformed journals, changed files, unsafe paths, and generations
+referenced by an active clone. Pending journals block new GC plans until
+recovery succeeds.
+
+This is roll-forward recovery, not rollback: once deletion starts, the removed
+files are not restored. The journal and files use `fsync` calls, but power-loss
+durability and filesystem-specific ordering have not been demonstrated. The
+lock also cannot detect external QEMU processes or references outside the
+catalog and clone registry. A disposable CLI smoke using hard-linked copies of
+generated artifacts removed the four child files while preserving the source
+and parent hash:
 [`template-gc-cli-smoke.json`](../results/kvm-recovery-2026-10-30/template-gc-cli-smoke.json).
-This is experimental collection, not crash-safe storage management.
+This remains experimental collection, not a general-purpose storage manager.
 
 This command only reports candidates; it does not remove files or check
 references outside the clone registry and catalog. It now takes the same
@@ -292,8 +305,9 @@ crash. This is not durable publication across power loss: artifact and parent
 directory `fsync` ordering has not been implemented or tested. Process
 reference detection covers same-user `/proc` command lines and memory maps; it
 is not a general process supervisor or a persistent template manager. The
-runtime now has explicit leaf-only garbage collection, but deletion is not
-crash-safe and there is no managed catalog with durable recovery. Migration
+runtime now has explicit leaf-only garbage collection with journaled
+process-interruption recovery. Power-loss durability, external QEMU references,
+and a managed catalog with general recovery remain unverified. Migration
 compatibility across QEMU versions and large multi-level tree benchmarks remain
 untested. These results also do not establish that every machine/device
 configuration supports the same migration sequence. Those gaps need separate
