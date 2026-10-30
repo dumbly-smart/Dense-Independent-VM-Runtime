@@ -52,7 +52,9 @@ reported 2,048 resident pages, 1,920 shared pages, and 128 private-dirty pages.
 This validates `/proc/smaps` parsing and page conversion, not QEMU/KVM behavior.
 Raw output: [`results/memory-map-smoke.json`](../results/memory-map-smoke.json).
 
-The QEMU COW experiments provide the actual guest evidence. For example, the
-two-clone run's template mappings showed A gaining about 32,780 KiB of
-`Private_Dirty` while B gained 160 KiB after A dirtied its test region; see
-[`the KVM result`](../results/kvm-recovery-2026-10-30/two-clone-kvm-isolation.json).
+The QEMU COW experiment provides guest evidence in the same schema. In a
+fresh two-clone run that dirtied 100% of the 32 MiB test region in A, its
+private-dirty estimate rose by 8,208 pages (32,832 KiB), while B rose by 52
+pages (208 KiB). This is one sample; the complete result and extracted
+comparison are [`page-estimates-cow.json`](../results/kvm-recovery-2026-10-30/page-estimates-cow.json)
+and [`page-estimates-cow-summary.json`](../results/kvm-recovery-2026-10-30/page-estimates-cow-summary.json).

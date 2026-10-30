@@ -1,0 +1,26 @@
+{
+  "experiment": "two-clone QEMU/KVM COW with per-mapping page estimates",
+  "raw_result": "page-estimates-cow.json",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "kernel_version": "7.2.11-arch1-1",
+  "host_page_size_bytes": 4096,
+  "guest_ram_mib": 256,
+  "requested_divergence_percent_of_32_mib_test_region": 100,
+  "measurements": {
+    "clone_a": {
+      "private_dirty_pages_before": 645,
+      "private_dirty_pages_after": 8853,
+      "private_dirty_pages_delta": 8208,
+      "private_dirty_kib_delta": 32832,
+      "private_dirty_pages_delta_estimate_bytes": 33619968
+    },
+    "clone_b": {
+      "private_dirty_pages_before": 742,
+      "private_dirty_pages_after": 794,
+      "private_dirty_pages_delta": 52,
+      "private_dirty_kib_delta": 208,
+      "private_dirty_pages_delta_estimate_bytes": 212992
+    }
+  },
+  "interpretation": "A-only writes increased A private-dirty estimate by about 32 MiB while B increased by about 0.2 MiB. These are smaps estimates from one run; not a guest-physical-page map."
+}

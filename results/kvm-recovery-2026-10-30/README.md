@@ -113,3 +113,10 @@ missed in `host` and `rt`, while both fired after resume in `vm`. Each template
 and clone command contained the selected `-rtc clock=...` value. Full raw
 records and reproduction details are in [`docs/rtc-clock-experiment.md`](../../docs/rtc-clock-experiment.md)
 and [`rtc-clock-comparison.json`](rtc-clock-comparison.json).
+
+A fresh two-clone 100%-of-test-region divergence run now includes shared,
+private, resident, and private-dirty page estimates for each RAM mapping. A's
+private-dirty estimate rose by 8,208 pages (32,832 KiB); B rose by 52 pages
+(208 KiB). These are `/proc/smaps` classifications, not guest-physical page
+identities. Raw result: [`page-estimates-cow.json`](page-estimates-cow.json);
+extracted values: [`page-estimates-cow-summary.json`](page-estimates-cow-summary.json).

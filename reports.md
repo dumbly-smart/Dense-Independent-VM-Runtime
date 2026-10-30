@@ -157,3 +157,9 @@ measured 1,920 shared and 128 private-dirty pages after one process changed
 128 pages. This validates the reporting command, not guest COW. The
 [method and caveats](docs/memory-map.md) explain why this is an aggregate
 classification rather than a guest-physical page map.
+
+The same page estimates are now attached to main probe RAM-mapping snapshots.
+In a 100%-of-test-region two-clone KVM divergence run, the writer gained an
+estimated 8,208 private-dirty pages and the untouched sibling gained 52.
+[Raw data](results/kvm-recovery-2026-10-30/page-estimates-cow.json) and
+[summary](results/kvm-recovery-2026-10-30/page-estimates-cow-summary.json).

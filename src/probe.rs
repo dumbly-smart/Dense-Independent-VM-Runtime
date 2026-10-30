@@ -1097,17 +1097,18 @@ fn cpu_ticks_as_percent_of_one_core(ticks: u64, interval_ms: u128, ticks_per_sec
     ticks as f64 * 100_000.0 / (interval_ms as f64 * ticks_per_second as f64)
 }
 
-fn measure_mapping(pid: u32, path: &Path) -> Result<MemoryTotals, String> {
+fn measure_mapping(pid: u32, path: &Path, page_size_bytes: u64) -> Result<Value, String> {
     let text = fs::read_to_string(format!("/proc/{pid}/smaps")).map_err(|e| e.to_string())?;
     crate::metrics::verify_private_ram_mapping(&text, path.to_str().ok_or("non-UTF8 RAM path")?)?;
-    parse_smaps_for_path(&text, path.to_str().ok_or("non-UTF8 RAM path")?)
+    let totals = parse_smaps_for_path(&text, path.to_str().ok_or("non-UTF8 RAM path")?)?;
+    crate::metrics::ram_mapping_report(&totals, page_size_bytes)
 }
 
-fn snapshot(pids: &[u32], ram: &Path) -> Result<Value, String> {
+fn snapshot(pids: &[u32], ram: &Path, page_size_bytes: u64) -> Result<Value, String> {
     let mut clones = Vec::new();
     for pid in pids {
         clones.push(
-            json!({"pid":pid,"memory":measure(*pid)?,"ram_mapping":measure_mapping(*pid, ram)?}),
+            json!({"pid":pid,"memory":measure(*pid)?,"ram_mapping":measure_mapping(*pid, ram, page_size_bytes)?}),
         );
     }
     Ok(json!({
@@ -1937,6 +1938,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
     crate::capabilities::require_template_support(&host)?;
+    let page_size_bytes = host["page_size_bytes"]
+        .as_u64()
+        .ok_or("host page size unavailable for RAM page estimates")?;
     let clone_identities = (0..count)
         .map(|_| CloneIdentity::generate())
         .collect::<Result<Vec<_>, _>>()?;
@@ -2588,13 +2592,13 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && expect_value(&mut bserial, "disk-read", "DISK 0")?;
     let before_a = measure(a.pid())?;
     let before_b = measure(b.pid())?;
-    let before_ram_a = measure_mapping(a.pid(), &ram)?;
-    let before_ram_b = measure_mapping(b.pid(), &ram)?;
+    let before_ram_a = measure_mapping(a.pid(), &ram, page_size_bytes)?;
+    let before_ram_b = measure_mapping(b.pid(), &ram, page_size_bytes)?;
     let overlay_before = [
         allocated_bytes(&overlays[0])?,
         allocated_bytes(&overlays[1])?,
     ];
-    let snapshot_before = snapshot(&clone_pids, &ram)?;
+    let snapshot_before = snapshot(&clone_pids, &ram, page_size_bytes)?;
     aserial.command(
         &format!("ram-random-pages {divergence_pages} 165"),
         &format!("RAM-WROTE-PAGES {divergence_pages} 165"),
@@ -2605,8 +2609,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && expect_value(&mut bserial, "ram-read", "RAM 90")?;
     let after_ram_a = measure(a.pid())?;
     let after_ram_b = measure(b.pid())?;
-    let after_ram_mapping_a = measure_mapping(a.pid(), &ram)?;
-    let after_ram_mapping_b = measure_mapping(b.pid(), &ram)?;
+    let after_ram_mapping_a = measure_mapping(a.pid(), &ram, page_size_bytes)?;
+    let after_ram_mapping_b = measure_mapping(b.pid(), &ram, page_size_bytes)?;
     let memory_file_resident_bytes = resident_file_bytes(&ram)?;
     let mut divergence_all_verified = true;
     if divergence_all {
@@ -2640,7 +2644,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             divergence_all_verified &= expect_value(serial, "ram-read", &format!("RAM {value}"))?;
         }
     }
-    let snapshot_after = snapshot(&clone_pids, &ram)?;
+    let snapshot_after = snapshot(&clone_pids, &ram, page_size_bytes)?;
     aserial.command("disk-write 165", "DISK-WROTE 165")?;
     let disk_isolation = expect_value(&mut aserial, "disk-read", "DISK 165")?
         && expect_value(&mut bserial, "disk-read", "DISK 0")?;
@@ -2900,7 +2904,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                     "pid": vm.pid(),
                     "qemu_command": vm.command,
                     "memory": measure(vm.pid())?,
-                    "ram_mapping": measure_mapping(vm.pid(), &ram)?,
+                    "ram_mapping": measure_mapping(vm.pid(), &ram, page_size_bytes)?,
                     "idle_cpu_ticks": clone_idle_cpu_ticks[*index as usize],
                     "active_cpu_ticks": clone_active_cpu_ticks[*index as usize],
                     "active_cpu_percent_one_core": cpu_ticks_as_percent_of_one_core(clone_active_cpu_ticks[*index as usize], clone_active_cpu_sample_interval_ms, ticks_per_second),

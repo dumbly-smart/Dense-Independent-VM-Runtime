@@ -108,6 +108,12 @@ pub fn estimate_ram_pages(totals: &MemoryTotals, page_size_bytes: u64) -> Result
     }))
 }
 
+pub fn ram_mapping_report(totals: &MemoryTotals, page_size_bytes: u64) -> Result<Value, String> {
+    let mut report = serde_json::to_value(totals).map_err(|error| error.to_string())?;
+    report["page_estimates"] = estimate_ram_pages(totals, page_size_bytes)?;
+    Ok(report)
+}
+
 pub fn parse_smaps_rollup(input: &str) -> Result<MemoryTotals, String> {
     fn read(input: &str, key: &str) -> Result<u64, String> {
         let line = input
