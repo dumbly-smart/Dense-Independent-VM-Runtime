@@ -65,3 +65,13 @@ KiB and cgroup `memory.current` was 356,093,952 bytes. Baseline/clone
 7,684,096 bytes. These are one additional sample, not a revised estimate of
 host-wide savings; the cgroup includes cache charges and does not guarantee
 that every KVM allocation is charged inside the measured scope.
+
+A matched 100%-of-probe-region divergence run is also recorded at
+[`results/kvm-recovery-2026-10-30/cg100/`](../results/kvm-recovery-2026-10-30/cg100/).
+This dirtied 32 MiB of clone A's 256 MiB guest RAM. A's QEMU PSS rose 32,813
+KiB and its template mapping `Private_Dirty` rose 32,864 KiB; B's PSS rose 181
+KiB and its mapping `Private_Dirty` rose 16 KiB. Cgroup `memory.current` rose
+28,975,104 bytes, `kernel` rose 40,960 bytes, and `sec_pagetables` rose 45,056
+bytes. This is one sample; cache charges and cgroup ownership affect the
+relationship between these measurements. See the linked run README and raw
+JSON for the full values.

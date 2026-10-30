@@ -72,6 +72,12 @@ the tested QEMU, kernel, guest, devices, and workload.
   for clones before divergence. Baseline/clone `sec_pagetables` charges were
   405,504/409,600 bytes. This includes cache charges and remains partial
   accounting. See [`cgroup sample`](results/kvm-recovery-2026-10-30/cg/).
+- In the matched 100%-of-probe-region divergence run, clone A's template
+  mapping `Private_Dirty` rose 32,864 KiB and PSS rose 32,813 KiB; B's
+  corresponding changes were 16 KiB and 181 KiB. Cgroup `memory.current`
+  increased 28,975,104 bytes, with `sec_pagetables` up 45,056 bytes. This is
+  32 MiB of one guest's RAM, not 100% of the guest allocation. See
+  [`divergence cgroup sample`](results/kvm-recovery-2026-10-30/cg100/).
 - **Timers while parked: partial.** QMP pause nearly eliminates host CPU use,
   but guest time and alarms differ. Parking is not semantically equivalent to
   continuous execution.

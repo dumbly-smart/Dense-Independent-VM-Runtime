@@ -73,3 +73,9 @@ phase inside a delegated memory cgroup. The raw JSON, command, summary, and
 limits are recorded in [`cg/`](cg/). The temporary guest disk/RAM artifacts
 were removed after collection; cgroup `memory.current` includes file-cache
 charges and is not a complete host-memory inventory.
+
+A separate cgroup run intentionally dirtied all 32 MiB of the probe region in
+clone A. Its PSS and private-mapping changes were about 32 MiB while clone B
+remained nearly stable; cgroup `memory.current` rose by 28,975,104 bytes. This
+does not mean 100% of the 256 MiB guest RAM was dirtied. The exact table and
+limits are in [`cg100/`](cg100/).
