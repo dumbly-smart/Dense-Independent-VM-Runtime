@@ -92,6 +92,23 @@ fn main() {
                 Err("template GC planning blocked; see report blockers".into())
             }
         }),
+        Command::TemplateGc {
+            root,
+            state_dir,
+            generation_id,
+            keep_ids,
+        } => {
+            densevm::inspect::delete_template_gc_leaf(&root, &state_dir, &generation_id, &keep_ids)
+                .and_then(|report| {
+                    let deleted = report["status"] == "deleted";
+                    print_json(report)?;
+                    if deleted {
+                        Ok(())
+                    } else {
+                        Err("template GC deletion blocked; see report blockers".into())
+                    }
+                })
+        }
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }

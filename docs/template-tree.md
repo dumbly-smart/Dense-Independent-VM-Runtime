@@ -153,6 +153,39 @@ parent ID, and leaf flag; leaf IDs are listed separately as a possible
 child-first removal order. The report lists each active clone's registry state
 alongside its generation reference.
 
+To remove one verified, unreferenced leaf generation, specify its ID and the
+explicit `--apply` flag:
+
+```sh
+cargo run -- template gc /path/to/template-store \
+  --state-dir /var/lib/densevm \
+  --generation sha256:GENERATION_ID \
+  --keep sha256:GENERATION_TO_RETAIN \
+  --apply
+```
+
+Collection recomputes the catalog plan while holding the publication lock,
+then takes an exclusive lock in that generation directory. DenseVM clone
+startup takes a shared generation lock while opening and restoring the
+artifacts. This prevents cooperating clone starts from racing the unlink. The
+command removes only the verified manifest-listed RAM, machine-state, disk,
+and `generation.json` files for a candidate that is currently an unreferenced
+leaf. It preserves the generation directory, logs, result files, and every
+other unrecognized entry; parent backing artifacts are untouched. Repeated `--keep` values are applied again during the delete-time reachability
+check; pass the same keep IDs used when reviewing the plan. Remove a tree from
+leaves inward by running the command once per leaf, using the current plan each
+time.
+
+The lock only coordinates DenseVM's publisher, collector, and clone-start
+paths. It cannot detect or serialize external QEMU processes or unrelated
+references outside the supplied clone registry/catalog. An interrupted unlink
+has no recovery journal and may leave an invalid manifest/artifact set; the
+validator will fail closed afterward and manual recovery may be required. A
+disposable CLI smoke using hard-linked copies of generated artifacts removed
+the four child files while preserving the source and parent hash:
+[`template-gc-cli-smoke.json`](../results/kvm-recovery-2026-10-30/template-gc-cli-smoke.json).
+This is experimental collection, not crash-safe storage management.
+
 This command only reports candidates; it does not remove files or check
 references outside the clone registry and catalog. It now takes the same
 nonblocking `.densevm-template-tree.lock` used by the Python publisher and

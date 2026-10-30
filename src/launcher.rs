@@ -75,6 +75,11 @@ pub fn start_clone(
     state_root: &Path,
     clone_id: &str,
 ) -> Result<crate::lifecycle::CloneRecord, String> {
+    let template_dir = manifest_path
+        .parent()
+        .ok_or("template manifest has no containing directory")?;
+    let _template_lock =
+        crate::template_lock::TemplateTreeLock::acquire_shared(template_dir, true)?;
     let template = load_template_artifacts(manifest_path)?;
     let host = crate::capabilities::host_report();
     crate::capabilities::require_template_support(&host)?;
@@ -890,6 +895,29 @@ mod tests {
         assert_eq!(info["virtual-size"], 16 * 1024 * 1024);
         assert!(info["actual-size"].as_u64().unwrap() < 1024 * 1024);
         assert!(create_disk_overlay(&base, &instance).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn clone_start_refuses_a_template_locked_for_collection() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-clone-template-lock-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let template_dir = root.join("generation");
+        let state_dir = root.join("state");
+        fs::create_dir_all(&template_dir).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        let _gc_lock =
+            crate::template_lock::TemplateTreeLock::acquire_exclusive(&template_dir, true).unwrap();
+
+        let error =
+            start_clone(&template_dir.join("generation.json"), &state_dir, "clone-a").unwrap_err();
+        assert!(error.contains("template-tree operation is already active"));
         fs::remove_dir_all(root).unwrap();
     }
 

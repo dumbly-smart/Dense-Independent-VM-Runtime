@@ -71,6 +71,12 @@ pub enum Command {
         state_dir: PathBuf,
         keep_ids: Vec<String>,
     },
+    TemplateGc {
+        root: PathBuf,
+        state_dir: PathBuf,
+        generation_id: String,
+        keep_ids: Vec<String>,
+    },
     MemoryMap {
         pid: u32,
         path: PathBuf,
@@ -320,6 +326,31 @@ where
             ),
         },
         Some("template") => match args.next().as_deref() {
+            Some("gc") => {
+                let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
+                let mut state_dir = None;
+                let mut generation_id = None;
+                let mut keep_ids = Vec::new();
+                let mut apply = false;
+                while let Some(arg) = args.next() {
+                    match arg.as_str() {
+                        "--state-dir" => state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?)),
+                        "--generation" => generation_id = Some(value(&mut args, "--generation")?),
+                        "--keep" => keep_ids.push(value(&mut args, "--keep")?),
+                        "--apply" => apply = true,
+                        flag => return Err(format!("unknown option {flag}")),
+                    }
+                }
+                if !apply {
+                    return Err("template gc requires explicit --apply".into());
+                }
+                Ok(Command::TemplateGc {
+                    root,
+                    state_dir: state_dir.ok_or("--state-dir is required")?,
+                    generation_id: generation_id.ok_or("--generation is required")?,
+                    keep_ids,
+                })
+            }
             Some("tree") => {
                 let root = PathBuf::from(args.next().ok_or("template catalog root is required")?);
                 if args.next().is_some() {
@@ -344,7 +375,7 @@ where
                     keep_ids,
                 })
             }
-            _ => Err("usage: densevm template tree ROOT | densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID]".into()),
+            _ => Err("usage: densevm template tree ROOT | densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID] | densevm template gc ROOT --state-dir DIR --generation ID [--keep ID] --apply".into()),
         },
         Some("memory-map") => {
             let target = args.next().ok_or("PID or clone is required")?;

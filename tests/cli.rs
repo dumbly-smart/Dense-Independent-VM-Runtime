@@ -553,6 +553,44 @@ fn parses_read_only_template_gc_plan() {
 }
 
 #[test]
+fn parses_explicit_leaf_template_collection_command() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "template",
+            "gc",
+            "/templates",
+            "--state-dir",
+            "/var/lib/densevm",
+            "--generation",
+            "sha256:leaf",
+            "--keep",
+            "sha256:keep",
+            "--apply",
+        ]),
+        Ok(Command::TemplateGc {
+            root: "/templates".into(),
+            state_dir: "/var/lib/densevm".into(),
+            generation_id: "sha256:leaf".into(),
+            keep_ids: vec!["sha256:keep".into()],
+        })
+    );
+    assert!(
+        parse_args([
+            "densevm",
+            "template",
+            "gc",
+            "/templates",
+            "--state-dir",
+            "/var/lib/densevm",
+            "--generation",
+            "sha256:leaf",
+        ])
+        .is_err()
+    );
+}
+
+#[test]
 fn blocked_template_gc_plan_prints_report_and_exits_nonzero() {
     let root = std::env::temp_dir().join(format!(
         "densevm-blocked-gc-plan-{}-{}",

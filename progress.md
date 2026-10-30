@@ -102,8 +102,11 @@ the tested QEMU, kernel, guest, devices, and workload.
   and protects active clone generations and their ancestors. Candidate entries
   include their verified directory and manifest paths; active clone records
   include lifecycle state. A blocked plan prints its report and exits nonzero.
-  Deletion, a managed catalog, and power-loss recovery remain deferred. A regression test
-  now exercises the planner against a hash-verified schema-v3 generation and
+  Explicit leaf collection now removes only verified manifest-listed files
+  after rechecking reachability under publisher/clone-start locks. It preserves
+  unknown files and has no power-loss journal; a managed catalog and durable
+  recovery remain deferred. A regression test now exercises the planner against
+  a hash-verified schema-v3 generation and
   persisted clone records in all four lifecycle states. Starting/running
   generations are protected; stopped/failed records do not pin unknown
   generations. The active references are confirmed in the planner report.
@@ -180,3 +183,7 @@ For a complete beginner-to-technical explanation, read
 - The persistent template-tree runner now captures RAM-map reports by clone ID and verifies the reported identity/generation against each started clone. A live two-clone rerun reported 3,598 smaps-shared pages per process from the common RAM file; both processes were distinct and stopped cleanly. The runner's Python tests and all Rust tests pass. Reproduction commands and limitations: `docs/memory-map.md`; raw result: `results/kvm-recovery-2026-10-30/persistent-tree-memory-map-by-id.json`.
 
 - `template gc-plan` now shares the template-tree publication/recovery flock and fails immediately if another cooperating operation is active. Unit coverage and a live Python-lock/Rust-planner check passed. It may create a mode-0600 lock file in the catalog root; external writers are not coordinated. This is read/report synchronization, not deletion.
+
+- Added explicit leaf-only template generation collection. `densevm template gc ... --apply` recomputes the verified reachability plan, coordinates with clone starts, and removes only the candidate's RAM/state/disk files and manifest. Logs, unknown entries, parent backing files, and the generation directory are preserved. It requires one invocation per leaf. No automatic collection was run against project data; power-loss recovery and external QEMU references remain unresolved.
+
+- A disposable CLI GC run assembled a one-leaf catalog from hard-linked copies of real generated artifacts. The explicit command removed only four links in the scratch catalog; source artifacts and parent-disk hash remained unchanged, and logs/result files survived. Raw output: `results/kvm-recovery-2026-10-30/template-gc-cli-smoke.json`.

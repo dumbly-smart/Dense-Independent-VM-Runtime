@@ -483,13 +483,21 @@ pub fn validate_template_tree(root: &Path) -> Result<Value, String> {
     Ok(report)
 }
 
-/// Produce a read-only mark-and-sweep plan. No files are removed by this API.
+/// Produce a non-destructive mark-and-sweep plan. No generation files are removed.
 pub fn plan_template_gc(
     root: &Path,
     state_dir: &Path,
     keep_ids: &[String],
 ) -> Result<Value, String> {
-    let _tree_lock = crate::template_lock::TemplateTreeLock::acquire(root, true)?;
+    let _tree_lock = crate::template_lock::TemplateTreeLock::acquire_exclusive(root, true)?;
+    plan_template_gc_locked(root, state_dir, keep_ids)
+}
+
+fn plan_template_gc_locked(
+    root: &Path,
+    state_dir: &Path,
+    keep_ids: &[String],
+) -> Result<Value, String> {
     let tree = validate_template_tree(root)?;
     let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
     let clones = registry.list()?;
@@ -518,6 +526,153 @@ pub fn plan_template_gc(
     );
     report["state_dir"] = json!(state_dir);
     Ok(report)
+}
+
+pub fn delete_template_gc_leaf(
+    root: &Path,
+    state_dir: &Path,
+    generation_id: &str,
+    keep_ids: &[String],
+) -> Result<Value, String> {
+    let _tree_lock = crate::template_lock::TemplateTreeLock::acquire_exclusive(root, true)?;
+    let root = root
+        .canonicalize()
+        .map_err(|error| format!("resolve template-tree root: {error}"))?;
+    let plan = plan_template_gc_locked(&root, state_dir, keep_ids)?;
+    if plan["status"] != "planned" {
+        return Ok(json!({
+            "status":"blocked",
+            "generation_id":generation_id,
+            "blockers":plan["blockers"],
+            "plan":plan,
+            "deletes_files":false,
+        }));
+    }
+    let candidate = plan["candidate_generations"]
+        .as_array()
+        .and_then(|candidates| {
+            candidates
+                .iter()
+                .find(|candidate| candidate["generation_id"].as_str() == Some(generation_id))
+        });
+    let Some(candidate) = candidate else {
+        return Ok(json!({
+            "status":"blocked",
+            "generation_id":generation_id,
+            "blockers":["generation is not an unreferenced GC candidate"],
+            "deletes_files":false,
+        }));
+    };
+    if candidate["is_leaf"] != true {
+        return Ok(json!({
+            "status":"blocked",
+            "generation_id":generation_id,
+            "blockers":["only an unreferenced leaf generation can be collected"],
+            "deletes_files":false,
+        }));
+    }
+    let directory = PathBuf::from(
+        candidate["directory"]
+            .as_str()
+            .ok_or("GC candidate omitted its directory")?,
+    )
+    .canonicalize()
+    .map_err(|error| format!("resolve GC candidate directory: {error}"))?;
+    if !directory.starts_with(&root) {
+        return Err("GC candidate directory escapes the template catalog".into());
+    }
+    let _generation_lock = if directory == root {
+        None
+    } else {
+        Some(crate::template_lock::TemplateTreeLock::acquire_exclusive(
+            &directory, true,
+        )?)
+    };
+
+    // Recheck reachability after taking the generation lock. Clone startup
+    // takes the shared form of this same lock while reading its template.
+    let plan = plan_template_gc_locked(&root, state_dir, keep_ids)?;
+    let candidate = plan["candidate_generations"]
+        .as_array()
+        .and_then(|candidates| {
+            candidates.iter().find(|candidate| {
+                candidate["generation_id"].as_str() == Some(generation_id)
+                    && candidate["is_leaf"] == true
+            })
+        });
+    let Some(candidate) = candidate else {
+        return Ok(json!({
+            "status":"blocked",
+            "generation_id":generation_id,
+            "blockers":["generation became protected or is no longer a leaf"],
+            "deletes_files":false,
+        }));
+    };
+    let manifest_path = PathBuf::from(
+        candidate["manifest_path"]
+            .as_str()
+            .ok_or("GC candidate omitted its manifest path")?,
+    );
+    if manifest_path.parent() != Some(directory.as_path()) {
+        return Err("GC manifest is not directly inside its generation directory".into());
+    }
+    let manifest_metadata = fs::symlink_metadata(&manifest_path)
+        .map_err(|error| format!("inspect GC manifest {}: {error}", manifest_path.display()))?;
+    if !manifest_metadata.file_type().is_file() {
+        return Err("GC manifest is not a regular file".into());
+    }
+    let manifest: Value = serde_json::from_slice(
+        &fs::read(&manifest_path).map_err(|error| format!("read GC manifest: {error}"))?,
+    )
+    .map_err(|error| format!("parse GC manifest: {error}"))?;
+    let mut artifacts = Vec::new();
+    for section in ["disk", "machine_state", "ram"] {
+        let filename = manifest[section]["path"]
+            .as_str()
+            .ok_or_else(|| format!("GC manifest omitted {section}.path"))?;
+        let relative = Path::new(filename);
+        if relative.components().count() != 1
+            || !matches!(relative.components().next(), Some(Component::Normal(_)))
+        {
+            return Err(format!(
+                "GC artifact path is not a local filename: {filename}"
+            ));
+        }
+        let artifact = directory.join(relative);
+        let metadata = fs::symlink_metadata(&artifact)
+            .map_err(|error| format!("inspect GC artifact {}: {error}", artifact.display()))?;
+        if !metadata.file_type().is_file() {
+            return Err(format!(
+                "GC artifact is not a regular file: {}",
+                artifact.display()
+            ));
+        }
+        if !artifacts.contains(&artifact) {
+            artifacts.push(artifact);
+        }
+    }
+    artifacts.push(manifest_path.clone());
+    let mut deleted_files = Vec::new();
+    for artifact in artifacts {
+        fs::remove_file(&artifact)
+            .map_err(|error| format!("remove GC artifact {}: {error}", artifact.display()))?;
+        deleted_files.push(artifact);
+    }
+    let mut preserved_entries = fs::read_dir(&directory)
+        .map_err(|error| format!("read remaining generation directory: {error}"))?
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect::<Vec<_>>();
+    preserved_entries.sort();
+    Ok(json!({
+        "status":"deleted",
+        "generation_id":generation_id,
+        "deleted_files":deleted_files,
+        "generation_directory_preserved":true,
+        "unrecognized_entries_preserved":preserved_entries,
+        "deletes_files":true,
+        "safety":"Only manifest-referenced RAM, machine-state, disk, and manifest files were removed from an unreferenced leaf. Other entries were preserved.",
+    }))
 }
 
 fn plan_template_gc_report(tree: Value, keep_ids: &[String], active_ids: &[String]) -> Value {
@@ -817,10 +972,116 @@ mod template_tests {
         fs::create_dir_all(&root).unwrap();
         fs::create_dir_all(&state_dir).unwrap();
         let _publication_lock =
-            crate::template_lock::TemplateTreeLock::acquire(&root, false).unwrap();
+            crate::template_lock::TemplateTreeLock::acquire_exclusive(&root, false).unwrap();
 
         let error = plan_template_gc(&root, &state_dir, &[]).unwrap_err();
         assert!(error.contains("template-tree operation is already active"));
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn template_gc_deletes_only_verified_leaf_artifacts_and_keeps_other_files() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-template-gc-delete-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let catalog = root.join("catalog");
+        let parent = root.join("parent");
+        let child = catalog.join("leaf");
+        let state_dir = root.join("state");
+        fs::create_dir_all(&child).unwrap();
+        fs::create_dir_all(&parent).unwrap();
+        fs::create_dir_all(&state_dir).unwrap();
+        for (name, contents) in [
+            ("result.json", "parent result"),
+            ("memory.img", "parent RAM"),
+            ("machine-state", "parent state"),
+            ("base.qcow2", "base disk"),
+        ] {
+            fs::write(parent.join(name), contents).unwrap();
+        }
+        for (name, contents) in [
+            ("child-memory.img", "child RAM"),
+            ("child-machine-state", "child state"),
+            ("parent.qcow2", "child disk"),
+        ] {
+            fs::write(child.join(name), contents).unwrap();
+        }
+        let parent_hashes = [
+            digest(&parent.join("result.json")),
+            digest(&parent.join("memory.img")),
+            digest(&parent.join("machine-state")),
+            digest(&parent.join("base.qcow2")),
+        ];
+        let child_hashes = [
+            digest(&child.join("child-memory.img")),
+            digest(&child.join("child-machine-state")),
+            digest(&child.join("parent.qcow2")),
+        ];
+        let id_input = root.join("generation-id-input.json");
+        fs::write(&id_input, serde_json::to_vec(&child_hashes).unwrap()).unwrap();
+        let generation_id = format!("sha256:{}", digest(&id_input));
+        let manifest = serde_json::json!({
+            "schema_version": 3,
+            "generation_id": generation_id,
+            "parent": {
+                "template_dir": parent,
+                "artifacts": {
+                    "result": {"path":"result.json", "sha256":parent_hashes[0]},
+                    "ram": {"path":"memory.img", "sha256":parent_hashes[1]},
+                    "machine_state": {"path":"machine-state", "sha256":parent_hashes[2]},
+                    "disk": {"path":"base.qcow2", "sha256":parent_hashes[3]},
+                },
+            },
+            "ram": {"path":"child-memory.img", "sha256":child_hashes[0], "logical_size_bytes":12},
+            "machine_state": {"path":"child-machine-state", "sha256":child_hashes[1]},
+            "disk": {
+                "path":"parent.qcow2", "sha256":child_hashes[2],
+                "backing_path":parent.join("base.qcow2"),
+                "backing_sha256":parent_hashes[3],
+            },
+        });
+        fs::write(
+            child.join("generation.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        fs::write(child.join("qemu.log"), "keep experiment output").unwrap();
+        let parent_disk_hash = digest(&parent.join("base.qcow2"));
+        let keep_ids = [generation_id.clone()];
+        let protected =
+            super::delete_template_gc_leaf(&catalog, &state_dir, &generation_id, &keep_ids)
+                .unwrap();
+        assert_eq!(protected["status"], "blocked");
+        assert!(child.join("generation.json").exists());
+
+        let report =
+            super::delete_template_gc_leaf(&catalog, &state_dir, &generation_id, &[]).unwrap();
+
+        assert_eq!(report["status"], "deleted");
+        assert_eq!(report["generation_id"], generation_id);
+        assert_eq!(report["deleted_files"].as_array().unwrap().len(), 4);
+        for name in [
+            "generation.json",
+            "child-memory.img",
+            "child-machine-state",
+            "parent.qcow2",
+        ] {
+            assert!(!child.join(name).exists());
+        }
+        assert_eq!(
+            fs::read_to_string(child.join("qemu.log")).unwrap(),
+            "keep experiment output"
+        );
+        assert_eq!(digest(&parent.join("base.qcow2")), parent_disk_hash);
+        assert_eq!(
+            report["unrecognized_entries_preserved"],
+            serde_json::json!([".densevm-template-tree.lock", "qemu.log"])
+        );
         fs::remove_dir_all(root).unwrap();
     }
 

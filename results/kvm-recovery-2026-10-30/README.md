@@ -144,3 +144,10 @@ clone IDs and generation, each showed 3,598 shared pages, and the separate
 QEMU processes were stopped cleanly. The exact test output, commands, and
 cleanup results are recorded in
 [`persistent-tree-memory-map-by-id.json`](persistent-tree-memory-map-by-id.json).
+
+An explicit GC CLI smoke used a temporary one-leaf catalog assembled with hard
+links to the generated template artifacts. The planner marked the generation
+collectible; `template gc ... --apply` removed the RAM, machine-state, disk,
+and manifest links from the scratch catalog, preserved its log/result files,
+and left the source artifacts and parent disk hash unchanged. Raw plan and
+delete reports: [`template-gc-cli-smoke.json`](template-gc-cli-smoke.json).

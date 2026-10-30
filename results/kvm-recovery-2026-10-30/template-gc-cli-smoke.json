@@ -1,0 +1,79 @@
+{
+  "experiment": "explicit template leaf GC CLI smoke on a disposable catalog",
+  "date": "2026-10-30",
+  "host_kernel": "7.2.11-arch1-1",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "fixture": "temporary catalog used hard links to the real generated /tmp/mmtree child artifacts and /tmp/mmroot parent artifacts; manifest-relative parent paths were adjusted only in the disposable copy",
+  "plan_command": [
+    "densevm",
+    "template",
+    "gc-plan",
+    "<catalog>",
+    "--state-dir",
+    "<state-dir>"
+  ],
+  "plan_exit_code": 0,
+  "plan": {
+    "active_clones": [],
+    "blockers": [],
+    "candidate_generation_ids": [
+      "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0"
+    ],
+    "candidate_generations": [
+      {
+        "directory": "/tmp/densevm-template-gc-cli-l56a4f_o/catalog/leaf",
+        "generation_id": "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+        "is_leaf": true,
+        "manifest_path": "/tmp/densevm-template-gc-cli-l56a4f_o/catalog/leaf/generation.json",
+        "parent_generation_id": null
+      }
+    ],
+    "candidate_leaves": [
+      "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0"
+    ],
+    "deletes_files": false,
+    "dry_run": true,
+    "protected_generation_ids": [],
+    "protection_reasons": {},
+    "safety": "Candidates are unreferenced by active clones and explicit keeps; this report does not delete or detach files.",
+    "state_dir": "/tmp/densevm-template-gc-cli-l56a4f_o/state",
+    "status": "planned"
+  },
+  "delete_command": [
+    "densevm",
+    "template",
+    "gc",
+    "<catalog>",
+    "--state-dir",
+    "<state-dir>",
+    "--generation",
+    "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+    "--apply"
+  ],
+  "delete_exit_code": 0,
+  "delete_report": {
+    "deleted_files": [
+      "/tmp/densevm-template-gc-cli-l56a4f_o/catalog/leaf/parent.qcow2",
+      "/tmp/densevm-template-gc-cli-l56a4f_o/catalog/leaf/child-machine-state",
+      "/tmp/densevm-template-gc-cli-l56a4f_o/catalog/leaf/child-memory.img",
+      "/tmp/densevm-template-gc-cli-l56a4f_o/catalog/leaf/generation.json"
+    ],
+    "deletes_files": true,
+    "generation_directory_preserved": true,
+    "generation_id": "sha256:7b21f95d62dfca77dc3ccea305f723bd5f487a81305daf99b9029bc0d84101a0",
+    "safety": "Only manifest-referenced RAM, machine-state, disk, and manifest files were removed from an unreferenced leaf. Other entries were preserved.",
+    "status": "deleted",
+    "unrecognized_entries_preserved": [
+      ".densevm-template-tree.lock",
+      "child-template.qemu.log",
+      "result.json"
+    ]
+  },
+  "checks": {
+    "only_four_manifest_files_removed": true,
+    "logs_and_result_preserved": true,
+    "parent_backing_hash_unchanged": true,
+    "original_source_generation_unchanged": true
+  },
+  "limitations": "temporary one-leaf smoke only; it does not test power-loss interruption or non-cooperating external QEMU references"
+}
