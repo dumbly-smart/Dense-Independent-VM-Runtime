@@ -95,6 +95,9 @@ fn main() {
         Command::MemoryMap { pid, path } => {
             densevm::inspect::memory_map(pid, &path).and_then(print_json)
         }
+        Command::MemoryMapClone { id, state_dir } => {
+            densevm::inspect::memory_map_clone(&id, &state_dir).and_then(print_json)
+        }
         Command::KsmStatus => densevm::inspect::ksm_status().and_then(print_json),
         Command::CloneList { state_dir } => densevm::lifecycle::CloneRegistry::open(&state_dir)
             .and_then(|registry| registry.list())

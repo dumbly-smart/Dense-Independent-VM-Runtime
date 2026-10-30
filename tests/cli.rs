@@ -454,6 +454,30 @@ fn parses_inspection_commands() {
 }
 
 #[test]
+fn parses_memory_map_for_a_persistent_clone() {
+    assert_eq!(
+        parse_args([
+            "densevm",
+            "memory-map",
+            "clone",
+            "alpha",
+            "--state-dir",
+            "/var/lib/densevm",
+        ])
+        .unwrap(),
+        Command::MemoryMapClone {
+            id: "alpha".into(),
+            state_dir: "/var/lib/densevm".into(),
+        }
+    );
+    assert!(
+        parse_args(["densevm", "memory-map", "clone", "alpha"])
+            .unwrap_err()
+            .contains("--state-dir is required")
+    );
+}
+
+#[test]
 fn parses_template_generation_inspection_command() {
     assert_eq!(
         parse_args(["densevm", "inspect", "template", "/tmp/generation.json"]),

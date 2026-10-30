@@ -1,0 +1,28 @@
+{
+  "clone": {
+    "generation_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "id": "map-smoke",
+    "qemu_pid": 197865,
+    "ram_file": "/tmp/cowmap/memory.img"
+  },
+  "page_estimates": {
+    "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+    "page_size_bytes": 4096,
+    "private_dirty_pages_estimate": 0,
+    "private_pages_estimate": 0,
+    "resident_pages_estimate": 0,
+    "shared_pages_estimate": 0
+  },
+  "private_clean_kib": 0,
+  "private_dirty_kib": 0,
+  "pss_kib": 0,
+  "rss_kib": 0,
+  "shared_clean_kib": 0,
+  "shared_dirty_kib": 0,
+  "smoke_test": {
+    "record_kind": "synthesized same-user clone registry record attached to a live QEMU process",
+    "qemu_state": "QEMU was started with -S; the guest had not executed and no template pages were resident in the matching mapping",
+    "purpose": "validate clone registry lookup, PID/start-time/boot-ID checks, QEMU command-line RAM-file discovery, and output formatting",
+    "not_evidence_of": "a persistent DenseVM clone start, guest RAM sharing, or COW behavior"
+  }
+}

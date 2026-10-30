@@ -20,6 +20,18 @@ Use the PID of a live QEMU process and the exact RAM backing-file path shown in
 that QEMU command. The command only reads `/proc`; it does not read the guest
 RAM file's contents.
 
+For a persistent DenseVM clone, the clone ID form resolves the PID and RAM
+backing file from the read-only clone registry and the live QEMU command line:
+
+```sh
+cargo run -- memory-map clone vm01 --state-dir /var/lib/densevm
+```
+
+This form only accepts a `running` record with a matching QEMU boot ID and
+process start time. It samples the process, then checks the start time again
+to catch exit or PID reuse during the sample. It requires same-user access to
+the state directory and `/proc/<pid>`.
+
 ## Reading the classifications
 
 - `shared_pages_estimate` is derived from the matching mapping's
@@ -51,6 +63,12 @@ the file pages resident. On the tested 4 KiB page-size host, the sampled writer
 reported 2,048 resident pages, 1,920 shared pages, and 128 private-dirty pages.
 This validates `/proc/smaps` parsing and page conversion, not QEMU/KVM behavior.
 Raw output: [`results/memory-map-smoke.json`](../results/memory-map-smoke.json).
+
+A separate live-QEMU smoke validated clone-ID resolution using a synthesized
+registry record and a QEMU process paused before guest execution. The command
+found its RAM path and process identity; no guest pages were resident, so this
+is lookup coverage only, not COW evidence:
+[`results/memory-map-live-qemu-smoke.json`](../results/memory-map-live-qemu-smoke.json).
 
 The QEMU COW experiment provides guest evidence in the same schema. In a
 fresh two-clone run that dirtied 100% of the 32 MiB test region in A, its

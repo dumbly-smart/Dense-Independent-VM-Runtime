@@ -673,6 +673,83 @@ pub fn memory_map(pid: u32, path: &Path) -> Result<Value, String> {
     ram_mapping_report(&totals, page_size)
 }
 
+fn qemu_ram_file_from_args(args: &[&[u8]]) -> Result<PathBuf, String> {
+    let mut paths = Vec::new();
+    for pair in args.windows(2) {
+        if pair[0] != b"-object" {
+            continue;
+        }
+        let object = std::str::from_utf8(pair[1])
+            .map_err(|error| format!("QEMU object argument is not UTF-8: {error}"))?;
+        if !object.starts_with("memory-backend-file,id=ram,") {
+            continue;
+        }
+        let path = object
+            .split(',')
+            .find_map(|option| option.strip_prefix("mem-path="))
+            .ok_or("QEMU RAM backend is missing mem-path")?;
+        let path = PathBuf::from(path);
+        if !path.is_absolute() {
+            return Err("QEMU RAM backing path is not absolute".into());
+        }
+        paths.push(path);
+    }
+    match paths.as_slice() {
+        [path] => Ok(path.clone()),
+        [] => Err("QEMU command has no memory-backend-file RAM object".into()),
+        _ => Err("QEMU command has multiple RAM backing files".into()),
+    }
+}
+
+fn qemu_ram_file(pid: u32) -> Result<PathBuf, String> {
+    let command_line = fs::read(format!("/proc/{pid}/cmdline"))
+        .map_err(|error| format!("read QEMU command line for {pid}: {error}"))?;
+    let args = command_line
+        .split(|byte| *byte == 0)
+        .filter(|argument| !argument.is_empty())
+        .collect::<Vec<_>>();
+    qemu_ram_file_from_args(&args)
+}
+
+pub fn memory_map_clone(id: &str, state_dir: &Path) -> Result<Value, String> {
+    let registry = crate::lifecycle::CloneRegistry::open_read_only(state_dir)?;
+    let record = registry.get(id)?;
+    if record.state != crate::lifecycle::CloneState::Running {
+        return Err(format!("clone {id} is {:?}, not running", record.state));
+    }
+    let pid = record
+        .qemu_pid
+        .ok_or_else(|| format!("clone {id} has no recorded QEMU PID"))?;
+    let expected_ticks = record
+        .qemu_start_ticks
+        .ok_or_else(|| format!("clone {id} has no QEMU process fingerprint"))?;
+    let expected_boot_id = record
+        .qemu_boot_id
+        .as_deref()
+        .ok_or_else(|| format!("clone {id} has no QEMU boot ID"))?;
+    if crate::lifecycle::current_boot_id()? != expected_boot_id
+        || crate::lifecycle::process_start_ticks(pid)? != Some(expected_ticks)
+    {
+        return Err(format!(
+            "clone {id} QEMU process identity no longer matches its record"
+        ));
+    }
+    let ram_file = qemu_ram_file(pid)?;
+    let mut report = memory_map(pid, &ram_file)?;
+    if crate::lifecycle::process_start_ticks(pid)? != Some(expected_ticks) {
+        return Err(format!(
+            "clone {id} QEMU process changed while sampling RAM"
+        ));
+    }
+    report["clone"] = json!({
+        "id":record.id,
+        "generation_id":record.generation_id,
+        "qemu_pid":pid,
+        "ram_file":ram_file,
+    });
+    Ok(report)
+}
+
 pub fn ksm_status() -> Result<Value, String> {
     let root = Path::new("/sys/kernel/mm/ksm");
     let names = [
@@ -1222,5 +1299,42 @@ mod template_tests {
         assert_eq!(report["integrity_verified"], false);
         assert_eq!(report["duplicate_generation_ids"][0], "sha256:duplicate");
         fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod memory_map_tests {
+    use super::qemu_ram_file_from_args;
+    use std::path::Path;
+
+    #[test]
+    fn resolves_one_absolute_ram_file_from_qemu_object_arguments() {
+        let args: [&[u8]; 5] = [
+            b"qemu-system-x86_64",
+            b"-object",
+            b"memory-backend-file,id=ram,mem-path=/tmp/template/memory.img,size=256M,share=off",
+            b"-drive",
+            b"if=none,id=disk,file=/tmp/clone.qcow2",
+        ];
+        assert_eq!(
+            qemu_ram_file_from_args(&args).unwrap(),
+            Path::new("/tmp/template/memory.img")
+        );
+    }
+
+    #[test]
+    fn rejects_ambiguous_or_missing_qemu_ram_objects() {
+        let one = b"memory-backend-file,id=ram,mem-path=/tmp/template/memory.img,size=256M";
+        let duplicate_args: [&[u8]; 5] = [b"qemu", b"-object", one, b"-object", one];
+        assert!(qemu_ram_file_from_args(&duplicate_args).is_err());
+        let missing_path: [&[u8]; 3] =
+            [b"qemu", b"-object", b"memory-backend-file,id=ram,size=256M"];
+        assert!(qemu_ram_file_from_args(&missing_path).is_err());
+        let relative_path: [&[u8]; 3] = [
+            b"qemu",
+            b"-object",
+            b"memory-backend-file,id=ram,mem-path=memory.img,size=256M",
+        ];
+        assert!(qemu_ram_file_from_args(&relative_path).is_err());
     }
 }

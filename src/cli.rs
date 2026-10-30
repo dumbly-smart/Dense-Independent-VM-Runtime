@@ -75,6 +75,10 @@ pub enum Command {
         pid: u32,
         path: PathBuf,
     },
+    MemoryMapClone {
+        id: String,
+        state_dir: PathBuf,
+    },
     KsmStatus,
     CloneList {
         state_dir: PathBuf,
@@ -343,12 +347,30 @@ where
             _ => Err("usage: densevm template tree ROOT | densevm template gc-plan ROOT --state-dir DIR [--keep GENERATION_ID]".into()),
         },
         Some("memory-map") => {
-            let pid = args.next().ok_or("PID is required")?.parse().map_err(|_| "PID must be an integer")?;
-            let path = PathBuf::from(args.next().ok_or("RAM path is required")?);
-            if args.next().is_some() {
-                return Err("usage: densevm memory-map PID RAM_FILE".to_string());
+            let target = args.next().ok_or("PID or clone is required")?;
+            if target == "clone" {
+                let id = args.next().ok_or("clone ID is required")?;
+                let mut state_dir = None;
+                while let Some(arg) = args.next() {
+                    match arg.as_str() {
+                        "--state-dir" => {
+                            state_dir = Some(PathBuf::from(value(&mut args, "--state-dir")?));
+                        }
+                        flag => return Err(format!("unknown option {flag}")),
+                    }
+                }
+                Ok(Command::MemoryMapClone {
+                    id,
+                    state_dir: state_dir.ok_or("--state-dir is required")?,
+                })
+            } else {
+                let pid = target.parse().map_err(|_| "PID must be an integer")?;
+                let path = PathBuf::from(args.next().ok_or("RAM path is required")?);
+                if args.next().is_some() {
+                    return Err("usage: densevm memory-map PID RAM_FILE".to_string());
+                }
+                Ok(Command::MemoryMap { pid, path })
             }
-            Ok(Command::MemoryMap { pid, path })
         }
         Some("ksm") if args.next().as_deref() == Some("status") && args.next().is_none() => Ok(Command::KsmStatus),
         Some("clone") => {

@@ -163,3 +163,11 @@ In a 100%-of-test-region two-clone KVM divergence run, the writer gained an
 estimated 8,208 private-dirty pages and the untouched sibling gained 52.
 [Raw data](results/kvm-recovery-2026-10-30/page-estimates-cow.json) and
 [summary](results/kvm-recovery-2026-10-30/page-estimates-cow-summary.json).
+
+For persistent clones, the same command can take a clone ID and state directory:
+`densevm memory-map clone ID --state-dir DIR`. It reads the clone registry
+without mutating it, verifies the recorded QEMU process fingerprint, and finds
+the RAM path in that process's command line. A synthesized-record QEMU smoke
+validated this lookup path only; it did not run a guest. See
+[the method](docs/memory-map.md) and
+[the smoke output](results/memory-map-live-qemu-smoke.json).
