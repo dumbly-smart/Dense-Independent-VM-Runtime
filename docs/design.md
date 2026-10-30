@@ -131,8 +131,9 @@ blocked by the current user's permissions for host-global sysfs; a read-only
 Recursive template-tree COW proofs materialize generated
 levels with relative v4 lineage; DenseVM can inspect metadata, verify hashes,
 catalog parent links, and start/stop persistent clones from relocated trees.
-Template leaf collection is explicit and guarded, but it is not crash-safe or a
-managed catalog. TCG code sharing remains deferred because the feasibility
+Template leaf collection is explicit, guarded, and journaled for recovery from
+process-level interruption. Power-loss durability, external QEMU references,
+and a managed catalog remain unverified. TCG code sharing remains deferred because the feasibility
 analysis does not justify sharing mutable translation blocks across processes.
 Explicit parking is measured but changes guest time.
 

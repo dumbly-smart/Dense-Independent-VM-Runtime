@@ -405,7 +405,7 @@ The repository intentionally leaves several questions open:
 - ordinary distro behavior beyond the tested Alpine identity profile;
 - precise wall-clock, RTC alarm, and interrupt behavior during QMP parking;
 - broad QEMU version, machine type, CPU model, and device compatibility;
-- destructive hierarchical-template garbage collection and power-loss recovery;
+- automatic policy-driven template collection and power-loss durability;
 - density when every guest's full RAM and disk diverge.
 
 These are limits on what the saved experiments demonstrate, not implied
