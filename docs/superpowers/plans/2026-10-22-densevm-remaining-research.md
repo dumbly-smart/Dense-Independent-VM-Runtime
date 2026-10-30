@@ -113,13 +113,14 @@
 - [x] Add tests that unsupported counters and failed writes preserve the previous global KSM state.
 - [x] Verify failure paths without changing host-global KSM settings.
 - [x] Add a paired COW-only/KSM runner, read-only permission/state preflight, comparable-run summary, and tests for PSS/counter aggregation and missing values. The local preflight is saved under `results/2026-10-24/ksm-comparison-blocked/`.
-- [ ] **Blocked by host permission:** Run only when explicitly requested and restore the exact original KSM setting on success, error, and interruption. This host reports KSM `run=0`; `/sys/kernel/mm/ksm/run` is not writable by the current user and noninteractive sudo is unavailable. Do not change host-global KSM state without administrative access.
+- [ ] **Blocked by host permission:** Run only when explicitly requested and restore the exact original KSM setting on success, error, and interruption. A fresh 2026-10-30 read-only check found KSM `run=0`; `/sys/kernel/mm/ksm/run` is root-owned mode `0644`, and opening it for writing as the current user returns `EACCES`. No global setting changed. Do not change host-global KSM state without administrative access. Evidence: `results/kvm-recovery-2026-10-30/ksm-current-permission-check.json`.
 - [ ] **Blocked by host permission:** Collect PSS, pages_shared/pages_sharing/pages_unshared/pages_volatile, ksmd CPU ticks, and a warning that counters are host-global. Read-only counters and disabled-state telemetry are recorded, but a positive merge sample requires an administrator to enable KSM.
 - [x] Document side-channel and operational trade-offs and commit.
 
 Positive KSM measurement remains blocked on this host: `/sys/kernel/mm/ksm/run`
-is root-writable only and noninteractive sudo is unavailable. The current
-value is `0`; no host-global setting was changed. The paired experiment runner
+is root-writable only; the 2026-10-30 check recorded `run=0`, zero merge
+counters, and `EACCES` for a write-open attempt. No host-global setting was
+changed. The paired experiment runner
 and summarizer are implemented and tested, but positive activation and merge
 telemetry still require administrator access. Existing guard and failure-path
 tests pass, and side-channel/operational trade-offs are documented.

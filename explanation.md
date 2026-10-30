@@ -195,11 +195,12 @@ device registers. A two-vCPU probe uses `-smp 2` for every conventional
 baseline, the template, and each incoming clone, so migration's source and
 destination topologies agree.
 
-The current vCPU-count option accepts 1 through 4. Two-vCPU restore passed two
-live runs. Existing HMP register capture shows CPU#0 only, so those results
-prove a two-vCPU configuration restored and ran, but do not directly compare
-vCPU1 registers between siblings. Broader MSR/APIC/interrupt semantics remain
-partially measured.
+The current vCPU-count option accepts 1 through 4. Two-vCPU restore passed
+repeated live runs. Historical HMP captures showed CPU#0 only; the updated
+parser records per-vCPU GPR and CR0/CR2/CR3/CR4/EFER snapshots. A new live run
+captured both CPU indexes in both clones and separately passed the per-vCPU
+TPR mutation check. The control-register snapshots do not prove independent
+writes. Broader MSR/APIC/interrupt semantics remain partially measured.
 
 ## 9. Private disks with qcow2 overlays
 

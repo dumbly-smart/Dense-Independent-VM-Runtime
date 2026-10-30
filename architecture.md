@@ -104,8 +104,11 @@ must run and pass RAM/disk/identity checks.
 
 The current probe supports `--vcpus 1..4` and uses the same number for the
 conventional baseline, source template, and restored clones. Two-vCPU restore
-has passed twice. The current HMP register sampler returns `CPU#0` only, so it
-does not yet directly inspect vCPU 1's architectural state.
+has passed repeatedly. Historical samples captured `CPU#0` only; the updated
+HMP sampler parses per-vCPU GPRs and CR0/CR2/CR3/CR4/EFER. A live two-vCPU run
+captured both CPU indexes in both clones. Those control-register values are
+snapshots, not independent-write tests; broader MSR/APIC/interrupt semantics
+remain partially measured.
 
 ## Disk sharing model
 

@@ -211,4 +211,10 @@ output by CPU index for both clones. The live two-vCPU test captured CPU 0 and
 CPU 1 and passed the existing per-vCPU TPR mutation checks. These control
 register values are snapshots only; they do not establish independent writes.
 See [`vcpu-control-register-state-2vcpu.json`](vcpu-control-register-state-2vcpu.json)
-and [`docs/vcpu-register-state.md`](../../../docs/vcpu-register-state.md).
+and [`docs/vcpu-register-state.md`](../../docs/vcpu-register-state.md).
+
+A refreshed read-only KSM check found `run=0`, zero merge counters, and
+`EACCES` opening the root-owned `/sys/kernel/mm/ksm/run` for writing as the
+current user. No KSM setting was changed, so positive merge telemetry remains
+blocked on administrator access. See
+[`ksm-current-permission-check.json`](ksm-current-permission-check.json).

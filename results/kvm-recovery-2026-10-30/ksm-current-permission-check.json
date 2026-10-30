@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-30",
+  "kernel": "7.2.11-arch1-1",
+  "uid": 1000,
+  "ksm_root_exists": true,
+  "ksm_counters": {
+    "run": "0",
+    "pages_shared": "0",
+    "pages_sharing": "0",
+    "pages_unshared": "0",
+    "pages_volatile": "0",
+    "full_scans": "0",
+    "pages_to_scan": "100",
+    "sleep_millisecs": "20"
+  },
+  "run_file": {
+    "mode": "0o644",
+    "uid": 0,
+    "gid": 0,
+    "writable_by_current_process": false
+  },
+  "write_open_check": {
+    "opened": false,
+    "errno": 13,
+    "error": "[Errno 13] Permission denied: '/sys/kernel/mm/ksm/run'"
+  },
+  "configuration_changed": false,
+  "interpretation": "Positive KSM merging cannot be measured without permission to enable the host-global KSM run control."
+}

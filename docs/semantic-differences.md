@@ -86,4 +86,7 @@ raw scheduler ticks and should be converted using the host's clock-tick rate.
 clone PSS, RAM-mapping PSS, global KSM counters, and `ksmd` ticks. The current
 host fails its read-only preflight because `/sys/kernel/mm/ksm/run` is not
 writable; no positive KSM merge measurement is available yet. See
-`docs/ksm-experiment.md` for the exact procedure.
+`docs/ksm-experiment.md` for the exact procedure. A fresh 2026-10-30 check
+confirmed `run=0`, zero merge counters, root ownership/mode `0644`, and
+`EACCES` when opening the control file for writing; no host setting changed:
+[`permission-check result`](../results/kvm-recovery-2026-10-30/ksm-current-permission-check.json).

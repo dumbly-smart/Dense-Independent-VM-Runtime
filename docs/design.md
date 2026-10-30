@@ -120,12 +120,15 @@ justifying a fabricated resume claim.
 The basic two-clone mechanism and Alpine service/login checkpoint have been
 demonstrated. An opt-in Alpine identity profile demonstrates OpenSSH host key
 rotation, DHCP client identity, and the tested Linux kernel's VMGenID reaction.
-QMP captures distinct general-purpose register snapshots for two clones, while
-control-register, other MSR, detailed APIC, and pending-interrupt checks remain
-open. Remaining gates are broader distribution coverage, exact timer interrupt
-and RTC alarm behavior, positive KSM measurements, and complete kernel-memory
-accounting. KSM measurements are blocked by the current user's permissions for
-host-global sysfs. Recursive template-tree COW proofs materialize generated
+QMP captures distinct general-purpose register snapshots for two clones and
+records CR0/CR2/CR3/CR4/EFER for each vCPU. The control-register values are
+snapshots only; independent writes, other MSRs, detailed APIC state, and
+pending-interrupt checks remain open. Remaining gates are broader distribution
+coverage, exact timer interrupt and RTC alarm behavior, positive KSM
+measurements, and complete kernel-memory accounting. KSM measurements are
+blocked by the current user's permissions for host-global sysfs; a read-only
+2026-10-30 check is saved in `results/kvm-recovery-2026-10-30/ksm-current-permission-check.json`.
+Recursive template-tree COW proofs materialize generated
 levels with relative v4 lineage; DenseVM can inspect metadata, verify hashes,
 catalog parent links, and start/stop persistent clones from relocated trees.
 Template leaf collection is explicit and guarded, but it is not crash-safe or a
