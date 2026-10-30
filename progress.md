@@ -61,6 +61,12 @@ the tested QEMU, kernel, guest, devices, and workload.
   A's process kill also passed. This is a third TPR sample, not evidence for
   other APIC registers or interrupt-delivery semantics. Raw result:
   [`lapic-tpr-isolation.json`](results/kvm-recovery-2026-10-30/lapic-tpr-isolation.json).
+- The TPR test now runs with two vCPUs per guest and asserts the reported
+  topology. It writes guest CPU 0's x2APIC TPR: the same isolation sequence
+  passed, while CPU 1's TPR remains unmeasured. The test first failed at the
+  new assertion with the old one-vCPU launch, then passed after adding
+  `--vcpus 2`. Raw result:
+  [`lapic-tpr-isolation-2vcpu.json`](results/kvm-recovery-2026-10-30/lapic-tpr-isolation-2vcpu.json).
 - **Timers while parked: partial.** QMP pause nearly eliminates host CPU use,
   but guest time and alarms differ. Parking is not semantically equivalent to
   continuous execution.

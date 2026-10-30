@@ -60,3 +60,10 @@ were restored to `0x10`. RAM and disk isolation and sibling survival after
 killing A were verified in the same run. This exercises the x2APIC TPR MSR
 path only; it does not validate other APIC registers or interrupt behavior.
 Raw result: [`lapic-tpr-isolation.json`](lapic-tpr-isolation.json).
+
+The test was then tightened to require a two-vCPU guest. The old default first
+failed the new topology assertion (`guest_vcpus` was 1); after adding
+`--vcpus 2`, it passed and the same TPR values were observed. The guest helper
+accesses `/dev/cpu/0/msr`, so this validates CPU 0's TPR inside a two-vCPU VM;
+CPU 1's TPR is still not sampled. Raw result:
+[`lapic-tpr-isolation-2vcpu.json`](lapic-tpr-isolation-2vcpu.json).

@@ -201,6 +201,8 @@ fn clones_keep_guest_lapic_tpr_writes_private() {
         .args([
             "probe",
             "--skip-guest-oom",
+            "--vcpus",
+            "2",
             "--lapic-tpr-state",
             "--divergence-percent",
             "0",
@@ -216,6 +218,7 @@ fn clones_keep_guest_lapic_tpr_writes_private() {
     );
     let result: Value =
         serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["guest_vcpus"], 2);
     assert_eq!(result["vcpu_register_state_verified"], true);
     assert_eq!(
         result["vcpu_register_state"]["lapic_tpr_state"]["status"],
