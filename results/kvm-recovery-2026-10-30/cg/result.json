@@ -1,0 +1,1094 @@
+{
+  "a_guest_reboot_observed": true,
+  "a_reboot_process_exited": true,
+  "a_reboot_qmp_status": null,
+  "active_cpu_workload": {
+    "cpu_ticks_units": "raw /proc/<pid>/stat scheduler ticks",
+    "guest_command": "cpu-burn 1500",
+    "sample_interval_ms": 1000,
+    "ticks_per_second": 100
+  },
+  "b_survives_a_kill": true,
+  "b_survives_guest_reboot": true,
+  "backing_verified": true,
+  "baseline": {
+    "active_cpu_sample_interval_ms": 1000,
+    "cgroup_memory_at_measurement": {
+      "current_bytes": 416010240,
+      "memory_stat": {
+        "active_anon": 407826432,
+        "active_file": 12288,
+        "anon": 407830528,
+        "anon_thp": 220200960,
+        "file": 4063232,
+        "file_dirty": 0,
+        "file_mapped": 2224128,
+        "file_thp": 0,
+        "file_writeback": 0,
+        "hugetlb": 0,
+        "inactive_anon": 0,
+        "inactive_file": 4055040,
+        "kernel": 3551232,
+        "kernel_stack": 196608,
+        "numa_hint_faults": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "pagetables": 1409024,
+        "percpu": 1248,
+        "pgactivate": 367,
+        "pgdeactivate": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_proactive": 0,
+        "pgfault": 108258,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "pgmajfault": 22,
+        "pgpromote_success": 0,
+        "pgrefill": 50,
+        "pgscan": 433,
+        "pgscan_direct": 272,
+        "pgscan_khugepaged": 0,
+        "pgscan_kswapd": 161,
+        "pgscan_proactive": 0,
+        "pgsteal": 213,
+        "pgsteal_direct": 52,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_kswapd": 161,
+        "pgsteal_proactive": 0,
+        "pswpin": 0,
+        "pswpout": 0,
+        "sec_pagetables": 405504,
+        "shmem": 8192,
+        "shmem_thp": 0,
+        "slab": 885184,
+        "slab_reclaimable": 294232,
+        "slab_unreclaimable": 590952,
+        "sock": 0,
+        "swapcached": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "thp_collapse_alloc": 0,
+        "thp_fault_alloc": 107,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "unevictable": 0,
+        "vmalloc": 294912,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_nodereclaim": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 31,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "zswap": 0,
+        "zswap_incomp": 0,
+        "zswapped": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0
+      },
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-74660-1793358169209486031",
+      "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+      "status": "measured"
+    },
+    "count": 2,
+    "idle_cpu_sample_interval_ms": 1000,
+    "time_to_count_ready_ms": 2683,
+    "vms": [
+      {
+        "active_cpu_percent_one_core": 104.0,
+        "active_cpu_ticks": 104,
+        "disk_allocated_bytes": 200704,
+        "disk_benchmark": null,
+        "identity_guest": "IDENTITY 1c0944a4ebf44091183c7da58c9914a7 densevm-1c0944a4ebf4 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 4,
+        "index": 0,
+        "memory": {
+          "private_clean_kib": 256,
+          "private_dirty_kib": 197952,
+          "pss_kib": 205020,
+          "rss_kib": 223856,
+          "shared_clean_kib": 25648,
+          "shared_dirty_kib": 0
+        },
+        "pid": 74778,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm,mem-merge=off",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/baseline-000.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=0e:b4:c1:af:53:a3,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/baseline-000.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/baseline-000.qmp.sock,server=on,wait=off"
+        ]
+      },
+      {
+        "active_cpu_percent_one_core": 103.0,
+        "active_cpu_ticks": 103,
+        "disk_allocated_bytes": 200704,
+        "disk_benchmark": null,
+        "identity_guest": "IDENTITY 0721ab9241c3e55c84d84f44755e4373 densevm-0721ab9241c3 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 3,
+        "index": 1,
+        "memory": {
+          "private_clean_kib": 456,
+          "private_dirty_kib": 199912,
+          "pss_kib": 207150,
+          "rss_kib": 225892,
+          "shared_clean_kib": 25524,
+          "shared_dirty_kib": 0
+        },
+        "pid": 74816,
+        "qemu_command": [
+          "qemu-system-x86_64",
+          "-machine",
+          "pc-q35-11.1,accel=kvm,mem-merge=off",
+          "-cpu",
+          "host",
+          "-m",
+          "256M",
+          "-smp",
+          "1",
+          "-kernel",
+          "/boot/vmlinuz-linux",
+          "-initrd",
+          "/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/initramfs.cpio",
+          "-append",
+          "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+          "-display",
+          "none",
+          "-monitor",
+          "none",
+          "-nodefaults",
+          "-no-reboot",
+          "-drive",
+          "if=none,id=disk,file=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/baseline-001.qcow2,format=qcow2",
+          "-device",
+          "virtio-blk-pci,drive=disk,id=blk0",
+          "-netdev",
+          "user,id=net0,restrict=on",
+          "-device",
+          "pcie-root-port,id=rp1,slot=2,chassis=1",
+          "-device",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=d2:0d:a6:30:28:20,id=nic0",
+          "-device",
+          "vmgenid,guid=auto",
+          "-chardev",
+          "socket,id=serial,path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/baseline-001.serial.sock,server=on,wait=off",
+          "-serial",
+          "chardev:serial",
+          "-qmp",
+          "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/baseline-001.qmp.sock,server=on,wait=off"
+        ]
+      }
+    ]
+  },
+  "clones": {
+    "a": {
+      "active_cpu_percent_one_core": 102.0,
+      "active_cpu_ticks": 102,
+      "after_ram_write_memory": {
+        "private_clean_kib": 700,
+        "private_dirty_kib": 35264,
+        "pss_kib": 54560,
+        "rss_kib": 85200,
+        "shared_clean_kib": 49236,
+        "shared_dirty_kib": 0
+      },
+      "after_ram_write_ram_mapping": {
+        "private_clean_kib": 224,
+        "private_dirty_kib": 2552,
+        "pss_kib": 15610,
+        "rss_kib": 28444,
+        "shared_clean_kib": 25668,
+        "shared_dirty_kib": 0
+      },
+      "disk_benchmark": null,
+      "identity_guest": "IDENTITY 5289e4d27b6b00d708d804cdf8b9e852 densevm-5289e4d27b6b RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 2,
+      "mac_guest": "MAC 46:45:36:b5:a1:88",
+      "memory": {
+        "private_clean_kib": 640,
+        "private_dirty_kib": 35236,
+        "pss_kib": 54482,
+        "rss_kib": 85132,
+        "shared_clean_kib": 49256,
+        "shared_dirty_kib": 0
+      },
+      "migration": {
+        "status": "completed"
+      },
+      "overlay_after_full_write_allocated_bytes": 67379200,
+      "overlay_final_allocated_bytes": 67379200,
+      "overlay_initial_allocated_bytes": 200704,
+      "pid": 75007,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm,mem-merge=off",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-object",
+        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "-machine",
+        "memory-backend=ram",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/clone-000.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/clone-000.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/clone-000.qmp.sock,server=on,wait=off",
+        "-incoming",
+        "defer"
+      ],
+      "ram_mapping": {
+        "private_clean_kib": 164,
+        "private_dirty_kib": 2524,
+        "pss_kib": 15532,
+        "rss_kib": 28376,
+        "shared_clean_kib": 25688,
+        "shared_dirty_kib": 0
+      },
+      "vcpu_indexes": [
+        0
+      ],
+      "vmgenid": "13fe7f65-6cc6-45d2-a477-1d1dffa2f6ec"
+    },
+    "active_cpu_sample_interval_ms": 1000,
+    "b": {
+      "active_cpu_percent_one_core": 104.0,
+      "active_cpu_ticks": 104,
+      "after_a_ram_write_memory": {
+        "private_clean_kib": 572,
+        "private_dirty_kib": 35184,
+        "pss_kib": 54336,
+        "rss_kib": 84864,
+        "shared_clean_kib": 49108,
+        "shared_dirty_kib": 0
+      },
+      "after_a_ram_write_ram_mapping": {
+        "private_clean_kib": 160,
+        "private_dirty_kib": 2492,
+        "pss_kib": 15486,
+        "rss_kib": 28320,
+        "shared_clean_kib": 25668,
+        "shared_dirty_kib": 0
+      },
+      "disk_benchmark": null,
+      "identity_guest": "IDENTITY aa3855a8918d40ab2d6736f755f5e517 densevm-aa3855a8918d RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 3,
+      "mac_guest": "MAC 26:e9:a8:fb:a1:be",
+      "memory": {
+        "private_clean_kib": 552,
+        "private_dirty_kib": 35184,
+        "pss_kib": 54326,
+        "rss_kib": 84864,
+        "shared_clean_kib": 49128,
+        "shared_dirty_kib": 0
+      },
+      "migration": {
+        "status": "completed"
+      },
+      "overlay_final_allocated_bytes": 331776,
+      "overlay_initial_allocated_bytes": 200704,
+      "pid": 75008,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm,mem-merge=off",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-object",
+        "memory-backend-file,id=ram,mem-path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "-machine",
+        "memory-backend=ram",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/clone-001.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/clone-001.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/clone-001.qmp.sock,server=on,wait=off",
+        "-incoming",
+        "defer"
+      ],
+      "ram_mapping": {
+        "private_clean_kib": 140,
+        "private_dirty_kib": 2492,
+        "pss_kib": 15476,
+        "rss_kib": 28320,
+        "shared_clean_kib": 25688,
+        "shared_dirty_kib": 0
+      },
+      "vcpu_indexes": [
+        0
+      ],
+      "vmgenid": "2cbf3add-4233-403a-a466-cb9adcff1f4d"
+    },
+    "count": 2,
+    "extra": [],
+    "idle_cpu_sample_interval_ms": 1000,
+    "time_to_count_resumed_ms": 591
+  },
+  "dhcp_identity": {
+    "guest_responses": [
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest",
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest",
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest",
+      "DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest"
+    ],
+    "method": "not measured",
+    "reason": "the tested guest does not run a DHCP client; unique MAC and static IP values do not prove DHCP client identity",
+    "status": "UNKNOWN",
+    "unique": null
+  },
+  "disk_io_benchmark": null,
+  "disk_isolation": true,
+  "disk_storage": {
+    "base_allocated_bytes": 200704,
+    "total_clone_overlay_allocated_bytes": 67710976
+  },
+  "distribution_checkpoint": {
+    "disk_probe_scope": "entire 64 MiB raw test disk",
+    "kind": "synthetic"
+  },
+  "divergence_all_verified": true,
+  "divergence_region_bytes": 33554432,
+  "divergence_scope": "clone A only",
+  "effective_ram_divergence_percent": 0,
+  "experiment": "two-clone-cow-probe",
+  "extra_clone_isolation": true,
+  "full_disk_isolation": true,
+  "guest": {
+    "kind": "synthetic-initramfs"
+  },
+  "guest_crash": {
+    "crash_observed": false,
+    "crashed_clone_qemu_alive": false,
+    "isolation_verified": false,
+    "other_clones_survived": false,
+    "requested": false,
+    "status": "not run; requires at least three clones"
+  },
+  "guest_oom": {
+    "all_guests_survived": null,
+    "isolation_verified": null,
+    "oom_kill_delta": 0,
+    "requested": false,
+    "response": "PRESSURE-SKIPPED",
+    "status": "skipped",
+    "total_worker_allocation_bytes": 536870912,
+    "worker_oom_killed": null
+  },
+  "guest_ram_mib": 256,
+  "guest_vcpus": 1,
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "host_mem_available_kib_at_start": 6553612,
+  "host_mem_required_kib": 2097152,
+  "identity_unique": true,
+  "identity_validation_verified": true,
+  "kernel_version": "7.2.11-arch1-1",
+  "ksm_run": "0",
+  "ksm_telemetry": {
+    "counters_after": {
+      "full_scans": 0,
+      "pages_shared": 0,
+      "pages_sharing": 0,
+      "pages_unshared": 0,
+      "pages_volatile": 0,
+      "run": 0
+    },
+    "counters_before": {
+      "full_scans": 0,
+      "pages_shared": 0,
+      "pages_sharing": 0,
+      "pages_unshared": 0,
+      "pages_volatile": 0,
+      "run": 0
+    },
+    "ksmd_cpu_ticks_after": 0,
+    "ksmd_cpu_ticks_before": 0,
+    "ksmd_cpu_ticks_delta": 0,
+    "scope": "host-global counters; other KSM workloads may affect deltas"
+  },
+  "mac_unique": true,
+  "parking": {
+    "requested": false
+  },
+  "parking_verified": true,
+  "process_isolation": null,
+  "process_isolation_pair_verified": null,
+  "process_isolation_scope": "not sampled for the synthetic initramfs guest profile",
+  "process_isolation_status": "not-requested",
+  "qemu_version": "QEMU emulator version 11.1.2",
+  "ram_divergence_bytes": 0,
+  "ram_divergence_pages": 0,
+  "ram_isolation": true,
+  "range": {
+    "attacker_index": null,
+    "backend": null,
+    "connectivity_after_target_kill": true,
+    "connectivity_before": true,
+    "enabled": false,
+    "network_benchmark": null,
+    "target_count": null
+  },
+  "rtc_alarm": {
+    "how_to_enable": "densevm probe --rtc-alarm",
+    "status": "not-requested"
+  },
+  "rtc_alarm_verified": null,
+  "snapshots": {
+    "after_divergence": {
+      "cgroup_memory": {
+        "current_bytes": 356315136,
+        "memory_stat": {
+          "active_anon": 72720384,
+          "active_file": 4096,
+          "anon": 72945664,
+          "anon_thp": 6291456,
+          "file": 273006592,
+          "file_dirty": 12288,
+          "file_mapped": 26800128,
+          "file_thp": 180355072,
+          "file_writeback": 0,
+          "hugetlb": 0,
+          "inactive_anon": 0,
+          "inactive_file": 273014784,
+          "kernel": 7675904,
+          "kernel_stack": 196608,
+          "numa_hint_faults": 0,
+          "numa_pages_migrated": 0,
+          "numa_pte_updates": 0,
+          "pagetables": 1126400,
+          "percpu": 1248,
+          "pgactivate": 367,
+          "pgdeactivate": 0,
+          "pgdemote_direct": 0,
+          "pgdemote_khugepaged": 0,
+          "pgdemote_kswapd": 0,
+          "pgdemote_proactive": 0,
+          "pgfault": 186199,
+          "pglazyfree": 0,
+          "pglazyfreed": 0,
+          "pgmajfault": 68,
+          "pgpromote_success": 0,
+          "pgrefill": 50,
+          "pgscan": 433,
+          "pgscan_direct": 272,
+          "pgscan_khugepaged": 0,
+          "pgscan_kswapd": 161,
+          "pgscan_proactive": 0,
+          "pgsteal": 213,
+          "pgsteal_direct": 52,
+          "pgsteal_khugepaged": 0,
+          "pgsteal_kswapd": 161,
+          "pgsteal_proactive": 0,
+          "pswpin": 0,
+          "pswpout": 0,
+          "sec_pagetables": 409600,
+          "shmem": 0,
+          "shmem_thp": 0,
+          "slab": 5316744,
+          "slab_reclaimable": 4708264,
+          "slab_unreclaimable": 608480,
+          "sock": 0,
+          "swapcached": 0,
+          "swpin_zero": 0,
+          "swpout_zero": 0,
+          "thp_collapse_alloc": 0,
+          "thp_fault_alloc": 119,
+          "thp_swpout": 0,
+          "thp_swpout_fallback": 0,
+          "unevictable": 0,
+          "vmalloc": 229376,
+          "workingset_activate_anon": 0,
+          "workingset_activate_file": 0,
+          "workingset_nodereclaim": 0,
+          "workingset_refault_anon": 0,
+          "workingset_refault_file": 48,
+          "workingset_restore_anon": 0,
+          "workingset_restore_file": 0,
+          "zswap": 0,
+          "zswap_incomp": 0,
+          "zswapped": 0,
+          "zswpin": 0,
+          "zswpout": 0,
+          "zswpwb": 0
+        },
+        "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-74660-1793358169209486031",
+        "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+        "status": "measured"
+      },
+      "clones": [
+        {
+          "memory": {
+            "private_clean_kib": 640,
+            "private_dirty_kib": 35264,
+            "pss_kib": 54530,
+            "rss_kib": 85200,
+            "shared_clean_kib": 49296,
+            "shared_dirty_kib": 0
+          },
+          "pid": 75007,
+          "ram_mapping": {
+            "private_clean_kib": 164,
+            "private_dirty_kib": 2552,
+            "pss_kib": 15580,
+            "rss_kib": 28444,
+            "shared_clean_kib": 25728,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 560,
+            "private_dirty_kib": 35200,
+            "pss_kib": 54370,
+            "rss_kib": 84928,
+            "shared_clean_kib": 49168,
+            "shared_dirty_kib": 0
+          },
+          "pid": 75008,
+          "ram_mapping": {
+            "private_clean_kib": 148,
+            "private_dirty_kib": 2508,
+            "pss_kib": 15520,
+            "rss_kib": 28384,
+            "shared_clean_kib": 25728,
+            "shared_dirty_kib": 0
+          }
+        }
+      ],
+      "sampling": "sequential procfs reads while all clones are alive",
+      "template_file_resident_bytes": 268435456
+    },
+    "before_divergence": {
+      "cgroup_memory": {
+        "current_bytes": 356093952,
+        "memory_stat": {
+          "active_anon": 72720384,
+          "active_file": 4096,
+          "anon": 72933376,
+          "anon_thp": 6291456,
+          "file": 273006592,
+          "file_dirty": 12288,
+          "file_mapped": 26800128,
+          "file_thp": 180355072,
+          "file_writeback": 0,
+          "hugetlb": 0,
+          "inactive_anon": 0,
+          "inactive_file": 273014784,
+          "kernel": 7684096,
+          "kernel_stack": 196608,
+          "numa_hint_faults": 0,
+          "numa_pages_migrated": 0,
+          "numa_pte_updates": 0,
+          "pagetables": 1130496,
+          "percpu": 1664,
+          "pgactivate": 367,
+          "pgdeactivate": 0,
+          "pgdemote_direct": 0,
+          "pgdemote_khugepaged": 0,
+          "pgdemote_kswapd": 0,
+          "pgdemote_proactive": 0,
+          "pgfault": 186196,
+          "pglazyfree": 0,
+          "pglazyfreed": 0,
+          "pgmajfault": 68,
+          "pgpromote_success": 0,
+          "pgrefill": 50,
+          "pgscan": 433,
+          "pgscan_direct": 272,
+          "pgscan_khugepaged": 0,
+          "pgscan_kswapd": 161,
+          "pgscan_proactive": 0,
+          "pgsteal": 213,
+          "pgsteal_direct": 52,
+          "pgsteal_khugepaged": 0,
+          "pgsteal_kswapd": 161,
+          "pgsteal_proactive": 0,
+          "pswpin": 0,
+          "pswpout": 0,
+          "sec_pagetables": 409600,
+          "shmem": 0,
+          "shmem_thp": 0,
+          "slab": 5323072,
+          "slab_reclaimable": 4708264,
+          "slab_unreclaimable": 614808,
+          "sock": 0,
+          "swapcached": 0,
+          "swpin_zero": 0,
+          "swpout_zero": 0,
+          "thp_collapse_alloc": 0,
+          "thp_fault_alloc": 119,
+          "thp_swpout": 0,
+          "thp_swpout_fallback": 0,
+          "unevictable": 0,
+          "vmalloc": 229376,
+          "workingset_activate_anon": 0,
+          "workingset_activate_file": 0,
+          "workingset_nodereclaim": 0,
+          "workingset_refault_anon": 0,
+          "workingset_refault_file": 48,
+          "workingset_restore_anon": 0,
+          "workingset_restore_file": 0,
+          "zswap": 0,
+          "zswap_incomp": 0,
+          "zswapped": 0,
+          "zswpin": 0,
+          "zswpout": 0,
+          "zswpwb": 0
+        },
+        "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-probe-74660-1793358169209486031",
+        "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+        "status": "measured"
+      },
+      "clones": [
+        {
+          "memory": {
+            "private_clean_kib": 700,
+            "private_dirty_kib": 35252,
+            "pss_kib": 54552,
+            "rss_kib": 85196,
+            "shared_clean_kib": 49244,
+            "shared_dirty_kib": 0
+          },
+          "pid": 75007,
+          "ram_mapping": {
+            "private_clean_kib": 224,
+            "private_dirty_kib": 2540,
+            "pss_kib": 15602,
+            "rss_kib": 28440,
+            "shared_clean_kib": 25676,
+            "shared_dirty_kib": 0
+          }
+        },
+        {
+          "memory": {
+            "private_clean_kib": 564,
+            "private_dirty_kib": 35184,
+            "pss_kib": 54332,
+            "rss_kib": 84864,
+            "shared_clean_kib": 49116,
+            "shared_dirty_kib": 0
+          },
+          "pid": 75008,
+          "ram_mapping": {
+            "private_clean_kib": 152,
+            "private_dirty_kib": 2492,
+            "pss_kib": 15482,
+            "rss_kib": 28320,
+            "shared_clean_kib": 25676,
+            "shared_dirty_kib": 0
+          }
+        }
+      ],
+      "sampling": "sequential procfs reads while all clones are alive",
+      "template_file_resident_bytes": 268435456
+    }
+  },
+  "ssh_host_keys": {
+    "identity_responses": [
+      "IDENTITY 1c0944a4ebf44091183c7da58c9914a7 densevm-1c0944a4ebf4 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 0721ab9241c3e55c84d84f44755e4373 densevm-0721ab9241c3 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 5289e4d27b6b00d708d804cdf8b9e852 densevm-5289e4d27b6b RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY aa3855a8918d40ab2d6736f755f5e517 densevm-aa3855a8918d RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable"
+    ],
+    "present": false,
+    "unique": true
+  },
+  "surviving_clones_verified": true,
+  "template": {
+    "machine_state_allocated_bytes": 311296,
+    "memory_file_allocated_bytes": 171970560,
+    "memory_file_bytes": 268435456,
+    "memory_file_resident_bytes": 268435456,
+    "memory_sha256": "ef006671017c0169db692f45b5ee790d042cc45a3d68f581483e976009549206",
+    "migration": {
+      "downtime": 3,
+      "ram": {
+        "dirty-pages-rate": 0,
+        "dirty-sync-count": 2,
+        "dirty-sync-missed-zero-copy": 0,
+        "downtime-bytes": 177340,
+        "duplicate": 87,
+        "mbps": 827.192,
+        "multifd-bytes": 0,
+        "normal": 43,
+        "normal-bytes": 176128,
+        "page-size": 4096,
+        "pages-per-second": 0,
+        "postcopy-bytes": 0,
+        "postcopy-requests": 0,
+        "precopy-bytes": 0,
+        "remaining": 0,
+        "total": 532480,
+        "transferred": 310197
+      },
+      "setup-time": 2,
+      "status": "completed",
+      "total-time": 5
+    },
+    "qemu_command": [
+      "qemu-system-x86_64",
+      "-machine",
+      "pc-q35-11.1,accel=kvm,mem-merge=off",
+      "-cpu",
+      "host",
+      "-m",
+      "256M",
+      "-smp",
+      "1",
+      "-object",
+      "memory-backend-file,id=ram,mem-path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/memory.img,size=256M,share=on,readonly=off,merge=off",
+      "-machine",
+      "memory-backend=ram",
+      "-kernel",
+      "/boot/vmlinuz-linux",
+      "-initrd",
+      "/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/initramfs.cpio",
+      "-append",
+      "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+      "-display",
+      "none",
+      "-monitor",
+      "none",
+      "-nodefaults",
+      "-no-reboot",
+      "-drive",
+      "if=none,id=disk,file=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/base.qcow2,format=qcow2",
+      "-device",
+      "virtio-blk-pci,drive=disk,id=blk0",
+      "-netdev",
+      "user,id=net0,restrict=on",
+      "-device",
+      "pcie-root-port,id=rp1,slot=2,chassis=1",
+      "-device",
+      "vmgenid,guid=auto",
+      "-chardev",
+      "socket,id=serial,path=/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/template.serial.sock,server=on,wait=off",
+      "-serial",
+      "chardev:serial",
+      "-qmp",
+      "unix:/home/xtrmn8/Dense-Independent-VM-Runtime/results/kvm-recovery-2026-10-30/cg/template.qmp.sock,server=on,wait=off"
+    ],
+    "vmgenid": "bdfd9900-85d0-4f2e-b8d5-4deab60d9389"
+  },
+  "template_ram_unchanged": true,
+  "vcpu_register_state": {
+    "how_to_enable": "densevm probe --vcpu-register-state",
+    "status": "not-requested"
+  },
+  "vcpu_register_state_verified": null,
+  "vmgenid_guest_reaction": {
+    "clone_responses": [
+      "VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "VMGENID-REACTION UNKNOWN template baseline unavailable"
+    ],
+    "measurement": "positive delta in the Linux kernel log message emitted by add_vmfork_randomness before host entropy injection",
+    "status": "UNKNOWN"
+  },
+  "vmgenid_unique": true
+}

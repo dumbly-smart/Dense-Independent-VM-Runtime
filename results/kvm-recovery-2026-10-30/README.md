@@ -67,3 +67,9 @@ failed the new topology assertion (`guest_vcpus` was 1); after adding
 accesses `/dev/cpu/0/msr`, so this validates CPU 0's TPR inside a two-vCPU VM;
 CPU 1's TPR is still not sampled. Raw result:
 [`lapic-tpr-isolation-2vcpu.json`](lapic-tpr-isolation-2vcpu.json).
+
+The cgroup-v2 wrapper also measured the two-VM conventional baseline and clone
+phase inside a delegated memory cgroup. The raw JSON, command, summary, and
+limits are recorded in [`cg/`](cg/). The temporary guest disk/RAM artifacts
+were removed after collection; cgroup `memory.current` includes file-cache
+charges and is not a complete host-memory inventory.

@@ -67,6 +67,11 @@ the tested QEMU, kernel, guest, devices, and workload.
   new assertion with the old one-vCPU launch, then passed after adding
   `--vcpus 2`. Raw result:
   [`lapic-tpr-isolation-2vcpu.json`](results/kvm-recovery-2026-10-30/lapic-tpr-isolation-2vcpu.json).
+- The recovery run now has a delegated cgroup-v2 measurement alongside PSS:
+  conventional `memory.current` was 416,010,240 bytes versus 356,093,952 bytes
+  for clones before divergence. Baseline/clone `sec_pagetables` charges were
+  405,504/409,600 bytes. This includes cache charges and remains partial
+  accounting. See [`cgroup sample`](results/kvm-recovery-2026-10-30/cg/).
 - **Timers while parked: partial.** QMP pause nearly eliminates host CPU use,
   but guest time and alarms differ. Parking is not semantically equivalent to
   continuous execution.

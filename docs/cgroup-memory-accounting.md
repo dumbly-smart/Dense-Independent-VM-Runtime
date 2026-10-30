@@ -55,3 +55,13 @@ charges for shared page-cache pages can depend on which cgroup first faulted
 them in. The data shows why process PSS and cgroup accounting answer different
 questions: PSS falls sharply for clones while file-cache and kernel charges
 remain visible in the cgroup measurement.
+
+An additional 2026-10-30 run after the KVM recovery is recorded at
+[`results/kvm-recovery-2026-10-30/cg/`](../results/kvm-recovery-2026-10-30/cg/).
+For two 256 MiB guests, conventional baseline PSS was 412,170 KiB and cgroup
+`memory.current` was 416,010,240 bytes; clone PSS before divergence was 108,884
+KiB and cgroup `memory.current` was 356,093,952 bytes. Baseline/clone
+`sec_pagetables` were 405,504 / 409,600 bytes, and clone `kernel` charge was
+7,684,096 bytes. These are one additional sample, not a revised estimate of
+host-wide savings; the cgroup includes cache charges and does not guarantee
+that every KVM allocation is charged inside the measured scope.
