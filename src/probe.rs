@@ -505,12 +505,12 @@ mod login_tests {
 
     #[test]
     fn qemu_lapic_snapshot_preserves_monitor_text() {
-        let monitor_text = "APIC ID 0\nTPR 0x0\nLVT Timer: masked\n";
+        let monitor_text = "dumping local APIC state for CPU 1\nTPR 0x0\nLVT Timer: masked\n";
         let (mut qmp, server, path) = scripted_qmp(vec![(
             "human-monitor-command",
             json!({"return":monitor_text}),
         )]);
-        assert_eq!(qemu_lapic_snapshot(&mut qmp).unwrap(), monitor_text);
+        assert_eq!(qemu_lapic_snapshot(&mut qmp, 1).unwrap(), monitor_text);
         server.join().unwrap();
         fs::remove_file(path).unwrap();
     }
@@ -1683,10 +1683,13 @@ fn qemu_user_register_snapshot(
     unreachable!()
 }
 
-fn qemu_lapic_snapshot(qmp: &mut Qmp) -> Result<String, String> {
+fn qemu_lapic_snapshot(qmp: &mut Qmp, cpu_index: u8) -> Result<String, String> {
+    if cpu_index > 3 {
+        return Err(format!("unsupported LAPIC CPU index {cpu_index}"));
+    }
     let output = qmp.execute(
         "human-monitor-command",
-        Some(json!({"command-line":"info lapic"})),
+        Some(json!({"command-line":"info lapic","cpu-index":cpu_index})),
     )?;
     let output = output
         .as_str()
@@ -1696,6 +1699,12 @@ fn qemu_lapic_snapshot(qmp: &mut Qmp) -> Result<String, String> {
         || output.contains("No CPU available")
     {
         return Err(format!("QEMU info lapic unavailable: {output}"));
+    }
+    let expected_cpu = format!("dumping local APIC state for CPU {cpu_index}");
+    if !output.contains(&expected_cpu) {
+        return Err(format!(
+            "QEMU LAPIC snapshot did not identify CPU {cpu_index}: {output}"
+        ));
     }
     Ok(output.to_string())
 }
@@ -1714,13 +1723,73 @@ fn choose_lapic_tpr_targets(a_original: u8, b_original: u8) -> Result<(u8, u8), 
     Ok((a, b))
 }
 
-fn set_guest_lapic_tpr(serial: &mut Serial, value: u8) -> Result<String, String> {
-    let reply = serial.command(&format!("lapic-tpr {value}"), "LAPIC-TPR")?;
-    let expected = format!("value={value:#04x}");
-    if !reply.contains(&expected) {
+fn set_guest_lapic_tpr(serial: &mut Serial, cpu_index: u8, value: u8) -> Result<String, String> {
+    let reply = serial.command(&format!("lapic-tpr {cpu_index} {value}"), "LAPIC-TPR")?;
+    let expected_cpu = format!("cpu={cpu_index}");
+    let expected_value = format!("value={value:#04x}");
+    if !reply.contains(&expected_cpu) || !reply.contains(&expected_value) {
         return Err(format!("guest LAPIC TPR write failed: {reply}"));
     }
     Ok(reply)
+}
+
+fn run_lapic_tpr_isolation_for_cpu(
+    cpu_index: u8,
+    aq: &mut Qmp,
+    bq: &mut Qmp,
+    aserial: &mut Serial,
+    bserial: &mut Serial,
+) -> Result<Value, String> {
+    let a_original = parse_qemu_lapic_tpr(&qemu_lapic_snapshot(aq, cpu_index)?)?;
+    let b_original = parse_qemu_lapic_tpr(&qemu_lapic_snapshot(bq, cpu_index)?)?;
+    let (a_target, b_target) = choose_lapic_tpr_targets(a_original, b_original)?;
+
+    let a_write_reply = set_guest_lapic_tpr(aserial, cpu_index, a_target)?;
+    stop_and_verify(aq)?;
+    stop_and_verify(bq)?;
+    let a_after_a_write = qemu_lapic_snapshot(aq, cpu_index)?;
+    let b_after_a_write = qemu_lapic_snapshot(bq, cpu_index)?;
+    let a_after_a_write_tpr = parse_qemu_lapic_tpr(&a_after_a_write)?;
+    let b_after_a_write_tpr = parse_qemu_lapic_tpr(&b_after_a_write)?;
+    resume_and_verify(aq)?;
+    resume_and_verify(bq)?;
+
+    let b_write_reply = set_guest_lapic_tpr(bserial, cpu_index, b_target)?;
+    stop_and_verify(aq)?;
+    stop_and_verify(bq)?;
+    let a_after_b_write = qemu_lapic_snapshot(aq, cpu_index)?;
+    let b_after_b_write = qemu_lapic_snapshot(bq, cpu_index)?;
+    let a_after_b_write_tpr = parse_qemu_lapic_tpr(&a_after_b_write)?;
+    let b_after_b_write_tpr = parse_qemu_lapic_tpr(&b_after_b_write)?;
+    resume_and_verify(aq)?;
+    resume_and_verify(bq)?;
+
+    let a_restore_reply = set_guest_lapic_tpr(aserial, cpu_index, a_original)?;
+    let b_restore_reply = set_guest_lapic_tpr(bserial, cpu_index, b_original)?;
+    stop_and_verify(aq)?;
+    stop_and_verify(bq)?;
+    let a_restored = qemu_lapic_snapshot(aq, cpu_index)?;
+    let b_restored = qemu_lapic_snapshot(bq, cpu_index)?;
+    let a_restored_tpr = parse_qemu_lapic_tpr(&a_restored)?;
+    let b_restored_tpr = parse_qemu_lapic_tpr(&b_restored)?;
+    resume_and_verify(aq)?;
+    resume_and_verify(bq)?;
+
+    let verified = a_after_a_write_tpr == a_target
+        && b_after_a_write_tpr == b_original
+        && (a_after_b_write_tpr == a_target || a_after_b_write_tpr == a_original)
+        && a_after_b_write_tpr != b_target
+        && b_after_b_write_tpr == b_target
+        && a_restored_tpr == a_original
+        && b_restored_tpr == b_original;
+    Ok(json!({
+        "cpu_index":cpu_index,
+        "status":if verified {"verified"} else {"failed"},
+        "a":{"original_tpr":a_original,"target_tpr":a_target,"after_a_write":a_after_a_write,"after_b_write":a_after_b_write,"restored":a_restored,"write_reply":a_write_reply,"restore_reply":a_restore_reply},
+        "b":{"original_tpr":b_original,"target_tpr":b_target,"after_a_write":b_after_a_write,"after_b_write":b_after_b_write,"restored":b_restored,"write_reply":b_write_reply,"restore_reply":b_restore_reply},
+        "observed":{"a_after_a_write":a_after_a_write_tpr,"b_after_a_write":b_after_a_write_tpr,"a_after_b_write":a_after_b_write_tpr,"b_after_b_write":b_after_b_write_tpr,"a_restored":a_restored_tpr,"b_restored":b_restored_tpr},
+        "b_write_reply":b_write_reply
+    }))
 }
 
 fn expect_value(serial: &mut Serial, command: &str, wanted: &str) -> Result<bool, String> {
@@ -2203,8 +2272,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         stop_and_verify(&mut bq)?;
         let (a_vcpu_registers, a_vcpu_register_text) = qemu_user_register_snapshot(&mut aq, vcpus)?;
         let (b_vcpu_registers, b_vcpu_register_text) = qemu_user_register_snapshot(&mut bq, vcpus)?;
-        let a_lapic_text = qemu_lapic_snapshot(&mut aq)?;
-        let b_lapic_text = qemu_lapic_snapshot(&mut bq)?;
+        let a_lapic_text = qemu_lapic_snapshot(&mut aq, 0)?;
+        let b_lapic_text = qemu_lapic_snapshot(&mut bq, 0)?;
         let (a_gs_vcpu_index, a_gs_base_observed) =
             parse_qemu_user_segment_base(&a_vcpu_register_text, "GS", a_gs_base)?;
         let (b_gs_vcpu_index, b_gs_base_observed) =
@@ -2225,57 +2294,24 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         let b_register_workload_done =
             bserial.expect("CPU-REGISTER-DONE", Duration::from_secs(12))?;
         let (lapic_tpr_state_verified, lapic_tpr_state) = if capture_lapic_tpr_state {
-            let a_original = parse_qemu_lapic_tpr(&a_lapic_text)?;
-            let b_original = parse_qemu_lapic_tpr(&b_lapic_text)?;
-            let (a_target, b_target) = choose_lapic_tpr_targets(a_original, b_original)?;
-
-            let a_write_reply = set_guest_lapic_tpr(&mut aserial, a_target)?;
-            stop_and_verify(&mut aq)?;
-            stop_and_verify(&mut bq)?;
-            let a_after_a_write = qemu_lapic_snapshot(&mut aq)?;
-            let b_after_a_write = qemu_lapic_snapshot(&mut bq)?;
-            let a_after_a_write_tpr = parse_qemu_lapic_tpr(&a_after_a_write)?;
-            let b_after_a_write_tpr = parse_qemu_lapic_tpr(&b_after_a_write)?;
-            resume_and_verify(&mut aq)?;
-            resume_and_verify(&mut bq)?;
-
-            let b_write_reply = set_guest_lapic_tpr(&mut bserial, b_target)?;
-            stop_and_verify(&mut aq)?;
-            stop_and_verify(&mut bq)?;
-            let a_after_b_write = qemu_lapic_snapshot(&mut aq)?;
-            let b_after_b_write = qemu_lapic_snapshot(&mut bq)?;
-            let a_after_b_write_tpr = parse_qemu_lapic_tpr(&a_after_b_write)?;
-            let b_after_b_write_tpr = parse_qemu_lapic_tpr(&b_after_b_write)?;
-            resume_and_verify(&mut aq)?;
-            resume_and_verify(&mut bq)?;
-
-            let a_restore_reply = set_guest_lapic_tpr(&mut aserial, a_original)?;
-            let b_restore_reply = set_guest_lapic_tpr(&mut bserial, b_original)?;
-            stop_and_verify(&mut aq)?;
-            stop_and_verify(&mut bq)?;
-            let a_restored = qemu_lapic_snapshot(&mut aq)?;
-            let b_restored = qemu_lapic_snapshot(&mut bq)?;
-            let a_restored_tpr = parse_qemu_lapic_tpr(&a_restored)?;
-            let b_restored_tpr = parse_qemu_lapic_tpr(&b_restored)?;
-            resume_and_verify(&mut aq)?;
-            resume_and_verify(&mut bq)?;
-
-            let verified = a_after_a_write_tpr == a_target
-                && b_after_a_write_tpr == b_original
-                && (a_after_b_write_tpr == a_target || a_after_b_write_tpr == a_original)
-                && a_after_b_write_tpr != b_target
-                && b_after_b_write_tpr == b_target
-                && a_restored_tpr == a_original
-                && b_restored_tpr == b_original;
+            let mut per_vcpu = Vec::with_capacity(usize::from(vcpus));
+            for cpu_index in 0..vcpus {
+                per_vcpu.push(run_lapic_tpr_isolation_for_cpu(
+                    cpu_index,
+                    &mut aq,
+                    &mut bq,
+                    &mut aserial,
+                    &mut bserial,
+                )?);
+            }
+            let verified = per_vcpu.iter().all(|state| state["status"] == "verified");
             (
                 Some(verified),
                 json!({
                     "status":if verified {"verified"} else {"failed"},
-                    "method":"guest attempts x2APIC TPR MSR then xAPIC TPR MMIO; QMP info lapic snapshots verify the register writes",
-                    "a":{"original_tpr":a_original,"target_tpr":a_target,"after_a_write":a_after_a_write,"after_b_write":a_after_b_write,"restored":a_restored,"write_reply":a_write_reply,"restore_reply":a_restore_reply},
-                    "b":{"original_tpr":b_original,"target_tpr":b_target,"after_a_write":b_after_a_write,"after_b_write":b_after_b_write,"restored":b_restored,"write_reply":b_write_reply,"restore_reply":b_restore_reply},
-                    "observed":{"a_after_a_write":a_after_a_write_tpr,"b_after_a_write":b_after_a_write_tpr,"a_after_b_write":a_after_b_write_tpr,"b_after_b_write":b_after_b_write_tpr,"a_restored":a_restored_tpr,"b_restored":b_restored_tpr},
-                    "b_write_reply":b_write_reply
+                    "method":"guest writes selected x2APIC TPR MSR; QMP selects the same vCPU and verifies info lapic; xAPIC MMIO fallback is supported only for vCPU 0",
+                    "tested_vcpu_indexes":(0..vcpus).collect::<Vec<_>>(),
+                    "per_vcpu":per_vcpu
                 }),
             )
         } else {

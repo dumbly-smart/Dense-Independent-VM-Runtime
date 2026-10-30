@@ -110,11 +110,16 @@ pub fn set_user_gs_base(base: u64) -> std::io::Result<()> {
     }
 }
 
-fn set_guest_lapic_tpr_msr(value: u8) -> std::io::Result<()> {
+fn set_guest_lapic_tpr_msr(cpu_index: u8, value: u8) -> std::io::Result<()> {
+    if cpu_index > 3 {
+        return Err(std::io::Error::other(format!(
+            "unsupported LAPIC CPU index {cpu_index}"
+        )));
+    }
     let mut msr = OpenOptions::new()
         .read(true)
         .write(true)
-        .open("/dev/cpu/0/msr")?;
+        .open(format!("/dev/cpu/{cpu_index}/msr"))?;
     msr.seek(SeekFrom::Start(0x808))?;
     msr.write_all(&u64::from(value).to_ne_bytes())?;
     msr.seek(SeekFrom::Start(0x808))?;
@@ -129,7 +134,12 @@ fn set_guest_lapic_tpr_msr(value: u8) -> std::io::Result<()> {
     Ok(())
 }
 
-fn set_guest_lapic_tpr_mmio(value: u8) -> std::io::Result<()> {
+fn set_guest_lapic_tpr_mmio(cpu_index: u8, value: u8) -> std::io::Result<()> {
+    if cpu_index != 0 {
+        return Err(std::io::Error::other(
+            "xAPIC MMIO fallback is only valid for the current CPU (vCPU 0)",
+        ));
+    }
     const APIC_MMIO_BASE: i64 = 0xfee0_0000;
     const PAGE_SIZE: usize = 4096;
     const TPR_OFFSET: usize = 0x80;
@@ -1508,19 +1518,22 @@ fn main() {
                     _ => "ERROR cpu-register-burn expects a u64 seed, duration 1..10000 ms, and u64 GS base".to_string(),
                 }
             }
-            ["lapic-tpr", value] => match value.parse::<u8>() {
-                Ok(value) => match set_guest_lapic_tpr_msr(value) {
-                    Ok(()) => format!("LAPIC-TPR method=x2apic-msr value={value:#04x}"),
-                    Err(msr_error) => match set_guest_lapic_tpr_mmio(value) {
+            ["lapic-tpr", cpu_index, value] => match (cpu_index.parse::<u8>(), value.parse::<u8>())
+            {
+                (Ok(cpu_index), Ok(value)) => match set_guest_lapic_tpr_msr(cpu_index, value) {
+                    Ok(()) => {
+                        format!("LAPIC-TPR cpu={cpu_index} method=x2apic-msr value={value:#04x}")
+                    }
+                    Err(msr_error) => match set_guest_lapic_tpr_mmio(cpu_index, value) {
                         Ok(()) => format!(
-                            "LAPIC-TPR method=xapic-mmio value={value:#04x} msr_error={msr_error}"
+                            "LAPIC-TPR cpu={cpu_index} method=xapic-mmio value={value:#04x} msr_error={msr_error}"
                         ),
                         Err(mmio_error) => {
                             format!("ERROR LAPIC TPR write: msr={msr_error}; mmio={mmio_error}")
                         }
                     },
                 },
-                Err(_) => "ERROR LAPIC TPR expects an integer from 0 to 255".to_string(),
+                _ => "ERROR LAPIC TPR expects a CPU index 0..3 and TPR value 0..255".to_string(),
             },
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {

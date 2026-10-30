@@ -63,10 +63,18 @@ the tested QEMU, kernel, guest, devices, and workload.
   [`lapic-tpr-isolation.json`](results/kvm-recovery-2026-10-30/lapic-tpr-isolation.json).
 - The TPR test now runs with two vCPUs per guest and asserts the reported
   topology. It writes guest CPU 0's x2APIC TPR: the same isolation sequence
-  passed, while CPU 1's TPR remains unmeasured. The test first failed at the
+  passed. The test first failed at the
   new assertion with the old one-vCPU launch, then passed after adding
   `--vcpus 2`. Raw result:
   [`lapic-tpr-isolation-2vcpu.json`](results/kvm-recovery-2026-10-30/lapic-tpr-isolation-2vcpu.json).
+- The LAPIC probe now targets a selected guest CPU through `/dev/cpu/N/msr`
+  and QMP `human-monitor-command`'s local `cpu-index` argument. On QEMU 11.1.2,
+  the two-clone isolation sequence passed independently on vCPU 0 and vCPU 1;
+  each clone's original TPR was restored. The first attempt showed that HMP's
+  `cpu 1` selection does not persist across QMP command calls, so snapshots
+  verify that QEMU reports the requested CPU index. xAPIC MMIO fallback remains
+  limited to vCPU 0. Other APIC state and pending interrupts remain untested.
+  Raw result: [`lapic-tpr-per-vcpu.json`](results/kvm-recovery-2026-10-30/lapic-tpr-per-vcpu.json).
 - The recovery run now has a delegated cgroup-v2 measurement alongside PSS:
   conventional `memory.current` was 416,010,240 bytes versus 356,093,952 bytes
   for clones before divergence. Baseline/clone `sec_pagetables` charges were

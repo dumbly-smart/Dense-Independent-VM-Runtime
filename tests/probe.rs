@@ -189,7 +189,7 @@ fn clones_report_independent_vcpu_register_snapshots() {
 }
 
 #[test]
-#[ignore = "requires local KVM and guest x2APIC MSR or xAPIC /dev/mem access"]
+#[ignore = "requires local KVM, two guest vCPUs, and x2APIC MSR access for each vCPU"]
 fn clones_keep_guest_lapic_tpr_writes_private() {
     let stamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -225,16 +225,34 @@ fn clones_keep_guest_lapic_tpr_writes_private() {
         "verified"
     );
     let tpr = &result["vcpu_register_state"]["lapic_tpr_state"];
-    assert_eq!(tpr["observed"]["a_after_a_write"], tpr["a"]["target_tpr"]);
-    assert_eq!(tpr["observed"]["b_after_a_write"], tpr["b"]["original_tpr"]);
-    assert!(
-        tpr["observed"]["a_after_b_write"] == tpr["a"]["target_tpr"]
-            || tpr["observed"]["a_after_b_write"] == tpr["a"]["original_tpr"]
-    );
-    assert_ne!(tpr["observed"]["a_after_b_write"], tpr["b"]["target_tpr"]);
-    assert_eq!(tpr["observed"]["b_after_b_write"], tpr["b"]["target_tpr"]);
-    assert_eq!(tpr["observed"]["a_restored"], tpr["a"]["original_tpr"]);
-    assert_eq!(tpr["observed"]["b_restored"], tpr["b"]["original_tpr"]);
+    let per_vcpu = tpr["per_vcpu"].as_array().unwrap();
+    assert_eq!(per_vcpu.len(), 2);
+    for (index, state) in per_vcpu.iter().enumerate() {
+        assert_eq!(state["cpu_index"], index);
+        assert_eq!(state["status"], "verified");
+        assert_eq!(
+            state["observed"]["a_after_a_write"],
+            state["a"]["target_tpr"]
+        );
+        assert_eq!(
+            state["observed"]["b_after_a_write"],
+            state["b"]["original_tpr"]
+        );
+        assert!(
+            state["observed"]["a_after_b_write"] == state["a"]["target_tpr"]
+                || state["observed"]["a_after_b_write"] == state["a"]["original_tpr"]
+        );
+        assert_ne!(
+            state["observed"]["a_after_b_write"],
+            state["b"]["target_tpr"]
+        );
+        assert_eq!(
+            state["observed"]["b_after_b_write"],
+            state["b"]["target_tpr"]
+        );
+        assert_eq!(state["observed"]["a_restored"], state["a"]["original_tpr"]);
+        assert_eq!(state["observed"]["b_restored"], state["b"]["original_tpr"]);
+    }
 }
 
 #[test]

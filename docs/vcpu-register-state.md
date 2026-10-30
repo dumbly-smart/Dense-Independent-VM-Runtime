@@ -29,9 +29,9 @@ are `results/vcpu-multi2/result.json` and
 `CPU#0`, so this proves the multi-vCPU restore path ran, not independent
 register state for vCPU1. The sample does not verify every part of architectural
 CPU state. Independent control-register writes, other MSR writes, APIC
-registers beyond TPR, pending interrupts, and direct vCPU1 state remain
-unmeasured. The result preserves
-the full HMP output for inspection, while the structured parser compares
+registers beyond TPR and pending interrupts remain unmeasured. The later
+per-vCPU TPR experiment below checks that register on both vCPU indexes. The
+result preserves the full HMP output for inspection, while the structured parser compares
 x86-64 general-purpose registers and the GS base. QEMU's output format can
 vary by version and architecture. Do not treat these sampled states as
 exhaustive proof of all CPU-state isolation.
@@ -60,9 +60,15 @@ The experiment changes only TPR's subpriority bits. Intel documents TPR bits
 does not control interrupt delivery. This keeps the priority class unchanged
 while giving each guest a distinct observable TPR value ([Intel SDM, APIC
 TPR/PPR description](https://cdrdv2-public.intel.com/874240/325462-090-sdm-vol-1-2abcd-3abcd-4.pdf)).
-These results demonstrate independent TPR writes for the tested one-vCPU
-QEMU/KVM configuration. They do not establish isolation for other LAPIC
-registers, pending interrupts, other MSRs, or multi-vCPU machines.
+The initial results demonstrate independent TPR writes for the tested
+one-vCPU QEMU/KVM configuration. A later probe extended the test to two-vCPU
+guests: the guest writes `/dev/cpu/N/msr` and QMP's
+`human-monitor-command` `cpu-index` selects the matching LAPIC snapshot. A
+QEMU 11.1.2 run tested CPU 0 and CPU 1 independently in both clones, observed
+the same isolation sequence on each, and restored all original values. The
+guest uses the x2APIC MSR path for CPU 1; xAPIC MMIO fallback is deliberately
+limited to CPU 0. This does not establish isolation for other LAPIC registers,
+pending interrupts, or other MSRs.
 
 An earlier `/dev/mem`-only attempt read back the value from its mapping but
 QEMU continued to report TPR `0x10`; that raw failed observation is retained
@@ -75,3 +81,4 @@ Raw results: [`results/2026-10-24/vcpu-register-state-2.json`](../results/2026-1
 [`results/2026-10-24/lapic-tpr-divergence-2.json`](../results/2026-10-24/lapic-tpr-divergence-2.json),
 [`results/2026-10-24/lapic-tpr-divergence-2-run2.json`](../results/2026-10-24/lapic-tpr-divergence-2-run2.json),
 and [`results/2026-10-24/lapic-tpr-divergence-mmio-noeffect-2.json`](../results/2026-10-24/lapic-tpr-divergence-mmio-noeffect-2.json).
+The per-vCPU follow-up is [`results/kvm-recovery-2026-10-30/lapic-tpr-per-vcpu.json`](../results/kvm-recovery-2026-10-30/lapic-tpr-per-vcpu.json).

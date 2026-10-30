@@ -65,8 +65,15 @@ The test was then tightened to require a two-vCPU guest. The old default first
 failed the new topology assertion (`guest_vcpus` was 1); after adding
 `--vcpus 2`, it passed and the same TPR values were observed. The guest helper
 accesses `/dev/cpu/0/msr`, so this validates CPU 0's TPR inside a two-vCPU VM;
-CPU 1's TPR is still not sampled. Raw result:
+the raw result is:
 [`lapic-tpr-isolation-2vcpu.json`](lapic-tpr-isolation-2vcpu.json).
+
+The follow-up now accesses `/dev/cpu/N/msr` and uses QMP's `cpu-index` argument
+to inspect each CPU's LAPIC. A two-vCPU run verified the independent TPR
+sequence on CPU 0 and CPU 1; each original value was restored. The test rejects
+a snapshot that does not name the requested CPU. xAPIC MMIO fallback is still
+limited to CPU 0. Other APIC registers and pending interrupts remain untested.
+Raw result: [`lapic-tpr-per-vcpu.json`](lapic-tpr-per-vcpu.json).
 
 The cgroup-v2 wrapper also measured the two-VM conventional baseline and clone
 phase inside a delegated memory cgroup. The raw JSON, command, summary, and
