@@ -29,6 +29,18 @@ counters such as `pgfault`, so its JSON field name is intentionally unit
 neutral. Without the wrapper, these fields say `not-requested`. PSS remains a
 separate measurement; do not add PSS to cgroup memory because the values overlap.
 
+When available, each sample also records `memory.peak` as
+`memory_peak_bytes`, and cumulative `memory.events` counters as
+`memory_events`. Missing or malformed optional files are `null` with a
+corresponding error field; they do not turn an otherwise valid sample into
+zero or make the VM run fail. `memory.peak` is a cgroup-lifetime high-water
+mark, so repeated stage samples are not independent per-stage peaks.
+`memory.events` counters are cumulative too; the persistent-sweep summary
+reports their delta from clone startup to post-divergence. These counters help
+identify proximity to limits and cgroup OOM activity, but a zero OOM counter
+does not prove that the host had no memory pressure outside the measured
+cgroup.
+
 The persistent clone runner also samples cgroup-v2 memory at four stages:
 before clone creation, after all clones start, after requested RAM/disk
 divergence, and after clone 1 stops while siblings remain live. By default it
@@ -113,3 +125,9 @@ shared template file cache, while the baseline cgroup did not. Cgroup charges
 can also depend on which scope first faults a shared page. Treat these values
 as measured samples, not a general density bound. Raw baseline:
 [`baseline-cgroup-eight.json`](../results/kvm-recovery-2026-10-30/baseline-cgroup-eight.json).
+
+A two-VM conventional baseline exercised the new optional fields on the live
+host. At readiness the 3 GiB scope reported `memory.current` and
+`memory.peak` of 427,380,736 bytes, with all `memory.events` counters zero.
+This is a telemetry smoke sample, not a matched density comparison:
+[`cgroup-pressure-telemetry-baseline-2`](../results/kvm-recovery-2026-10-30/cgroup-pressure-telemetry-baseline-2/).

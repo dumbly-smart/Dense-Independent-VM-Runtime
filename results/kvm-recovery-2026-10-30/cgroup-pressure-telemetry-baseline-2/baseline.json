@@ -1,0 +1,452 @@
+{
+  "accelerator": "kvm",
+  "active_cpu_sample_interval_ms": 1000,
+  "active_cpu_workload": {
+    "guest_command": "cpu-burn 1500",
+    "ticks_per_second": 100
+  },
+  "cgroup_memory_at_ready": {
+    "current_bytes": 427380736,
+    "memory_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0,
+      "sock_throttled": 0
+    },
+    "memory_events_error": null,
+    "memory_limit": "3221225472",
+    "memory_max_bytes": 3221225472,
+    "memory_peak_bytes": 427380736,
+    "memory_peak_error": null,
+    "memory_stat": {
+      "active_anon": 418041856,
+      "active_file": 0,
+      "anon": 418140160,
+      "anon_thp": 381681664,
+      "file": 4800512,
+      "file_dirty": 4190208,
+      "file_mapped": 2224128,
+      "file_thp": 0,
+      "file_writeback": 0,
+      "hugetlb": 0,
+      "inactive_anon": 0,
+      "inactive_file": 4734976,
+      "kernel": 3432448,
+      "kernel_stack": 212992,
+      "numa_hint_faults": 0,
+      "numa_pages_migrated": 0,
+      "numa_pte_updates": 0,
+      "pagetables": 1511424,
+      "percpu": 1664,
+      "pgactivate": 0,
+      "pgdeactivate": 0,
+      "pgdemote_direct": 0,
+      "pgdemote_khugepaged": 0,
+      "pgdemote_kswapd": 0,
+      "pgdemote_proactive": 0,
+      "pgfault": 69980,
+      "pglazyfree": 0,
+      "pglazyfreed": 0,
+      "pgmajfault": 15,
+      "pgpromote_success": 0,
+      "pgrefill": 0,
+      "pgscan": 0,
+      "pgscan_direct": 0,
+      "pgscan_khugepaged": 0,
+      "pgscan_kswapd": 0,
+      "pgscan_proactive": 0,
+      "pgsteal": 0,
+      "pgsteal_direct": 0,
+      "pgsteal_khugepaged": 0,
+      "pgsteal_kswapd": 0,
+      "pgsteal_proactive": 0,
+      "pswpin": 0,
+      "pswpout": 0,
+      "sec_pagetables": 122880,
+      "shmem": 8192,
+      "shmem_thp": 0,
+      "slab": 912968,
+      "slab_reclaimable": 300440,
+      "slab_unreclaimable": 612528,
+      "sock": 0,
+      "swapcached": 0,
+      "swpin_zero": 0,
+      "swpout_zero": 0,
+      "thp_collapse_alloc": 0,
+      "thp_fault_alloc": 183,
+      "thp_swpout": 0,
+      "thp_swpout_fallback": 0,
+      "unevictable": 0,
+      "vmalloc": 294912,
+      "workingset_activate_anon": 0,
+      "workingset_activate_file": 0,
+      "workingset_nodereclaim": 0,
+      "workingset_refault_anon": 0,
+      "workingset_refault_file": 0,
+      "workingset_restore_anon": 0,
+      "workingset_restore_file": 0,
+      "zswap": 0,
+      "zswap_incomp": 0,
+      "zswapped": 0,
+      "zswpin": 0,
+      "zswpout": 0,
+      "zswpwb": 0
+    },
+    "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-cgroup-pressure-telemetry-run3.scope",
+    "scope": "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory",
+    "status": "measured"
+  },
+  "count": 2,
+  "cpu_ticks_units": "raw /proc/<pid>/stat scheduler ticks",
+  "experiment": "baseline",
+  "guest_cpu_model": "host",
+  "guest_ram_mib": 256,
+  "host": {
+    "clock_ticks_per_second": 100,
+    "kernel_memory_accounting": "UNKNOWN: process PSS excludes KVM metadata and host page tables",
+    "kernel_version": "7.2.11-arch1-1",
+    "ksm": {
+      "available": true,
+      "counters": {
+        "full_scans": 0,
+        "pages_shared": 0,
+        "pages_sharing": 0,
+        "pages_unshared": 0,
+        "pages_volatile": 0,
+        "run": 0
+      }
+    },
+    "kvm": {
+      "accessible": true,
+      "qualification": "device opened; live guest probe must confirm KVM enabled"
+    },
+    "page_size_bytes": 4096,
+    "qemu": {
+      "available": true,
+      "output": "QEMU emulator version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qemu_img": {
+      "available": true,
+      "output": "qemu-img version 11.1.2\nCopyright (c) 2003-2026 Fabrice Bellard and the QEMU Project developers"
+    },
+    "qmp": {
+      "available": true,
+      "diagnostic_accelerator": "tcg (stopped, no guest)",
+      "machine_supported": true,
+      "memory_backend_properties": [
+        {
+          "name": "type",
+          "type": "string"
+        },
+        {
+          "description": "Mark the memory as private to QEMU or shared",
+          "name": "share",
+          "type": "bool"
+        },
+        {
+          "description": "Size of the memory region (ex: 500M)",
+          "name": "size",
+          "type": "int"
+        },
+        {
+          "description": "Set to 'off' to exclude from core dump",
+          "name": "dump",
+          "type": "bool"
+        },
+        {
+          "description": "Number of CPU threads to use for prealloc",
+          "name": "prealloc-threads",
+          "type": "int"
+        },
+        {
+          "name": "x-use-canonical-path-for-ramblock-id",
+          "type": "bool"
+        },
+        {
+          "description": "Set the NUMA policy",
+          "name": "policy",
+          "type": "HostMemPolicy"
+        },
+        {
+          "description": "Context to use for creating CPU threads for preallocation",
+          "name": "prealloc-context",
+          "type": "link<thread-context>"
+        },
+        {
+          "description": "Preallocate memory",
+          "name": "prealloc",
+          "type": "bool"
+        },
+        {
+          "description": "Reserve swap space (or huge pages) if applicable",
+          "name": "reserve",
+          "type": "bool"
+        },
+        {
+          "description": "Binds memory to the list of NUMA host nodes",
+          "name": "host-nodes",
+          "type": "int"
+        },
+        {
+          "description": "Mark memory as mergeable",
+          "name": "merge",
+          "type": "bool"
+        },
+        {
+          "name": "readonly",
+          "type": "bool"
+        },
+        {
+          "name": "align",
+          "type": "int"
+        },
+        {
+          "description": "Offset into the target file (ex: 1G)",
+          "name": "offset",
+          "type": "int"
+        },
+        {
+          "name": "mem-path",
+          "type": "string"
+        },
+        {
+          "description": "Whether to create Read Only Memory (ROM)",
+          "name": "rom",
+          "type": "OnOffAuto"
+        },
+        {
+          "name": "discard-data",
+          "type": "bool"
+        }
+      ],
+      "migration_capabilities": [
+        {
+          "capability": "xbzrle",
+          "state": false
+        },
+        {
+          "capability": "rdma-pin-all",
+          "state": false
+        },
+        {
+          "capability": "auto-converge",
+          "state": false
+        },
+        {
+          "capability": "events",
+          "state": false
+        },
+        {
+          "capability": "postcopy-ram",
+          "state": false
+        },
+        {
+          "capability": "x-colo",
+          "state": false
+        },
+        {
+          "capability": "release-ram",
+          "state": false
+        },
+        {
+          "capability": "return-path",
+          "state": false
+        },
+        {
+          "capability": "pause-before-switchover",
+          "state": false
+        },
+        {
+          "capability": "multifd",
+          "state": false
+        },
+        {
+          "capability": "dirty-bitmaps",
+          "state": false
+        },
+        {
+          "capability": "postcopy-blocktime",
+          "state": false
+        },
+        {
+          "capability": "late-block-activate",
+          "state": false
+        },
+        {
+          "capability": "x-ignore-shared",
+          "state": false
+        },
+        {
+          "capability": "validate-uuid",
+          "state": false
+        },
+        {
+          "capability": "background-snapshot",
+          "state": false
+        },
+        {
+          "capability": "zero-copy-send",
+          "state": false
+        },
+        {
+          "capability": "postcopy-preempt",
+          "state": false
+        },
+        {
+          "capability": "switchover-ack",
+          "state": false
+        },
+        {
+          "capability": "dirty-limit",
+          "state": false
+        },
+        {
+          "capability": "mapped-ram",
+          "state": false
+        }
+      ],
+      "required_machine": "pc-q35-11.1",
+      "template_error": null,
+      "template_supported": true,
+      "version": {
+        "package": "",
+        "qemu": {
+          "major": 11,
+          "micro": 2,
+          "minor": 1
+        }
+      }
+    }
+  },
+  "host_mem_available_kib_at_start": 5764384,
+  "idle_cpu_sample_interval_ms": 1000,
+  "time_to_ready_ms": 2261,
+  "translation_metrics": "not instrumented in this baseline",
+  "translation_trace_perturbs_timing": false,
+  "translation_trace_phase_boundary_perturbs_timing": "not applicable: translation tracing is disabled",
+  "vms": [
+    {
+      "active_cpu_percent_one_core": 104.0,
+      "active_cpu_ticks": 104,
+      "disk_allocated_bytes": 200704,
+      "idle_cpu_ticks": 4,
+      "index": 0,
+      "memory": {
+        "private_clean_kib": 332,
+        "private_dirty_kib": 200956,
+        "pss_kib": 208311,
+        "rss_kib": 226920,
+        "shared_clean_kib": 23588,
+        "shared_dirty_kib": 2044
+      },
+      "pid": 447501,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm,mem-merge=off",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/dvpt/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/dvpt/baseline-000.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "virtio-net-pci,bus=rp1,netdev=net0,mac=0a:66:41:3f:60:4c,id=nic0",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/dvpt/baseline-000.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/dvpt/baseline-000.qmp.sock,server=on,wait=off"
+      ],
+      "tcg_translation_trace": {
+        "status": "not-instrumented"
+      }
+    },
+    {
+      "active_cpu_percent_one_core": 102.0,
+      "active_cpu_ticks": 102,
+      "disk_allocated_bytes": 200704,
+      "idle_cpu_ticks": 5,
+      "index": 1,
+      "memory": {
+        "private_clean_kib": 360,
+        "private_dirty_kib": 201100,
+        "pss_kib": 208469,
+        "rss_kib": 227060,
+        "shared_clean_kib": 23556,
+        "shared_dirty_kib": 2044
+      },
+      "pid": 447518,
+      "qemu_command": [
+        "qemu-system-x86_64",
+        "-machine",
+        "pc-q35-11.1,accel=kvm,mem-merge=off",
+        "-cpu",
+        "host",
+        "-m",
+        "256M",
+        "-smp",
+        "1",
+        "-kernel",
+        "/boot/vmlinuz-linux",
+        "-initrd",
+        "/home/xtrmn8/dvpt/initramfs.cpio",
+        "-append",
+        "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-no-reboot",
+        "-drive",
+        "if=none,id=disk,file=/home/xtrmn8/dvpt/baseline-001.qcow2,format=qcow2",
+        "-device",
+        "virtio-blk-pci,drive=disk,id=blk0",
+        "-netdev",
+        "user,id=net0,restrict=on",
+        "-device",
+        "pcie-root-port,id=rp1,slot=2,chassis=1",
+        "-device",
+        "virtio-net-pci,bus=rp1,netdev=net0,mac=b6:25:70:df:5a:31,id=nic0",
+        "-device",
+        "vmgenid,guid=auto",
+        "-chardev",
+        "socket,id=serial,path=/home/xtrmn8/dvpt/baseline-001.serial.sock,server=on,wait=off",
+        "-serial",
+        "chardev:serial",
+        "-qmp",
+        "unix:/home/xtrmn8/dvpt/baseline-001.qmp.sock,server=on,wait=off"
+      ],
+      "tcg_translation_trace": {
+        "status": "not-instrumented"
+      }
+    }
+  ]
+}

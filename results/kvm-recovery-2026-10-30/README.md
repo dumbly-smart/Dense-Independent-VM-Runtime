@@ -189,3 +189,10 @@ sequential comparison with different cache conditions, not a general density
 bound. See the [corrected sweep](persistent-cgroup-divergence-sweep-fullscope/),
 [initial limited sweep](persistent-cgroup-divergence-sweep/), and
 [`baseline-cgroup-eight.json`](baseline-cgroup-eight.json).
+
+The cgroup sampler now captures `memory.peak` and cumulative `memory.events`
+where available. A separate two-VM baseline in a 3 GiB user systemd scope
+recorded 427,380,736 bytes for both current and peak usage at readiness, with
+all memory event counters zero. This smoke validates the new fields on the
+installed kernel; it is not a density comparison. See
+[`cgroup-pressure-telemetry-baseline-2/`](cgroup-pressure-telemetry-baseline-2/).
