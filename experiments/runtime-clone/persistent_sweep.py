@@ -134,6 +134,32 @@ def summarize_cgroup_memory(samples: dict[str, Any]) -> dict[str, Any]:
         stage: samples.get(stage, {}).get("memory_stat")
         for stage in stages
     }
+    memory_peaks = {
+        stage: samples.get(stage, {}).get("memory_peak_bytes")
+        for stage in stages
+    }
+    memory_events = {
+        stage: samples.get(stage, {}).get("memory_events")
+        for stage in stages
+    }
+    clone_start_events = samples.get("after_clone_start", {}).get("memory_events")
+    divergence_events = samples.get("after_divergence", {}).get("memory_events")
+    event_delta = None
+    if (
+        isinstance(clone_start_events, dict)
+        and isinstance(divergence_events, dict)
+        and clone_start_events.keys() == divergence_events.keys()
+        and all(
+            isinstance(clone_start_events[key], int)
+            and isinstance(divergence_events[key], int)
+            and divergence_events[key] >= clone_start_events[key]
+            for key in clone_start_events
+        )
+    ):
+        event_delta = {
+            key: divergence_events[key] - clone_start_events[key]
+            for key in clone_start_events
+        }
     return {
         "status": "measured",
         "path": next(iter(paths)),
@@ -157,6 +183,9 @@ def summarize_cgroup_memory(samples: dict[str, Any]) -> dict[str, Any]:
         "memory_stat": memory_stats,
         "memory_stat_before": memory_stats["before_clones"],
         "memory_stat_after": memory_stats["after_divergence"],
+        "memory_peak_bytes": memory_peaks,
+        "memory_events": memory_events,
+        "memory_events_delta_clone_start_to_divergence": event_delta,
     }
 
 

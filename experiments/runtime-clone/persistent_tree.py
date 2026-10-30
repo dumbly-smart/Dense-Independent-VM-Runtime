@@ -59,6 +59,33 @@ def cgroup_memory_snapshot(path: pathlib.Path | None = None) -> dict[str, Any]:
             raise ValueError("memory.stat is empty")
     except (OSError, ValueError) as error:
         return {"status": "unavailable", "path": str(path), "reason": str(error)}
+    try:
+        memory_peak_bytes = int((path / "memory.peak").read_text().strip())
+        if memory_peak_bytes < 0:
+            raise ValueError("memory.peak must be non-negative")
+        memory_peak_error = None
+    except (OSError, ValueError) as error:
+        memory_peak_bytes = None
+        memory_peak_error = str(error)
+    try:
+        memory_events = {}
+        for line in (path / "memory.events").read_text().splitlines():
+            fields = line.split()
+            if len(fields) != 2:
+                raise ValueError(f"malformed memory.events line: {line!r}")
+            key, value = fields
+            if key in memory_events:
+                raise ValueError(f"duplicate memory.events key: {key}")
+            counter = int(value)
+            if counter < 0:
+                raise ValueError(f"memory.events counter must be non-negative: {key}")
+            memory_events[key] = counter
+        if not memory_events:
+            raise ValueError("memory.events is empty")
+        memory_events_error = None
+    except (OSError, ValueError) as error:
+        memory_events = None
+        memory_events_error = str(error)
     return {
         "status": "measured",
         "path": str(path),
@@ -66,6 +93,10 @@ def cgroup_memory_snapshot(path: pathlib.Path | None = None) -> dict[str, Any]:
         "memory_limit": memory_limit,
         "memory_max_bytes": memory_max_bytes,
         "memory_stat": memory_stat,
+        "memory_peak_bytes": memory_peak_bytes,
+        "memory_peak_error": memory_peak_error,
+        "memory_events": memory_events,
+        "memory_events_error": memory_events_error,
         "scope": "cgroup-v2 charges for this scope; other tasks in the same cgroup, file cache, and charged kernel memory are included",
     }
 

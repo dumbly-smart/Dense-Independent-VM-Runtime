@@ -14,6 +14,8 @@ class PersistentMemoryMapTests(unittest.TestCase):
             (cgroup / "memory.current").write_text("1234\n")
             (cgroup / "memory.max").write_text("3221225472\n")
             (cgroup / "memory.stat").write_text("anon 100\nfile 200\nkernel 300\n")
+            (cgroup / "memory.peak").write_text("4321\n")
+            (cgroup / "memory.events").write_text("high 0\nmax 2\noom 0\noom_kill 0\n")
 
             result = persistent_tree.cgroup_memory_snapshot(cgroup)
 
@@ -21,6 +23,36 @@ class PersistentMemoryMapTests(unittest.TestCase):
         self.assertEqual(result["current_bytes"], 1234)
         self.assertEqual(result["memory_max_bytes"], 3221225472)
         self.assertEqual(result["memory_stat"]["kernel"], 300)
+        self.assertEqual(result["memory_peak_bytes"], 4321)
+        self.assertEqual(result["memory_events"]["max"], 2)
+
+    def test_keeps_memory_sample_measured_when_optional_peak_and_events_are_unavailable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cgroup = Path(directory)
+            (cgroup / "memory.current").write_text("1234\n")
+            (cgroup / "memory.stat").write_text("anon 100\n")
+
+            result = persistent_tree.cgroup_memory_snapshot(cgroup)
+
+        self.assertEqual(result["status"], "measured")
+        self.assertIsNone(result["memory_peak_bytes"])
+        self.assertIsNone(result["memory_events"])
+
+    def test_keeps_memory_sample_measured_and_marks_malformed_pressure_telemetry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cgroup = Path(directory)
+            (cgroup / "memory.current").write_text("1234\n")
+            (cgroup / "memory.stat").write_text("anon 100\n")
+            (cgroup / "memory.peak").write_text("not-a-number\n")
+            (cgroup / "memory.events").write_text("oom not-a-number\n")
+
+            result = persistent_tree.cgroup_memory_snapshot(cgroup)
+
+        self.assertEqual(result["status"], "measured")
+        self.assertIsNone(result["memory_peak_bytes"])
+        self.assertIsNotNone(result["memory_peak_error"])
+        self.assertIsNone(result["memory_events"])
+        self.assertIsNotNone(result["memory_events_error"])
 
     def test_reports_cgroup_memory_unavailable_without_failing_the_run(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -48,7 +48,9 @@ fn preserves_cgroup_memory_samples_for_baseline_and_clone_snapshots() {
     data["baseline"]["cgroup_memory_at_measurement"] = json!({
         "status":"measured",
         "current_bytes":1_900_000,
-        "memory_stat":{"anon":1_500_000,"kernel":100_000}
+        "memory_stat":{"anon":1_500_000,"kernel":100_000},
+        "memory_peak_bytes":2_000_000,
+        "memory_events":{"max":1,"oom":0,"oom_kill":0}
     });
     data["snapshots"]["before_divergence"]["cgroup_memory"] = json!({
         "status":"measured",
@@ -69,6 +71,14 @@ fn preserves_cgroup_memory_samples_for_baseline_and_clone_snapshots() {
     assert_eq!(
         report["cgroup_memory"]["baseline"]["memory_stat"]["kernel"],
         100_000
+    );
+    assert_eq!(
+        report["cgroup_memory"]["baseline"]["memory_peak_bytes"],
+        2_000_000
+    );
+    assert_eq!(
+        report["cgroup_memory"]["baseline"]["memory_events"]["max"],
+        1
     );
     assert_eq!(
         report["cgroup_memory"]["clones_before_divergence"]["current_bytes"],

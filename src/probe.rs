@@ -764,6 +764,12 @@ mod login_tests {
         fs::write(path.join("memory.current"), "1234\n").unwrap();
         fs::write(path.join("memory.max"), "3221225472\n").unwrap();
         fs::write(path.join("memory.stat"), "anon 1000\nkernel 100\n").unwrap();
+        fs::write(path.join("memory.peak"), "4321\n").unwrap();
+        fs::write(
+            path.join("memory.events"),
+            "high 0\nmax 2\noom 0\noom_kill 0\n",
+        )
+        .unwrap();
 
         let sample = cgroup_memory_snapshot_at(Some(path.as_path()));
 
@@ -771,6 +777,17 @@ mod login_tests {
         assert_eq!(sample["current_bytes"], 1234);
         assert_eq!(sample["memory_max_bytes"], 3_221_225_472u64);
         assert_eq!(sample["memory_stat"]["kernel"], 100);
+        assert_eq!(sample["memory_peak_bytes"], 4321);
+        assert_eq!(sample["memory_events"]["max"], 2);
+
+        fs::write(path.join("memory.peak"), "not-a-number\n").unwrap();
+        fs::write(path.join("memory.events"), "oom not-a-number\n").unwrap();
+        let malformed = cgroup_memory_snapshot_at(Some(path.as_path()));
+        assert_eq!(malformed["status"], "measured");
+        assert!(malformed["memory_peak_bytes"].is_null());
+        assert!(malformed["memory_peak_error"].is_string());
+        assert!(malformed["memory_events"].is_null());
+        assert!(malformed["memory_events_error"].is_string());
         fs::remove_dir_all(path).unwrap();
     }
 }
@@ -1189,6 +1206,55 @@ fn cgroup_memory_snapshot_at(path: Option<&Path>) -> Value {
             sample["path"] = json!(path);
             sample["memory_limit"] = json!(memory_limit);
             sample["memory_max_bytes"] = json!(memory_max_bytes);
+            let (memory_peak_bytes, memory_peak_error) =
+                match fs::read_to_string(path.join("memory.peak")) {
+                    Ok(value) => match value.trim().parse::<u64>() {
+                        Ok(value) => (Some(value), None),
+                        Err(error) => (None, Some(error.to_string())),
+                    },
+                    Err(error) => (None, Some(error.to_string())),
+                };
+            sample["memory_peak_bytes"] = json!(memory_peak_bytes);
+            sample["memory_peak_error"] = json!(memory_peak_error);
+            let memory_events = fs::read_to_string(path.join("memory.events"));
+            let (events, events_error) = match memory_events {
+                Ok(contents) => {
+                    let parsed = contents
+                        .lines()
+                        .try_fold(serde_json::Map::new(), |mut events, line| {
+                            let mut fields = line.split_whitespace();
+                            let key = fields
+                                .next()
+                                .ok_or_else(|| "empty memory.events line".to_string())?;
+                            let value = fields
+                                .next()
+                                .ok_or_else(|| format!("missing memory.events value for {key}"))?
+                                .parse::<u64>()
+                                .map_err(|error| format!("invalid memory.events {key}: {error}"))?;
+                            if fields.next().is_some() || events.contains_key(key) {
+                                return Err(format!(
+                                    "malformed or duplicate memory.events key: {key}"
+                                ));
+                            }
+                            events.insert(key.to_string(), json!(value));
+                            Ok(events)
+                        })
+                        .and_then(|events| {
+                            if events.is_empty() {
+                                Err("memory.events was empty".to_string())
+                            } else {
+                                Ok(events)
+                            }
+                        });
+                    match parsed {
+                        Ok(events) => (Some(json!(events)), None),
+                        Err(error) => (None, Some(error)),
+                    }
+                }
+                Err(error) => (None, Some(error.to_string())),
+            };
+            sample["memory_events"] = json!(events);
+            sample["memory_events_error"] = json!(events_error);
             sample["scope"] = json!(
                 "cgroup-v2 memory accounting for the isolated probe process tree; values include file cache and charged kernel memory"
             );
