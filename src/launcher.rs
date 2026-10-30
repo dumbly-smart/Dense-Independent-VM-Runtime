@@ -107,6 +107,8 @@ pub fn start_clone(
         &instance_dir,
         &identity.mac,
     )?;
+    let network_backend = network_backend_id(&command)?;
+    let hotplug_bus = network_hotplug_bus_id(&command)?;
     let launcher_pid = std::process::id();
     let launcher_start_ticks = crate::lifecycle::process_start_ticks(launcher_pid)?
         .ok_or_else(|| format!("launcher PID {launcher_pid} disappeared during clone start"))?;
@@ -141,6 +143,16 @@ pub fn start_clone(
         let mut serial =
             crate::guest_serial::GuestSerial::connect(&serial_socket, Duration::from_secs(15))?;
         let _identity_report = crate::guest_serial::prepare_clone_identity(&mut serial, &identity)?;
+        let mut qmp = crate::qmp::Qmp::connect(&record.qmp_socket, Duration::from_secs(5))?;
+        add_clone_nic(&mut qmp, &network_backend, &hotplug_bus, &identity.mac)?;
+        let devices = qmp.execute("query-rx-filter", None)?;
+        network_device_name_for_mac(&devices, &identity.mac)?;
+        let guest_mac = serial.command("mac-read", "MAC ", Duration::from_secs(20))?;
+        if guest_mac != format!("MAC {}", identity.mac) {
+            return Err(format!(
+                "guest NIC MAC did not match clone identity: {guest_mac}"
+            ));
+        }
         registry.transition(
             clone_id,
             crate::lifecycle::CloneState::Starting,
@@ -374,14 +386,122 @@ fn restore_clone_state(
         }
     }
     let status = qmp.execute("query-status", None)?;
-    if status["status"] == "paused" {
-        qmp.execute("cont", None)?;
+    if status["status"] != "paused" {
+        return Err(format!(
+            "restored clone was not paused before identity preparation: {status}"
+        ));
     }
+    ensure_no_inherited_network_devices(&qmp.execute("query-rx-filter", None)?)?;
+    qmp.execute("cont", None)?;
     let status = qmp.execute("query-status", None)?;
     if status["status"] != "running" {
         return Err(format!("restored clone is not running: {status}"));
     }
     Ok(())
+}
+
+fn ensure_no_inherited_network_devices(devices: &Value) -> Result<(), String> {
+    let devices = devices
+        .as_array()
+        .ok_or("QMP query-rx-filter did not return a device list")?;
+    if !devices.is_empty() {
+        return Err(format!(
+            "template migration restored {} NIC(s); templates must be frozen without NIC devices so each clone can receive a fresh NIC after identity setup",
+            devices.len()
+        ));
+    }
+    Ok(())
+}
+
+fn network_device_name_for_mac(devices: &Value, mac: &str) -> Result<String, String> {
+    let devices = devices
+        .as_array()
+        .ok_or("QMP query-rx-filter did not return a device list")?;
+    let matches = devices
+        .iter()
+        .filter(|device| {
+            device["main-mac"]
+                .as_str()
+                .is_some_and(|address| address.eq_ignore_ascii_case(mac))
+        })
+        .collect::<Vec<_>>();
+    if matches.len() != 1 {
+        return Err(format!(
+            "expected exactly one QMP NIC with clone MAC {mac}, found {}",
+            matches.len()
+        ));
+    }
+    matches[0]["name"]
+        .as_str()
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| format!("QMP NIC with clone MAC {mac} has no device name"))
+}
+
+fn add_clone_nic(
+    qmp: &mut crate::qmp::Qmp,
+    network_backend: &str,
+    bus: &str,
+    mac: &str,
+) -> Result<(), String> {
+    qmp.execute(
+        "device_add",
+        Some(serde_json::json!({
+            "driver":"virtio-net-pci",
+            "bus":bus,
+            "netdev":network_backend,
+            "mac":mac,
+            "id":"densevm-nic"
+        })),
+    )?;
+    Ok(())
+}
+
+fn network_hotplug_bus_id(command: &[String]) -> Result<String, String> {
+    let buses = command
+        .windows(2)
+        .filter(|pair| pair[0] == "-device")
+        .filter_map(|pair| {
+            let mut fields = pair[1].split(',');
+            (fields.next() == Some("pcie-root-port"))
+                .then(|| fields.find_map(|field| field.strip_prefix("id=")))
+                .flatten()
+        })
+        .collect::<Vec<_>>();
+    if buses.len() != 1 {
+        return Err(format!(
+            "template must provide exactly one hotpluggable pcie-root-port, found {}",
+            buses.len()
+        ));
+    }
+    if buses[0].is_empty() {
+        return Err("template PCIe root port has an empty ID".into());
+    }
+    Ok(buses[0].to_string())
+}
+
+fn network_backend_id(command: &[String]) -> Result<String, String> {
+    let mut backends = command
+        .windows(2)
+        .filter(|pair| pair[0] == "-netdev")
+        .map(|pair| {
+            pair[1]
+                .split(',')
+                .find_map(|field| field.strip_prefix("id="))
+        })
+        .collect::<Vec<_>>();
+    if backends.len() != 1 {
+        return Err(format!(
+            "expected exactly one network backend, found {}",
+            backends.len()
+        ));
+    }
+    backends
+        .pop()
+        .flatten()
+        .filter(|id| !id.is_empty())
+        .map(str::to_string)
+        .ok_or_else(|| "QEMU network backend has no ID".into())
 }
 
 fn verify_disk_overlay(template_disk: &Path, overlay: &Path) -> Result<(), String> {
@@ -515,7 +635,6 @@ pub fn build_clone_command(
     let mut qmp_sockets = 0;
     let mut serial_sockets = 0;
     let mut netdevs = 0;
-    let mut network_devices = 0;
     let mut has_name = false;
     let mut index = 0;
     while index < source.len() {
@@ -546,12 +665,9 @@ pub fn build_clone_command(
                     .get(index + 1)
                     .ok_or("template QEMU command has -device without a value")?;
                 if is_network_device(device) {
-                    network_devices += 1;
-                    if network_devices > 1 {
-                        return Err("template command must contain exactly one virtual NIC".into());
-                    }
-                    command.extend([value.clone(), clone_network_device(device, mac)?]);
-                    index += 2;
+                    return Err(format!(
+                        "template command contains a saved NIC ({device}); freeze templates without NIC devices so each clone can attach a fresh NIC after identity setup"
+                    ));
                 } else {
                     command.extend([value.clone(), device.clone()]);
                     index += 2;
@@ -627,21 +743,15 @@ pub fn build_clone_command(
             }
         }
     }
-    if ram_backends != 1
-        || disks != 1
-        || qmp_sockets != 1
-        || serial_sockets != 1
-        || netdevs != 1
-        || network_devices > 1
-    {
+    if ram_backends != 1 || disks != 1 || qmp_sockets != 1 || serial_sockets != 1 || netdevs != 1 {
         return Err(format!(
-            "template command requires one RAM backend, disk, QMP endpoint, serial socket, and restricted network backend; at most one virtual NIC is supported (found {ram_backends}, {disks}, {qmp_sockets}, {serial_sockets}, {netdevs}, {network_devices})"
+            "template command requires one RAM backend, disk, QMP endpoint, serial socket, and restricted network backend, and must not contain a saved NIC (found {ram_backends}, {disks}, {qmp_sockets}, {serial_sockets}, {netdevs})"
         ));
     }
     if !has_name {
         command.extend(["-name".into(), clone_id.into()]);
     }
-    command.extend(["-incoming".into(), "defer".into()]);
+    command.extend(["-S".into(), "-incoming".into(), "defer".into()]);
     let pidfile_path = instance_dir.join(format!("{clone_id}.pid"));
     let pidfile = option_path(&pidfile_path, "QEMU PID file")?;
     command.extend(["-daemonize".into(), "-pidfile".into(), pidfile.into()]);
@@ -695,18 +805,6 @@ fn restricted_user_netdev(source: &str) -> Result<String, String> {
     {
         Some(field) => *field = "restrict=on".into(),
         None => fields.push("restrict=on".into()),
-    }
-    Ok(fields.join(","))
-}
-
-fn clone_network_device(source: &str, mac: &str) -> Result<String, String> {
-    let mut fields = source.split(',').map(str::to_string).collect::<Vec<_>>();
-    if !fields.iter().any(|field| field.starts_with("netdev=")) {
-        return Err("template virtual NIC has no explicit network backend".into());
-    }
-    match fields.iter_mut().find(|field| field.starts_with("mac=")) {
-        Some(field) => *field = format!("mac={mac}"),
-        None => fields.push(format!("mac={mac}")),
     }
     Ok(fields.join(","))
 }
@@ -848,6 +946,8 @@ mod tests {
             "q35,memory-backend=ram",
             "-drive",
             "if=none,id=disk,file=/templates/base.qcow2,format=qcow2",
+            "-device",
+            "pcie-root-port,id=rp1,slot=2,chassis=1",
             "-chardev",
             "socket,id=serial,path=/tmp/template.serial.sock,server=on,wait=off",
             "-serial",
@@ -862,6 +962,89 @@ mod tests {
         .into_iter()
         .map(str::to_string)
         .collect()
+    }
+
+    fn source_without_nic() -> Vec<String> {
+        let mut command = source();
+        command.truncate(command.len() - 2);
+        command
+    }
+
+    #[test]
+    fn resolves_the_clone_nic_name_from_qmp_using_its_unique_mac() {
+        let devices = json!([
+            {"name":"virtio-net-pci.0","main-mac":"02:11:22:33:44:55"},
+            {"name":"virtio-net-pci.1","main-mac":"02:11:22:33:44:66"}
+        ]);
+        assert_eq!(
+            network_device_name_for_mac(&devices, "02:11:22:33:44:66").unwrap(),
+            "virtio-net-pci.1"
+        );
+        assert!(network_device_name_for_mac(&devices, "02:11:22:33:44:77").is_err());
+        assert!(
+            network_device_name_for_mac(
+                &json!([
+                    {"name":"virtio-net-pci.0","main-mac":"02:11:22:33:44:55"},
+                    {"name":"virtio-net-pci.1","main-mac":"02:11:22:33:44:55"}
+                ]),
+                "02:11:22:33:44:55"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn rejects_migrated_nics_and_requires_a_unique_clone_nic_after_identity() {
+        assert!(ensure_no_inherited_network_devices(&json!([])).is_ok());
+        assert!(
+            ensure_no_inherited_network_devices(&json!([{"name":"virtio-net-pci.0"}]))
+                .unwrap_err()
+                .contains("frozen without NIC devices")
+        );
+    }
+
+    #[test]
+    fn resolves_exactly_one_restricted_network_backend_for_hotplug() {
+        assert_eq!(network_backend_id(&source_without_nic()).unwrap(), "net0");
+        assert_eq!(
+            network_hotplug_bus_id(&source_without_nic()).unwrap(),
+            "rp1"
+        );
+        let mut invalid = source_without_nic();
+        let netdev = invalid.iter().position(|arg| arg == "-netdev").unwrap();
+        invalid[netdev + 1] = "user,restrict=on".into();
+        assert!(network_backend_id(&invalid).is_err());
+        let mut no_bus = source_without_nic();
+        let root_port = no_bus
+            .windows(2)
+            .position(|pair| pair[0] == "-device" && pair[1].starts_with("pcie-root-port,"))
+            .unwrap();
+        no_bus.drain(root_port..root_port + 2);
+        assert!(network_hotplug_bus_id(&no_bus).is_err());
+    }
+
+    #[test]
+    fn clone_command_starts_paused_before_network_identity_setup() {
+        let root = std::env::temp_dir().join(format!(
+            "densevm-paused-clone-command-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let command = build_clone_command(
+            &source_without_nic(),
+            "paused-clone",
+            &root.join("memory.img"),
+            &root.join("disk.qcow2"),
+            &root,
+            "02:11:22:33:44:55",
+        )
+        .unwrap();
+        assert!(command.iter().any(|arg| arg == "-S"));
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
@@ -970,8 +1153,8 @@ mod tests {
     }
 
     #[test]
-    fn clone_command_preserves_migration_devices_but_restricts_network() {
-        let command = build_clone_command(
+    fn clone_command_rejects_network_devices_saved_in_template_state() {
+        let error = build_clone_command(
             &source(),
             "alpha",
             Path::new("/templates/memory.img"),
@@ -979,28 +1162,8 @@ mod tests {
             Path::new("/instances/alpha"),
             "02:11:22:33:44:55",
         )
-        .unwrap();
-        let object = command.iter().position(|arg| arg == "-object").unwrap();
-        assert!(command[object + 1].contains("mem-path=/templates/memory.img"));
-        assert!(command[object + 1].contains("share=off,readonly=on,rom=off"));
-        assert!(command[object + 1].ends_with("merge=off"));
-        let drive = command.iter().position(|arg| arg == "-drive").unwrap();
-        assert!(command[drive + 1].contains("file=/instances/alpha/disk.qcow2"));
-        let netdev = command.iter().position(|arg| arg == "-netdev").unwrap();
-        assert!(command[netdev + 1].contains("restrict=on"));
-        let nic = command
-            .iter()
-            .position(|arg| arg.starts_with("virtio-net-pci,"))
-            .unwrap();
-        assert!(command[nic].contains("mac=02:11:22:33:44:55"));
-        assert!(command.windows(2).any(|pair| pair == ["-name", "alpha"]));
-        assert!(command.iter().any(|arg| arg == "-daemonize"));
-        assert!(command.windows(2).any(|pair| pair[0] == "-pidfile"));
-        assert!(
-            command
-                .windows(2)
-                .any(|pair| pair == ["-incoming", "defer"])
-        );
+        .unwrap_err();
+        assert!(error.contains("freeze templates without NIC devices"));
     }
 
     #[test]
@@ -1023,9 +1186,7 @@ mod tests {
 
     #[test]
     fn clone_command_preserves_restricted_backend_when_snapshot_has_no_nic() {
-        let mut template = source();
-        let device = template.iter().position(|arg| arg == "-device").unwrap();
-        template.drain(device..device + 2);
+        let template = source_without_nic();
         let command = build_clone_command(
             &template,
             "alpha",
@@ -1037,6 +1198,15 @@ mod tests {
         .unwrap();
         let netdev = command.iter().position(|arg| arg == "-netdev").unwrap();
         assert!(command[netdev + 1].contains("restrict=on"));
-        assert!(!command.iter().any(|arg| arg == "-device"));
+        assert!(
+            command
+                .windows(2)
+                .any(|pair| { pair[0] == "-device" && pair[1].starts_with("pcie-root-port,") })
+        );
+        assert!(
+            !command
+                .windows(2)
+                .any(|pair| { pair[0] == "-device" && is_network_device(&pair[1]) })
+        );
     }
 }
