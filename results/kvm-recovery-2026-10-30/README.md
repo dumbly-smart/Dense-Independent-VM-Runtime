@@ -52,3 +52,11 @@ indexes. The initial failed attempt remains recorded as
 and the follow-up diagnostic
 [`two-vcpu-register-capture-diagnostic.json`](two-vcpu-register-capture-diagnostic.json).
 This is one sample and still covers GPR/GS state only.
+
+The dedicated guest LAPIC TPR mutation test also passed on this host. It used
+one vCPU per clone and changed A's TPR from `0x10` to `0x11` while B remained
+at `0x10`; it then changed B to `0x12` while A remained at `0x10`. Both values
+were restored to `0x10`. RAM and disk isolation and sibling survival after
+killing A were verified in the same run. This exercises the x2APIC TPR MSR
+path only; it does not validate other APIC registers or interrupt behavior.
+Raw result: [`lapic-tpr-isolation.json`](lapic-tpr-isolation.json).

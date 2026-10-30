@@ -54,6 +54,13 @@ the tested QEMU, kernel, guest, devices, and workload.
   differing GPR snapshots and the guest-specific user GS bases were observed
   on CPU 0 and CPU 1 respectively. Other MSRs, detailed APIC registers,
   pending interrupts, and precise interrupt timing remain unverified.
+- A fresh QEMU 11.1.2 / Linux 7.2.11-arch1-1 run of the ignored LAPIC TPR
+  isolation test passed on 2026-10-30. Clone A changed TPR from `0x10` to
+  `0x11` while B stayed at `0x10`; B then changed to `0x12` while A read
+  `0x10`; both restored to `0x10`. RAM/disk isolation and B's survival after
+  A's process kill also passed. This is a third TPR sample, not evidence for
+  other APIC registers or interrupt-delivery semantics. Raw result:
+  [`lapic-tpr-isolation.json`](results/kvm-recovery-2026-10-30/lapic-tpr-isolation.json).
 - **Timers while parked: partial.** QMP pause nearly eliminates host CPU use,
   but guest time and alarms differ. Parking is not semantically equivalent to
   continuous execution.
@@ -101,18 +108,19 @@ See the [`results/vcpu-topology-2026-10-29/`](results/vcpu-topology-2026-10-29/)
 [`results/vcpu-qmp-smoke-2026-10-29/`](results/vcpu-qmp-smoke-2026-10-29/)
 artifacts, plus the [`results/kvm-cpu-model-smoke-2026-10-29/`](results/kvm-cpu-model-smoke-2026-10-29/) CPU-model comparison.
 
-On 2026-10-30, the existing two-clone KVM isolation probe succeeded on the
-same reported QEMU/Linux versions. It resumed both clones, verified RAM and
-disk isolation, identities, reboot behavior, and sibling survival. This shows
-that guest entry now works for this probe; it does not explain the earlier
-hardware error or verify the newer multi-vCPU register-capture option. Raw
-measurements: [`results/kvm-recovery-2026-10-30/`](results/kvm-recovery-2026-10-30/).
+On 2026-10-30, the existing two-clone KVM isolation probe and the dedicated
+LAPIC TPR mutation/isolation probe succeeded on the same reported QEMU/Linux
+versions. They verified clone resume, RAM/disk isolation, identity separation,
+reboot and process-kill survival; separate live register captures also passed
+for one and two vCPUs. This shows guest entry and these targeted state probes
+work on this host; it does not explain the earlier hardware error or establish
+complete CPU/device semantics. Raw measurements:
+[`results/kvm-recovery-2026-10-30/`](results/kvm-recovery-2026-10-30/).
 
-The optional register-state check now uses HMP `info registers -a`, checks for
+The optional register-state check uses HMP `info registers -a`, checks for
 exactly the configured CPU index set, and stores GPRs under keys such as
-`CPU#0:RAX` and `CPU#1:RAX`. QEMU 11.1.2 returned separate blocks for both
-vCPUs in a paused TCG interface smoke. This is not a substitute for a live KVM
-restore and independent-state experiment.
+`CPU#0:RAX` and `CPU#1:RAX`. Live KVM evidence for both vCPU indexes is now
+recorded above; the QMP/TCG smoke remains interface validation only.
 
 Probe, baseline, and persistent clone-start commands now use one shared check
 for QMP and serial socket path lengths (plus optional login sockets in the
