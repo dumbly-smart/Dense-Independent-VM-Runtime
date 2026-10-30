@@ -205,3 +205,10 @@ did not increase; all seven surviving guests retained their RAM/disk markers.
 This validates the new persistent sampler for one capped run, not a host-wide
 headroom claim. See
 [`persistent-cgroup-pressure-eight/`](persistent-cgroup-pressure-eight/).
+
+The two-vCPU register experiment now structures QEMU's CR0/CR2/CR3/CR4/EFER
+output by CPU index for both clones. The live two-vCPU test captured CPU 0 and
+CPU 1 and passed the existing per-vCPU TPR mutation checks. These control
+register values are snapshots only; they do not establish independent writes.
+See [`vcpu-control-register-state-2vcpu.json`](vcpu-control-register-state-2vcpu.json)
+and [`docs/vcpu-register-state.md`](../../../docs/vcpu-register-state.md).

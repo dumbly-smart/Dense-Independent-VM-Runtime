@@ -10,14 +10,14 @@ clones resume and must finish their workloads.
 The experiment reads QEMU's reported register state; it does not inspect KVM
 kernel structures. The default machine has one vCPU per guest; the probe now
 accepts `--vcpus 1..4` and applies that count to conventional baselines, the
-frozen template, and restored clones. Existing GS-base and GPR sampling still
-captures only QEMU's selected `CPU#0`. Each guest sets a different user GS base
-(`0x11110000` or `0x22220000`) in its workload thread. QEMU reported both
-values exactly in the paused snapshots. Four of the 16 reported
-general-purpose registers also differed. CR0, CR2, CR3, CR4, and EFER were
-reported and matched in this pair. The distinct GS bases and GPR values show
-sampled per-vCPU state; matching control-register values do not establish
-whether independent writes to them would remain isolated.
+frozen template, and restored clones. QMP `info registers -a` returns a block
+for each vCPU. DenseVM records GPRs and CR0, CR2, CR3, CR4, and EFER in
+per-CPU-keyed maps. Each guest sets a different user GS base (`0x11110000` or
+`0x22220000`) in its workload thread; the probe matches that value to the
+vCPU whose QEMU-reported CPL is 3. The distinct GS bases and seeded GPR values
+show sampled per-vCPU state. Control-register and EFER values are observations
+only: matching values do not establish whether independent writes to them
+would remain isolated.
 Sampling/resume did not prevent the workloads or ordinary RAM/disk isolation
 checks from completing.
 
@@ -31,10 +31,18 @@ register state for vCPU1. The sample does not verify every part of architectural
 CPU state. Independent control-register writes, other MSR writes, APIC
 registers beyond TPR and pending interrupts remain unmeasured. The later
 per-vCPU TPR experiment below checks that register on both vCPU indexes. The
-result preserves the full HMP output for inspection, while the structured parser compares
-x86-64 general-purpose registers and the GS base. QEMU's output format can
-vary by version and architecture. Do not treat these sampled states as
-exhaustive proof of all CPU-state isolation.
+result preserves the full HMP output for inspection, while the structured
+parser records per-CPU GPR and control-register values plus the workload's GS
+base. QEMU's output format can vary by version and architecture. Do not treat
+these sampled states as exhaustive proof of all CPU-state isolation.
+
+A further QEMU 11.1.2 run added structured CR0/CR2/CR3/CR4/EFER snapshots for
+CPU 0 and CPU 1 in both two-vCPU clones. The values are present in the raw
+result, and the per-vCPU LAPIC TPR mutation sequence passed for both CPU
+indexes. This proves that the monitor parser observes those fields for each
+vCPU and separately tests TPR writes; it does not prove isolation of
+independent control-register or EFER writes. Raw result:
+[`vcpu-control-register-state-2vcpu.json`](../results/kvm-recovery-2026-10-30/vcpu-control-register-state-2vcpu.json).
 
 The opt-in register probe also requests QEMU HMP `info lapic` for each paused
 clone. Two repeated live two-clone runs captured LAPIC state from both guests;
