@@ -118,21 +118,25 @@ justifying a fabricated resume claim.
 ## Follow-on gates
 
 The basic two-clone mechanism and Alpine service/login checkpoint have been
-demonstrated. An opt-in Alpine identity profile now demonstrates OpenSSH host
-key rotation, DHCP client identity, and the tested Linux kernel's VMGenID
-reaction. QMP now captures distinct general-purpose register snapshots for two
-clones, while control-register, MSR, APIC, and interrupt-state checks remain
+demonstrated. An opt-in Alpine identity profile demonstrates OpenSSH host key
+rotation, DHCP client identity, and the tested Linux kernel's VMGenID reaction.
+QMP captures distinct general-purpose register snapshots for two clones, while
+control-register, other MSR, detailed APIC, and pending-interrupt checks remain
 open. Remaining gates are broader distribution coverage, exact timer interrupt
 and RTC alarm behavior, positive KSM measurements, and complete kernel-memory
-accounting. KSM measurements are blocked by the current user's
-permissions for host-global sysfs. Recursive template-tree COW proofs now
-materialize three generated levels with v3 artifact-path manifests; DenseVM
-can inspect metadata, verify hashes, and catalog parent links. A persistent
-runtime lifecycle, relocation, crash recovery, and broader machine/device
-compatibility remain deferred; TCG sharing remains deferred too.
+accounting. KSM measurements are blocked by the current user's permissions for
+host-global sysfs. Recursive template-tree COW proofs materialize generated
+levels with relative v4 lineage; DenseVM can inspect metadata, verify hashes,
+catalog parent links, and start/stop persistent clones from relocated trees.
+Template leaf collection is explicit and guarded, but it is not crash-safe or a
+managed catalog. TCG code sharing remains deferred because the feasibility
+analysis does not justify sharing mutable translation blocks across processes.
 Explicit parking is measured but changes guest time.
 
-The Rust CLI also provides a read-only `template gc-plan`. It requires a fully
-verified catalog, protects starting/running clone generations and explicit
-keeps plus their ancestors, and reports candidate leaves without deleting
-files. This is a conservative planning step, not a destructive collector.
+The Rust CLI provides a non-destructive `template gc-plan` that requires a
+fully verified catalog and protects starting/running clone generations and
+explicit keeps plus their ancestors. `template gc ... --apply` can remove one
+unreferenced leaf's manifest-listed artifacts after rechecking reachability;
+it preserves other files, uses locks shared with DenseVM clone startup, and
+cannot discover external QEMU references. An interrupted delete has no recovery
+journal. See [`docs/template-tree.md`](template-tree.md).

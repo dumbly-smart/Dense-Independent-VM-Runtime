@@ -292,9 +292,10 @@ crash. This is not durable publication across power loss: artifact and parent
 directory `fsync` ordering has not been implemented or tested. Process
 reference detection covers same-user `/proc` command lines and memory maps; it
 is not a general process supervisor or a persistent template manager. The
-system still lacks destructive template garbage collection, migration
-compatibility checks across QEMU versions, and large multi-level tree
-benchmarks. It does not
-establish that every machine/device configuration supports the same migration
-sequence. These need separate failure and compatibility tests before
-hierarchical templates become a general runtime feature.
+runtime now has explicit leaf-only garbage collection, but deletion is not
+crash-safe and there is no managed catalog with durable recovery. Migration
+compatibility across QEMU versions and large multi-level tree benchmarks remain
+untested. These results also do not establish that every machine/device
+configuration supports the same migration sequence. Those gaps need separate
+failure and compatibility tests before hierarchical templates become a general
+runtime feature.
