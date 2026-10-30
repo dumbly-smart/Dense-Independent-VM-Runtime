@@ -1,6 +1,6 @@
 # DenseVM project status
 
-**Status date:** 2026-10-29
+**Status date:** 2026-10-30
 
 **Working branch:** `research/remaining-runtime`  
 **Detailed research diary:** [`docs/progress.md`](docs/progress.md)  
@@ -26,10 +26,12 @@ the tested QEMU, kernel, guest, devices, and workload.
   the guest overlay.
 - Unique MAC, machine-id, hostname, vmgenid, entropy preparation, and tested
   Alpine OpenSSH/DHCP client identity flows are implemented and measured.
-- Two-vCPU source/template/clone restore runs passed twice. Register capture now
-  requests all monitor CPUs and keeps GPRs under CPU-indexed keys; this update
-  has TCG interface evidence. A successful post-change two-clone KVM restore
-  now passes, but the all-vCPU register-capture option has not yet been rerun.
+- Two-vCPU source/template/clone restore runs passed twice. The all-vCPU
+  register capture was exercised on KVM: both clone processes reported indexes
+  `[0, 1]` and separate GPR snapshots, with the guest workload's user GS base
+  observed on its active CPU. This samples GPR/GS state only; other MSRs,
+  detailed APIC state, pending interrupts, and precise interrupt timing remain
+  unverified. See `docs/vcpu-register-state.md` and the 2026-10-30 recovery data.
 - Persistent clone start/stop/reconcile/delete, schema-v4 relocated template
   lineage, and guarded staging recovery have evidence-backed implementations.
 - Conventional KVM and TCG baselines, memory/disk/CPU/network workloads,
@@ -174,3 +176,5 @@ For a complete beginner-to-technical explanation, read
 - RTC clock-mode experiment now has two sequential samples per mode with identical results on this host; host and `rt` missed after pause, `vm` delivered after resume. Cross-version and guest-profile behavior remains unmeasured. Raw repeats are saved beside the first three mode records in `results/kvm-recovery-2026-10-30/`.
 
 - Persistent clone memory-map command now has a live test using two actual DenseVM-managed clones from one template generation. Each resolved to its own QEMU PID and the same RAM file; `/proc/smaps` classified 3,515 pages as shared in each process. Private/private-dirty estimates were 1,501/1,395 pages in A and 260/260 in B. Both clones were stopped cleanly. This confirms persistent registry integration and reported sharing classifications, not exact page identity or host-wide physical savings. See `docs/memory-map.md` and `results/kvm-recovery-2026-10-30/memory-map-persistent-comparison.json`.
+
+- The persistent template-tree runner now captures RAM-map reports by clone ID and verifies the reported identity/generation against each started clone. A live two-clone rerun reported 3,598 smaps-shared pages per process from the common RAM file; both processes were distinct and stopped cleanly. The runner's Python tests and all Rust tests pass. Reproduction commands and limitations: `docs/memory-map.md`; raw result: `results/kvm-recovery-2026-10-30/persistent-tree-memory-map-by-id.json`.

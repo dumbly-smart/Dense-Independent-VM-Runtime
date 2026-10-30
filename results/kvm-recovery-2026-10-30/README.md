@@ -137,3 +137,10 @@ classifications only; it does not establish guest-physical page identity. The
 source template was temporary. See [`memory-map-persistent-comparison.json`](memory-map-persistent-comparison.json)
 and its [raw A](memory-map-persistent-a.json) / [raw B](memory-map-persistent-b.json)
 outputs.
+
+The persistent-tree runner now exercises the clone-ID memory-map interface as
+part of its standard two-clone workflow. On this run both reports matched the
+clone IDs and generation, each showed 3,598 shared pages, and the separate
+QEMU processes were stopped cleanly. The exact test output, commands, and
+cleanup results are recorded in
+[`persistent-tree-memory-map-by-id.json`](persistent-tree-memory-map-by-id.json).

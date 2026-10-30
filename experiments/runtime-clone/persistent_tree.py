@@ -45,6 +45,35 @@ def run_command(
     return step, completed.stdout
 
 
+def capture_clone_memory_maps(
+    result: dict[str, Any],
+    binary: pathlib.Path,
+    state_dir: pathlib.Path,
+    clones: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    reports = {}
+    for clone in clones:
+        clone_id = clone["id"]
+        _, stdout = run_command(
+            result,
+            binary,
+            ["memory-map", "clone", clone_id, "--state-dir", str(state_dir)],
+        )
+        report = json.loads(stdout)
+        identity = report.get("clone")
+        if not isinstance(identity, dict) or identity.get("id") != clone_id:
+            raise RuntimeError(f"memory-map reported clone ID different from {clone_id}")
+        if identity.get("generation_id") != clone.get("generation_id"):
+            raise RuntimeError(f"memory-map reported a different generation for {clone_id}")
+        estimates = report.get("page_estimates")
+        if not isinstance(estimates, dict) or not isinstance(
+            estimates.get("shared_pages_estimate"), int
+        ):
+            raise RuntimeError(f"memory-map omitted page estimates for {clone_id}")
+        reports[clone_id] = report
+    return reports
+
+
 def run(args: argparse.Namespace) -> pathlib.Path:
     binary = args.densevm.resolve()
     manifest = args.manifest.resolve()
@@ -111,6 +140,9 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             serials[clone_id] = GuestSerial(
                 state_dir / clone_id / f"{clone_id}.serial.sock"
             )
+        result["clone_id_memory_maps"] = capture_clone_memory_maps(
+            result, binary, state_dir, clones
+        )
         result["clone_count"] = args.count
         result["configured_guest_ram_bytes"] = (
             metadata["ram"]["logical_size_bytes"] * args.count

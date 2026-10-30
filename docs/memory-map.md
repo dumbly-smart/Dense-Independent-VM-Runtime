@@ -95,3 +95,25 @@ private-dirty estimate rose by 8,208 pages (32,832 KiB), while B rose by 52
 pages (208 KiB). This is one sample; the complete result and extracted
 comparison are [`page-estimates-cow.json`](../results/kvm-recovery-2026-10-30/page-estimates-cow.json)
 and [`page-estimates-cow-summary.json`](../results/kvm-recovery-2026-10-30/page-estimates-cow-summary.json).
+
+The persistent-tree experiment driver now captures this ID-based report for
+every clone it starts, before the guest divergence workload. To reproduce on a
+host that passes `densevm doctor` and has enough RAM, first build a root probe
+template, then a child generation, then run the persistent-tree experiment:
+
+```sh
+cargo run -- probe --out /tmp/mm-root --skip-guest-oom --divergence-percent 0
+python3 experiments/template-tree/probe.py --template-dir /tmp/mm-root --out /tmp/mm-tree
+python3 experiments/runtime-clone/persistent_tree.py \
+  --densevm target/debug/densevm \
+  --manifest /tmp/mm-tree/generation.json \
+  --out /tmp/mm-map-run --count 2 --divergence-percent 0
+```
+
+The driver verifies that each memory-map result names the expected clone and
+template generation, records page estimates, and stops all clones before
+writing its result JSON. On the 2026-10-30 QEMU 11.1.2 / Linux 7.2.11-arch1-1
+sample, both clones reported 3,598 shared pages from the same RAM file; they
+had distinct QEMU PIDs, and both stopped cleanly. This is a single host sample
+of smaps categories. The exact source generation was temporary, but the
+commands above regenerate it. See the [saved run](../results/kvm-recovery-2026-10-30/persistent-tree-memory-map-by-id.json).

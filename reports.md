@@ -175,3 +175,7 @@ validated this lookup path only; it did not run a guest. See
 ## Persistent clone memory-map lookup
 
 A live run started two persistent clones from the same template-tree generation and sampled each using `densevm memory-map clone ID --state-dir DIR`. The command resolved separate QEMU PIDs and the common RAM backing file. Both process mappings reported 3,515 shared pages; estimated private/private-dirty pages were 1,501/1,395 for A and 260/260 for B. The clones stopped cleanly. These are `/proc/smaps` categories, not a page-by-page guest memory map or a complete host footprint. The source template was temporary, so only the measurements are retained. See [method and caveats](docs/memory-map.md) and [comparison JSON](results/kvm-recovery-2026-10-30/memory-map-persistent-comparison.json).
+
+## Persistent template-tree RAM mapping by clone ID
+
+The persistent-tree experiment runner now records `densevm memory-map clone ID` for each clone before divergence. It checks that each report matches the started clone ID and generation. A live two-clone run from the same generation reported 3,598 shared pages in each mapping, used separate QEMU PIDs, and stopped both clones cleanly. These are `/proc/smaps` classifications and do not identify guest-physical page numbers. The result file includes commands, measurements, and cleanup state: [JSON](results/kvm-recovery-2026-10-30/persistent-tree-memory-map-by-id.json). Reproduction steps are in [the method page](docs/memory-map.md).
