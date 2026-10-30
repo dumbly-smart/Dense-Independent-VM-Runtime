@@ -19,6 +19,57 @@ from typing import Any
 from probe import GuestSerial, process_memory, ram_mapping
 
 
+def cgroup_memory_snapshot(path: pathlib.Path | None = None) -> dict[str, Any]:
+    if path is None:
+        configured_path = os.environ.get("DENSEVM_CGROUP_PATH")
+        if configured_path:
+            path = pathlib.Path(configured_path)
+        else:
+            try:
+                membership = pathlib.Path("/proc/self/cgroup").read_text().splitlines()
+            except OSError as error:
+                return {"status": "unavailable", "reason": f"read cgroup membership: {error}"}
+            relative = next(
+                (line.split("::", 1)[1] for line in membership if line.startswith("0::")), None
+            )
+            if relative is None:
+                return {"status": "not-requested", "reason": "no cgroup-v2 membership found"}
+            path = pathlib.Path("/sys/fs/cgroup") / relative.lstrip("/")
+
+    if not path.is_absolute():
+        return {"status": "unavailable", "path": str(path), "reason": "cgroup path is not absolute"}
+    try:
+        current_bytes = int((path / "memory.current").read_text().strip())
+        try:
+            memory_limit = (path / "memory.max").read_text().strip()
+            memory_max_bytes = None if memory_limit == "max" else int(memory_limit)
+        except OSError:
+            memory_limit = None
+            memory_max_bytes = None
+        memory_stat = {}
+        for line in (path / "memory.stat").read_text().splitlines():
+            fields = line.split()
+            if len(fields) != 2:
+                raise ValueError(f"malformed memory.stat line: {line!r}")
+            key, value = fields
+            if key in memory_stat:
+                raise ValueError(f"duplicate memory.stat key: {key}")
+            memory_stat[key] = int(value)
+        if not memory_stat:
+            raise ValueError("memory.stat is empty")
+    except (OSError, ValueError) as error:
+        return {"status": "unavailable", "path": str(path), "reason": str(error)}
+    return {
+        "status": "measured",
+        "path": str(path),
+        "current_bytes": current_bytes,
+        "memory_limit": memory_limit,
+        "memory_max_bytes": memory_max_bytes,
+        "memory_stat": memory_stat,
+        "scope": "cgroup-v2 charges for this scope; other tasks in the same cgroup, file cache, and charged kernel memory are included",
+    }
+
+
 def sha256(path: pathlib.Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -165,6 +216,7 @@ def run(args: argparse.Namespace) -> pathlib.Path:
         if result["validation"].get("status") != "verified":
             raise RuntimeError(f"template validation failed: {result['validation']}")
 
+        result["cgroup_memory"] = {"before_clones": cgroup_memory_snapshot()}
         startup_started = time.monotonic()
         startup_samples = []
         for index in range(args.count):
@@ -202,6 +254,7 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             "clone_samples": startup_samples,
             "time_to_n_clones_ms": round((time.monotonic() - startup_started) * 1000, 3),
         }
+        result["cgroup_memory"]["after_clone_start"] = cgroup_memory_snapshot()
 
         for field in ("mac", "machine_id"):
             values = [clone[field] for clone in clones]
@@ -284,6 +337,7 @@ def run(args: argparse.Namespace) -> pathlib.Path:
             )
 
         result["memory_after_divergence"] = memory_snapshot()
+        result["cgroup_memory"]["after_divergence"] = cgroup_memory_snapshot()
         result["aggregate_memory"] = {
             phase: {
                 section: {
@@ -356,6 +410,7 @@ def run(args: argparse.Namespace) -> pathlib.Path:
                 serials,
                 expected_state,
             )
+            result["cgroup_memory"]["after_sibling_stop"] = cgroup_memory_snapshot()
         result["status"] = "verified"
     except Exception as error:  # Preserve failure evidence for interrupted experiments.
         result["status"] = "failed"

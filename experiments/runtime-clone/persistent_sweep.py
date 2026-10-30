@@ -95,6 +95,71 @@ def write_plot(path: pathlib.Path, rows: list[dict[str, Any]]) -> None:
     path.write_text("\n".join(pieces) + "\n")
 
 
+def summarize_cgroup_memory(samples: dict[str, Any]) -> dict[str, Any]:
+    stages = (
+        "before_clones",
+        "after_clone_start",
+        "after_divergence",
+        "after_sibling_stop",
+    )
+    measured = {
+        stage: samples.get(stage, {})
+        for stage in stages
+        if samples.get(stage, {}).get("status") == "measured"
+    }
+    before = samples.get("before_clones", {})
+    after = samples.get("after_divergence", {})
+    paths = {sample.get("path") for sample in measured.values()}
+    if (
+        before.get("status") != "measured"
+        or after.get("status") != "measured"
+        or len(paths) != 1
+        or not isinstance(before.get("current_bytes"), int)
+        or not isinstance(after.get("current_bytes"), int)
+    ):
+        return {
+            "status": "unavailable",
+            "path": before.get("path"),
+            "before_status": before.get("status", "missing"),
+            "after_status": after.get("status", "missing"),
+            "delta_bytes": None,
+        }
+    current = {
+        stage: sample.get("current_bytes")
+        for stage, sample in ((stage, samples.get(stage, {})) for stage in stages)
+    }
+    clone_start = current["after_clone_start"]
+    after_sibling_stop = current["after_sibling_stop"]
+    memory_stats = {
+        stage: samples.get(stage, {}).get("memory_stat")
+        for stage in stages
+    }
+    return {
+        "status": "measured",
+        "path": next(iter(paths)),
+        "scope": before.get("scope"),
+        "memory_limit": before.get("memory_limit"),
+        "memory_max_bytes": before.get("memory_max_bytes"),
+        "current_bytes": current,
+        "before_clones_bytes": current["before_clones"],
+        "after_clone_start_bytes": clone_start,
+        "after_divergence_bytes": current["after_divergence"],
+        "after_sibling_stop_bytes": after_sibling_stop,
+        "delta_bytes": after["current_bytes"] - before["current_bytes"],
+        "delta_clone_start_to_divergence_bytes": (
+            current["after_divergence"] - clone_start
+            if isinstance(clone_start, int)
+            else None
+        ),
+        "delta_before_to_clone_start_bytes": (
+            clone_start - current["before_clones"] if isinstance(clone_start, int) else None
+        ),
+        "memory_stat": memory_stats,
+        "memory_stat_before": memory_stats["before_clones"],
+        "memory_stat_after": memory_stats["after_divergence"],
+    }
+
+
 def run_sweep(args: argparse.Namespace) -> pathlib.Path:
     binary = args.densevm.resolve()
     manifest = args.manifest.resolve()
@@ -190,6 +255,7 @@ def run_sweep(args: argparse.Namespace) -> pathlib.Path:
                 "private_dirty_kib"
             ]
             - before["template_ram_mapping"]["private_dirty_kib"],
+            "cgroup_memory": summarize_cgroup_memory(result.get("cgroup_memory", {})),
             "time_to_n_clones_ms": result["startup"]["time_to_n_clones_ms"],
             "result": str(result_path.relative_to(output)),
             "command": command_record,

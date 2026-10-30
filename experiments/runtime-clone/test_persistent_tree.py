@@ -8,6 +8,38 @@ import persistent_tree
 
 
 class PersistentMemoryMapTests(unittest.TestCase):
+    def test_reads_cgroup_v2_current_and_kernel_memory_from_a_supplied_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cgroup = Path(directory)
+            (cgroup / "memory.current").write_text("1234\n")
+            (cgroup / "memory.max").write_text("3221225472\n")
+            (cgroup / "memory.stat").write_text("anon 100\nfile 200\nkernel 300\n")
+
+            result = persistent_tree.cgroup_memory_snapshot(cgroup)
+
+        self.assertEqual(result["status"], "measured")
+        self.assertEqual(result["current_bytes"], 1234)
+        self.assertEqual(result["memory_max_bytes"], 3221225472)
+        self.assertEqual(result["memory_stat"]["kernel"], 300)
+
+    def test_reports_cgroup_memory_unavailable_without_failing_the_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = persistent_tree.cgroup_memory_snapshot(Path(directory))
+
+        self.assertEqual(result["status"], "unavailable")
+        self.assertIn("memory.current", result["reason"])
+
+    def test_rejects_malformed_cgroup_stat_as_an_unavailable_sample(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cgroup = Path(directory)
+            (cgroup / "memory.current").write_text("1234\n")
+            (cgroup / "memory.stat").write_text("kernel not-a-number\n")
+
+            result = persistent_tree.cgroup_memory_snapshot(cgroup)
+
+        self.assertEqual(result["status"], "unavailable")
+        self.assertIn("invalid literal", result["reason"])
+
     def test_captures_memory_map_for_each_live_clone_id(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
