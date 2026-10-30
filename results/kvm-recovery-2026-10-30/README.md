@@ -106,3 +106,10 @@ clock applies. QEMU documentation says the RTC defaults to host system time;
 `clock=vm` instead stops RTC progress during suspension. This result therefore
 only characterizes the default clock configuration of this probe. It does not
 establish behavior under `-rtc clock=vm` or `clock=rt`.
+
+The RTC clock comparison used one live run each with QEMU `host`, `rt`, and
+`vm` RTC clocks. Running controls fired in all three modes. Both paused alarms
+missed in `host` and `rt`, while both fired after resume in `vm`. Each template
+and clone command contained the selected `-rtc clock=...` value. Full raw
+records and reproduction details are in [`docs/rtc-clock-experiment.md`](../../docs/rtc-clock-experiment.md)
+and [`rtc-clock-comparison.json`](rtc-clock-comparison.json).

@@ -257,7 +257,7 @@ fn clones_keep_guest_lapic_tpr_writes_private() {
 
 #[test]
 #[ignore = "requires local KVM and QEMU; compares running and QMP-paused RTC alarm delivery"]
-fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
+fn probe_records_guest_rtc_alarm_delivery_with_virtual_clock() {
     let stamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -269,6 +269,8 @@ fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
             "probe",
             "--skip-guest-oom",
             "--rtc-alarm",
+            "--rtc-clock",
+            "vm",
             "--divergence-percent",
             "0",
             "--out",
@@ -279,6 +281,16 @@ fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
     let result: Value =
         serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
     assert_eq!(result["rtc_alarm"]["rtc_alarm_flag"], "RTC_AF (0x20)");
+    assert_eq!(result["rtc_alarm"]["qemu_rtc_clock"], "vm");
+    for command in [
+        &result["template"]["qemu_command"],
+        &result["clones"]["a"]["qemu_command"],
+        &result["clones"]["b"]["qemu_command"],
+    ] {
+        let command = command.as_array().unwrap();
+        let rtc = command.iter().position(|value| value == "-rtc").unwrap();
+        assert_eq!(command[rtc + 1], "clock=vm");
+    }
     for clone in ["a", "b"] {
         assert!(
             result["rtc_alarm"]["control_running"][clone]["response"]
@@ -290,21 +302,17 @@ fn probe_records_guest_rtc_alarm_delivery_during_running_and_paused_trials() {
                 .as_str()
                 .is_some()
         );
-        if result["rtc_alarm"]["paused"][clone]["alarm_flag_observed"] == false {
-            let response = result["rtc_alarm"]["paused"][clone]["response"]
-                .as_str()
-                .unwrap();
-            assert!(response.contains("rtc_now="));
-            assert!(response.contains("rtc_alarm="));
-            assert!(response.contains("alarm_IRQ"));
-            assert!(response.contains("alrm_pending"));
-        }
+        assert_eq!(
+            result["rtc_alarm"]["control_running"][clone]["alarm_flag_observed"],
+            true
+        );
+        assert_eq!(
+            result["rtc_alarm"]["paused"][clone]["alarm_flag_observed"],
+            true
+        );
     }
-    if status.success() {
-        assert_eq!(result["rtc_alarm_verified"], true);
-    } else {
-        assert_eq!(result["rtc_alarm_verified"], false);
-    }
+    assert!(status.success());
+    assert_eq!(result["rtc_alarm_verified"], true);
 }
 
 #[test]

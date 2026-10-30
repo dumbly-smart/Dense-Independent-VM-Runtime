@@ -29,6 +29,7 @@ fn main() {
             vcpu_register_state,
             lapic_tpr_state,
             rtc_alarm,
+            rtc_clock,
         } => densevm::probe::run_options(
             &out,
             densevm::probe::ProbeOptions {
@@ -44,6 +45,7 @@ fn main() {
                 vcpu_register_state,
                 lapic_tpr_state,
                 rtc_alarm,
+                rtc_clock,
             },
         ),
         Command::BenchmarkBaseline {

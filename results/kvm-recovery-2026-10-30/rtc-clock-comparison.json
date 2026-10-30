@@ -1,0 +1,82 @@
+{
+  "experiment": "QEMU guest RTC alarm behavior across QMP stop/resume",
+  "date": "2026-10-30",
+  "guest": "synthetic Alpine-based initramfs, two independently restored clones",
+  "protocol": "arm 5-second RTC alarm while running, observe control; arm again, QMP stop for 7 seconds, resume, wait up to 22 seconds",
+  "samples_per_clock_mode": 1,
+  "interpretation": "All running controls delivered. Both virtual-clock alarms delivered after resume. Both host and monotonic-clock paused trials missed. This is one host and one run per mode; it does not locate the loss within QEMU timer processing, interrupt injection, or guest handling.",
+  "runs": {
+    "host": {
+      "raw_result": "rtc-clock-host.json",
+      "qemu_version": "QEMU emulator version 11.1.2",
+      "kernel_version": "7.2.11-arch1-1",
+      "configured_qemu_rtc_clock": "host",
+      "template_and_clones_use_requested_clock": true,
+      "running_control_delivered": {
+        "a": true,
+        "b": true
+      },
+      "running_control_flags": {
+        "a": 160,
+        "b": 160
+      },
+      "paused_trial_delivered": {
+        "a": false,
+        "b": false
+      },
+      "paused_trial_response": {
+        "a": "RTC-ALARM-MISSED RTC alarm did not arrive before timeout rtc_now=11:28:07 rtc_alarm=11:27:45 alarm_IRQ\t: yes; alrm_pending\t: no",
+        "b": "RTC-ALARM-MISSED RTC alarm did not arrive before timeout rtc_now=11:28:07 rtc_alarm=11:27:45 alarm_IRQ\t: yes; alrm_pending\t: no"
+      },
+      "densevm_probe_exit_success": false
+    },
+    "rt": {
+      "raw_result": "rtc-clock-rt.json",
+      "qemu_version": "QEMU emulator version 11.1.2",
+      "kernel_version": "7.2.11-arch1-1",
+      "configured_qemu_rtc_clock": "rt",
+      "template_and_clones_use_requested_clock": true,
+      "running_control_delivered": {
+        "a": true,
+        "b": true
+      },
+      "running_control_flags": {
+        "a": 160,
+        "b": 160
+      },
+      "paused_trial_delivered": {
+        "a": false,
+        "b": false
+      },
+      "paused_trial_response": {
+        "a": "RTC-ALARM-MISSED RTC alarm did not arrive before timeout rtc_now=11:26:40 rtc_alarm=11:26:18 alarm_IRQ\t: yes; alrm_pending\t: no",
+        "b": "RTC-ALARM-MISSED RTC alarm did not arrive before timeout rtc_now=11:26:40 rtc_alarm=11:26:18 alarm_IRQ\t: yes; alrm_pending\t: no"
+      },
+      "densevm_probe_exit_success": false
+    },
+    "vm": {
+      "raw_result": "rtc-clock-vm.json",
+      "qemu_version": "QEMU emulator version 11.1.2",
+      "kernel_version": "7.2.11-arch1-1",
+      "configured_qemu_rtc_clock": "vm",
+      "template_and_clones_use_requested_clock": true,
+      "running_control_delivered": {
+        "a": true,
+        "b": true
+      },
+      "running_control_flags": {
+        "a": 160,
+        "b": 160
+      },
+      "paused_trial_delivered": {
+        "a": true,
+        "b": true
+      },
+      "paused_trial_response": {
+        "a": "RTC-ALARM-FIRED events=1 flags=160",
+        "b": "RTC-ALARM-FIRED events=1 flags=160"
+      },
+      "densevm_probe_exit_success": true
+    }
+  }
+}

@@ -6,6 +6,23 @@ pub enum BaselineAccelerator {
     Tcg,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RtcClock {
+    Host,
+    Monotonic,
+    Virtual,
+}
+
+impl RtcClock {
+    pub fn qemu_value(self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::Monotonic => "rt",
+            Self::Virtual => "vm",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
     Doctor,
@@ -26,6 +43,7 @@ pub enum Command {
         vcpu_register_state: bool,
         lapic_tpr_state: bool,
         rtc_alarm: bool,
+        rtc_clock: Option<RtcClock>,
     },
     BenchmarkBaseline {
         out: PathBuf,
@@ -147,6 +165,7 @@ where
     let mut vcpu_register_state = false;
     let mut lapic_tpr_state = false;
     let mut rtc_alarm = false;
+    let mut rtc_clock = None;
     let mut divergence_pages = 32 * 256;
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -179,6 +198,14 @@ where
                 vcpu_register_state = true;
             }
             "--rtc-alarm" => rtc_alarm = true,
+            "--rtc-clock" => {
+                rtc_clock = Some(match value(args, "--rtc-clock")?.as_str() {
+                    "host" => RtcClock::Host,
+                    "rt" => RtcClock::Monotonic,
+                    "vm" => RtcClock::Virtual,
+                    _ => return Err("--rtc-clock must be host, rt, or vm".into()),
+                });
+            }
             "--divergence-mib" => {
                 let divergence_mib = value(args, "--divergence-mib")?
                     .parse::<u32>()
@@ -202,6 +229,9 @@ where
             flag => return Err(format!("unknown option {flag}")),
         }
     }
+    if rtc_clock.is_some() && !rtc_alarm {
+        return Err("--rtc-clock requires --rtc-alarm".into());
+    }
     Ok(Command::Probe {
         out: out.ok_or("--out is required")?,
         count,
@@ -216,6 +246,7 @@ where
         vcpu_register_state,
         lapic_tpr_state,
         rtc_alarm,
+        rtc_clock,
     })
 }
 

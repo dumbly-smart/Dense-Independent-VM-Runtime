@@ -1,4 +1,4 @@
-use densevm::cli::{BaselineAccelerator, Command, parse_args};
+use densevm::cli::{BaselineAccelerator, Command, RtcClock, parse_args};
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -22,7 +22,8 @@ fn parses_probe_with_count_and_output() {
             skip_guest_oom: false,
             vcpu_register_state: false,
             lapic_tpr_state: false,
-            rtc_alarm: false
+            rtc_alarm: false,
+            rtc_clock: None
         }
     );
     assert_eq!(
@@ -48,7 +49,8 @@ fn parses_probe_with_count_and_output() {
             skip_guest_oom: false,
             vcpu_register_state: false,
             lapic_tpr_state: false,
-            rtc_alarm: false
+            rtc_alarm: false,
+            rtc_clock: None
         }
     );
 }
@@ -341,6 +343,32 @@ fn enables_rtc_alarm_sampling_only_when_requested() {
             ..
         })
     ));
+}
+
+#[test]
+fn selects_virtual_rtc_clock_only_for_rtc_alarm_experiments() {
+    let result = parse_args([
+        "densevm",
+        "probe",
+        "--out",
+        "/tmp/run",
+        "--rtc-alarm",
+        "--rtc-clock",
+        "vm",
+    ]);
+    assert!(matches!(
+        result,
+        Ok(Command::Probe {
+            rtc_alarm: true,
+            rtc_clock: Some(RtcClock::Virtual),
+            ..
+        })
+    ));
+    assert!(
+        parse_args(["densevm", "probe", "--out", "/tmp/run", "--rtc-clock", "vm",])
+            .unwrap_err()
+            .contains("--rtc-clock requires --rtc-alarm")
+    );
 }
 
 #[test]

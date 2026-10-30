@@ -137,3 +137,13 @@ Do not run high VM counts without checking host `MemAvailable`, process/cgroup
 limits, and free disk. DenseVM preflight may refuse unsafe counts. A refusal is
 not a failed optimization result; it is a host-capacity limit.
 
+
+## RTC alarm clock-mode comparison
+
+A two-clone QMP stop/resume experiment compared QEMU RTC `host`, `rt`, and
+`vm` clocks. Running controls fired in every mode. Both alarms armed before a
+seven-second stop missed in `host` and `rt`, while both `vm` alarms fired after
+resume. This is one sample per mode on QEMU 11.1.2 / Linux 7.2.11-arch1-1 and
+one synthetic guest; host/rt event loss is not attributed to a specific QEMU
+or guest layer. See [`docs/rtc-clock-experiment.md`](docs/rtc-clock-experiment.md)
+and the machine-readable [comparison](results/kvm-recovery-2026-10-30/rtc-clock-comparison.json).

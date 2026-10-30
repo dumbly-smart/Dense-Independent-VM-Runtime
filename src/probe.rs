@@ -1,3 +1,4 @@
+use crate::cli::RtcClock;
 use crate::identity::CloneIdentity;
 use crate::metrics::{MemoryTotals, parse_smaps_for_path, parse_smaps_rollup};
 use crate::qmp::Qmp;
@@ -780,6 +781,7 @@ fn launch(
     vcpus: u8,
     tcg: bool,
     translation_trace: Option<(&Path, bool)>,
+    rtc_clock: Option<RtcClock>,
 ) -> Result<Vm, String> {
     let qmp_path = out.join(format!("{name}.qmp.sock"));
     let serial_path = out.join(format!("{name}.serial.sock"));
@@ -802,6 +804,9 @@ fn launch(
         "-smp",
         &vcpu_arg,
     ]);
+    if let Some(clock) = rtc_clock {
+        cmd.args(["-rtc", &format!("clock={}", clock.qemu_value())]);
+    }
     if let RamBackend::File { path, source } = backend {
         let opts = if source {
             format!(
@@ -1850,6 +1855,7 @@ pub fn run_experiment(
             vcpu_register_state: false,
             lapic_tpr_state: false,
             rtc_alarm: false,
+            rtc_clock: None,
         },
     )
 }
@@ -1868,6 +1874,7 @@ pub struct ProbeOptions<'a> {
     pub vcpu_register_state: bool,
     pub lapic_tpr_state: bool,
     pub rtc_alarm: bool,
+    pub rtc_clock: Option<RtcClock>,
 }
 
 pub fn run_options(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
@@ -1925,6 +1932,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         vcpu_register_state: capture_vcpu_register_state,
         lapic_tpr_state: capture_lapic_tpr_state,
         rtc_alarm: capture_rtc_alarm,
+        rtc_clock,
     } = options;
     let ksm_counters_before = crate::inspect::ksm_status().ok();
     let host = crate::capabilities::host_report();
@@ -2005,6 +2013,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             vcpus,
             false,
             None,
+            capture_rtc_alarm.then_some(rtc_clock.unwrap_or(RtcClock::Host)),
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
@@ -2062,6 +2071,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         vcpus,
         false,
         None,
+        capture_rtc_alarm.then_some(rtc_clock.unwrap_or(RtcClock::Host)),
     )?;
     let mut template_serial = template.serial()?;
     template_serial.expect("READY", Duration::from_secs(60))?;
@@ -2163,6 +2173,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         vcpus,
         false,
         None,
+        capture_rtc_alarm.then_some(rtc_clock.unwrap_or(RtcClock::Host)),
     )?;
     let b = launch(
         &out,
@@ -2178,6 +2189,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         vcpus,
         false,
         None,
+        capture_rtc_alarm.then_some(rtc_clock.unwrap_or(RtcClock::Host)),
     )?;
     let mut aq = a.qmp()?;
     let mut bq = b.qmp()?;
@@ -2213,6 +2225,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             vcpus,
             false,
             None,
+            capture_rtc_alarm.then_some(rtc_clock.unwrap_or(RtcClock::Host)),
         )?;
         let mut qmp = vm.qmp()?;
         let migration = restore(&mut qmp, &state)?;
@@ -2394,6 +2407,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             json!({
                 "status":if verified {"paused_delivery_verified"} else {"paused_delivery_failed_or_unavailable"},
                 "method":"compare an alarm while both guests run against a second alarm armed before a seven-second QMP pause",
+                "qemu_rtc_clock":rtc_clock.unwrap_or(RtcClock::Host).qemu_value(),
                 "alarm_delay_seconds":5,
                 "pause_duration_seconds":7,
                 "rtc_alarm_flag":"RTC_AF (0x20)",
@@ -3282,6 +3296,7 @@ pub fn run_baseline(
             translation_log
                 .as_deref()
                 .map(|path| (path, trace_codegen_complete)),
+            None,
         )?;
         let mut serial = vm.serial()?;
         serial.expect("READY", Duration::from_secs(60))?;
