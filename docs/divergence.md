@@ -122,3 +122,14 @@ the 32 MiB test region is one eighth of guest RAM. These are six single runs on
 one host; PSS excludes KVM/kernel memory and this sweep has no matched
 conventional baseline. Raw JSON, command records, and graph:
 [`persistent divergence sweep`](../results/kvm-recovery-2026-10-30/persistent-divergence-sweep/).
+
+A repeat of that sweep also ran inside a dedicated transient user systemd
+scope with `MemoryAccounting=yes` and a recorded 3 GiB `MemoryMax`. The
+persistent runner sampled cgroup memory before clone creation, after all eight
+clones started, after divergence, and after clone 1 stopped. From clone start
+to post-divergence, `memory.current` rose 2.5/18.4/31.1/70.2/133.9/260.8 MiB
+across the six percentages; at 100%, the `memory.stat` anonymous-memory delta
+was 261.35 MiB. These values include charged page-cache and kernel state for
+the isolated scope, not all host memory. Full samples and a capped
+reproduction command are in
+[`persistent cgroup sweep results`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep/).

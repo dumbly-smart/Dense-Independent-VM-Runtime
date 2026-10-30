@@ -177,3 +177,11 @@ Each point verified that all seven siblings remained responsive after clone 1
 stopped. The results are single samples and exclude host KVM/kernel memory.
 See the per-run details, reproduction command, and plot in
 [`persistent-divergence-sweep/`](persistent-divergence-sweep/).
+
+A second copy of the six-point sweep sampled cgroup v2 inside a transient
+systemd scope with a 3 GiB memory cap. It records `memory.current` and the
+full `memory.stat` at each lifecycle stage; the current-memory delta from clone
+start to post-divergence ranged from 2.5 to 260.8 MiB. These are scope charges,
+including file cache and kernel memory, not whole-host totals. Raw data and a
+reproduction command are in
+[`persistent-cgroup-divergence-sweep/`](persistent-cgroup-divergence-sweep/).

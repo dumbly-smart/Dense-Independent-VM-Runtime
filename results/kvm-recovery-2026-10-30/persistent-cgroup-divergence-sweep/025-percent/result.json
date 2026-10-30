@@ -1,0 +1,1456 @@
+{
+  "experiment": "persistent clones from a relocated nested template generation",
+  "densevm": "/home/xtrmn8/Dense-Independent-VM-Runtime/target/debug/densevm",
+  "manifest": "/home/xtrmn8/dv30/tree/generation.json",
+  "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+  "state_dir": "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134",
+  "template_artifact_hashes_before": {
+    "ram": "8660a9dddb343d863e12797defbf10a45a7e473e3a1c6594b0aa87ad30b78185",
+    "disk": "d57e6c3d223c08692131c88ed842be1d6c9643b205b99be36054ddeb015dbefb"
+  },
+  "steps": [
+    {
+      "command": [
+        "densevm",
+        "validate",
+        "template",
+        "/home/xtrmn8/dv30/tree/generation.json"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"checked_artifacts\": 7,\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"integrity_verified\": true,\n  \"schema_version\": 4,\n  \"status\": \"verified\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-001",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-001/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-001\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"72:d8:dc:e3:c9:fd\",\n  \"machine_id\": \"18705e5f214abb463a6969b2c4663052\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 398681,\n  \"qemu_start_ticks\": 926700,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-001/tree-child-001.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-002",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-002/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-002\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"7e:c7:3a:cc:96:16\",\n  \"machine_id\": \"d4dd5c3ff0cb1e226e56fd4195190b46\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 398729,\n  \"qemu_start_ticks\": 926811,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-002/tree-child-002.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-003",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-003/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-003\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"5a:09:15:8d:58:8b\",\n  \"machine_id\": \"08be72b615744a0174e82e5a3a32a435\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 398799,\n  \"qemu_start_ticks\": 926932,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-003/tree-child-003.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-004",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-004/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-004\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"2e:79:c5:e8:44:57\",\n  \"machine_id\": \"b2d083fe81b07ef8c7ec43c15d5bdf23\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 398962,\n  \"qemu_start_ticks\": 927048,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-004/tree-child-004.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-005",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-005/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-005\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"46:e5:ed:06:1c:48\",\n  \"machine_id\": \"8a4d54c1f70f6ab41e48516f23b2412d\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 399109,\n  \"qemu_start_ticks\": 927165,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-005/tree-child-005.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-006",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-006/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-006\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"aa:b9:be:c8:62:8d\",\n  \"machine_id\": \"536394aad58e7d327cbfcf058149289f\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 399319,\n  \"qemu_start_ticks\": 927278,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-006/tree-child-006.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-007",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-007/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-007\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"42:00:26:68:69:12\",\n  \"machine_id\": \"8b9d589a6995528e85d486be30cd2f46\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 399497,\n  \"qemu_start_ticks\": 927394,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-007/tree-child-007.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "start",
+        "tree-child-008",
+        "--template",
+        "/home/xtrmn8/dv30/tree/generation.json",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-008/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-008\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"d2:68:ed:00:a1:47\",\n  \"machine_id\": \"36a7490785a9df82001f937a2cdd9bc9\",\n  \"qemu_boot_id\": \"4d7d333b-6494-4271-900f-5f56f26ad6f2\",\n  \"qemu_pid\": 399571,\n  \"qemu_start_ticks\": 927506,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-008/tree-child-008.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"running\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-001",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-001\",\n    \"qemu_pid\": 398681,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 543,\n    \"private_pages_estimate\": 544,\n    \"resident_pages_estimate\": 6655,\n    \"shared_pages_estimate\": 6111\n  },\n  \"private_clean_kib\": 4,\n  \"private_dirty_kib\": 2172,\n  \"pss_kib\": 5271,\n  \"rss_kib\": 26620,\n  \"shared_clean_kib\": 24444,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-002",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-002\",\n    \"qemu_pid\": 398729,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 543,\n    \"private_pages_estimate\": 543,\n    \"resident_pages_estimate\": 6655,\n    \"shared_pages_estimate\": 6112\n  },\n  \"private_clean_kib\": 0,\n  \"private_dirty_kib\": 2172,\n  \"pss_kib\": 5267,\n  \"rss_kib\": 26620,\n  \"shared_clean_kib\": 24448,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-003",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-003\",\n    \"qemu_pid\": 398799,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 543,\n    \"private_pages_estimate\": 543,\n    \"resident_pages_estimate\": 6655,\n    \"shared_pages_estimate\": 6112\n  },\n  \"private_clean_kib\": 0,\n  \"private_dirty_kib\": 2172,\n  \"pss_kib\": 5267,\n  \"rss_kib\": 26620,\n  \"shared_clean_kib\": 24448,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-004",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-004\",\n    \"qemu_pid\": 398962,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 542,\n    \"private_pages_estimate\": 542,\n    \"resident_pages_estimate\": 6655,\n    \"shared_pages_estimate\": 6113\n  },\n  \"private_clean_kib\": 0,\n  \"private_dirty_kib\": 2168,\n  \"pss_kib\": 5265,\n  \"rss_kib\": 26620,\n  \"shared_clean_kib\": 24452,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-005",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-005\",\n    \"qemu_pid\": 399109,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 538,\n    \"private_pages_estimate\": 538,\n    \"resident_pages_estimate\": 6590,\n    \"shared_pages_estimate\": 6052\n  },\n  \"private_clean_kib\": 0,\n  \"private_dirty_kib\": 2152,\n  \"pss_kib\": 5188,\n  \"rss_kib\": 26360,\n  \"shared_clean_kib\": 24208,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-006",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-006\",\n    \"qemu_pid\": 399319,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 534,\n    \"private_pages_estimate\": 534,\n    \"resident_pages_estimate\": 6558,\n    \"shared_pages_estimate\": 6024\n  },\n  \"private_clean_kib\": 0,\n  \"private_dirty_kib\": 2136,\n  \"pss_kib\": 5150,\n  \"rss_kib\": 26232,\n  \"shared_clean_kib\": 24096,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-007",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-007\",\n    \"qemu_pid\": 399497,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 532,\n    \"private_pages_estimate\": 532,\n    \"resident_pages_estimate\": 6558,\n    \"shared_pages_estimate\": 6026\n  },\n  \"private_clean_kib\": 0,\n  \"private_dirty_kib\": 2128,\n  \"pss_kib\": 5146,\n  \"rss_kib\": 26232,\n  \"shared_clean_kib\": 24104,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "memory-map",
+        "clone",
+        "tree-child-008",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"clone\": {\n    \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n    \"id\": \"tree-child-008\",\n    \"qemu_pid\": 399571,\n    \"ram_file\": \"/home/xtrmn8/dv30/tree/child-memory.img\"\n  },\n  \"page_estimates\": {\n    \"accounting\": \"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages\",\n    \"page_size_bytes\": 4096,\n    \"private_dirty_pages_estimate\": 519,\n    \"private_pages_estimate\": 531,\n    \"resident_pages_estimate\": 6558,\n    \"shared_pages_estimate\": 6027\n  },\n  \"private_clean_kib\": 48,\n  \"private_dirty_kib\": 2076,\n  \"pss_kib\": 5144,\n  \"rss_kib\": 26232,\n  \"shared_clean_kib\": 24108,\n  \"shared_dirty_kib\": 0\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-001",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-001/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-001\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"72:d8:dc:e3:c9:fd\",\n  \"machine_id\": \"18705e5f214abb463a6969b2c4663052\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-001/tree-child-001.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-002",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-002/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-002\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"7e:c7:3a:cc:96:16\",\n  \"machine_id\": \"d4dd5c3ff0cb1e226e56fd4195190b46\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-002/tree-child-002.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-003",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-003/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-003\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"5a:09:15:8d:58:8b\",\n  \"machine_id\": \"08be72b615744a0174e82e5a3a32a435\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-003/tree-child-003.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-004",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-004/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-004\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"2e:79:c5:e8:44:57\",\n  \"machine_id\": \"b2d083fe81b07ef8c7ec43c15d5bdf23\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-004/tree-child-004.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-005",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-005/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-005\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"46:e5:ed:06:1c:48\",\n  \"machine_id\": \"8a4d54c1f70f6ab41e48516f23b2412d\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-005/tree-child-005.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-006",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-006/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-006\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"aa:b9:be:c8:62:8d\",\n  \"machine_id\": \"536394aad58e7d327cbfcf058149289f\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-006/tree-child-006.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-007",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-007/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-007\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"42:00:26:68:69:12\",\n  \"machine_id\": \"8b9d589a6995528e85d486be30cd2f46\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-007/tree-child-007.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "densevm",
+        "clone",
+        "stop",
+        "tree-child-008",
+        "--state-dir",
+        "/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134"
+      ],
+      "exit_code": 0,
+      "stdout": "{\n  \"disk_overlay\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-008/disk.qcow2\",\n  \"generation_id\": \"sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e\",\n  \"id\": \"tree-child-008\",\n  \"launcher_boot_id\": null,\n  \"launcher_pid\": null,\n  \"launcher_start_ticks\": null,\n  \"mac\": \"d2:68:ed:00:a1:47\",\n  \"machine_id\": \"36a7490785a9df82001f937a2cdd9bc9\",\n  \"qemu_boot_id\": null,\n  \"qemu_pid\": null,\n  \"qemu_start_ticks\": null,\n  \"qmp_socket\": \"/home/xtrmn8/dv30/t/densevm-persistent-tree-6clku134/tree-child-008/tree-child-008.qmp.sock\",\n  \"schema_version\": 1,\n  \"state\": \"stopped\"\n}",
+      "stderr": ""
+    }
+  ],
+  "status": "verified",
+  "validation": {
+    "checked_artifacts": 7,
+    "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+    "integrity_verified": true,
+    "schema_version": 4,
+    "status": "verified"
+  },
+  "cgroup_memory": {
+    "before_clones": {
+      "status": "measured",
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-cgroup-sweep3-20261030.scope",
+      "current_bytes": 27697152,
+      "memory_limit": "3221225472",
+      "memory_max_bytes": 3221225472,
+      "memory_stat": {
+        "anon": 23244800,
+        "file": 880640,
+        "kernel": 892928,
+        "kernel_stack": 16384,
+        "pagetables": 507904,
+        "sec_pagetables": 0,
+        "percpu": 2496,
+        "sock": 0,
+        "vmalloc": 0,
+        "shmem": 0,
+        "zswap": 0,
+        "zswapped": 0,
+        "zswap_incomp": 0,
+        "file_mapped": 0,
+        "file_dirty": 184320,
+        "file_writeback": 0,
+        "swapcached": 0,
+        "anon_thp": 0,
+        "file_thp": 0,
+        "shmem_thp": 0,
+        "inactive_anon": 0,
+        "active_anon": 23134208,
+        "inactive_file": 708608,
+        "active_file": 114688,
+        "unevictable": 0,
+        "slab_reclaimable": 40064,
+        "slab_unreclaimable": 288168,
+        "slab": 328232,
+        "hugetlb": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 7,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "workingset_nodereclaim": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_proactive": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_direct": 80,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_proactive": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_direct": 116,
+        "pgscan_khugepaged": 0,
+        "pgscan_proactive": 0,
+        "pgrefill": 13,
+        "pgpromote_success": 0,
+        "pgscan": 116,
+        "pgsteal": 80,
+        "pswpin": 0,
+        "pswpout": 0,
+        "pgfault": 628726,
+        "pgmajfault": 0,
+        "pgactivate": 36,
+        "pgdeactivate": 0,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0,
+        "thp_fault_alloc": 109,
+        "thp_collapse_alloc": 0,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "numa_hint_faults": 0
+      },
+      "scope": "cgroup-v2 charges for this scope; other tasks in the same cgroup, file cache, and charged kernel memory are included"
+    },
+    "after_clone_start": {
+      "status": "measured",
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-cgroup-sweep3-20261030.scope",
+      "current_bytes": 325447680,
+      "memory_limit": "3221225472",
+      "memory_max_bytes": 3221225472,
+      "memory_stat": {
+        "anon": 308592640,
+        "file": 954368,
+        "kernel": 12853248,
+        "kernel_stack": 802816,
+        "pagetables": 4354048,
+        "sec_pagetables": 1605632,
+        "percpu": 8320,
+        "sock": 0,
+        "vmalloc": 917504,
+        "shmem": 0,
+        "zswap": 0,
+        "zswapped": 0,
+        "zswap_incomp": 0,
+        "file_mapped": 491520,
+        "file_dirty": 241664,
+        "file_writeback": 0,
+        "swapcached": 0,
+        "anon_thp": 83886080,
+        "file_thp": 0,
+        "shmem_thp": 0,
+        "inactive_anon": 0,
+        "active_anon": 308576256,
+        "inactive_file": 761856,
+        "active_file": 200704,
+        "unevictable": 0,
+        "slab_reclaimable": 673864,
+        "slab_unreclaimable": 2914784,
+        "slab": 3588648,
+        "hugetlb": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 13,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "workingset_nodereclaim": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_proactive": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_direct": 158,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_proactive": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_direct": 215,
+        "pgscan_khugepaged": 0,
+        "pgscan_proactive": 0,
+        "pgrefill": 22,
+        "pgpromote_success": 0,
+        "pgscan": 215,
+        "pgsteal": 158,
+        "pswpin": 0,
+        "pswpout": 0,
+        "pgfault": 813795,
+        "pgmajfault": 0,
+        "pgactivate": 57,
+        "pgdeactivate": 0,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0,
+        "thp_fault_alloc": 157,
+        "thp_collapse_alloc": 0,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "numa_hint_faults": 0
+      },
+      "scope": "cgroup-v2 charges for this scope; other tasks in the same cgroup, file cache, and charged kernel memory are included"
+    },
+    "after_divergence": {
+      "status": "measured",
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-cgroup-sweep3-20261030.scope",
+      "current_bytes": 399048704,
+      "memory_limit": "3221225472",
+      "memory_max_bytes": 3221225472,
+      "memory_stat": {
+        "anon": 380878848,
+        "file": 2736128,
+        "kernel": 12775424,
+        "kernel_stack": 802816,
+        "pagetables": 4263936,
+        "sec_pagetables": 1671168,
+        "percpu": 7488,
+        "sock": 0,
+        "vmalloc": 917504,
+        "shmem": 0,
+        "zswap": 0,
+        "zswapped": 0,
+        "zswap_incomp": 0,
+        "file_mapped": 491520,
+        "file_dirty": 245760,
+        "file_writeback": 0,
+        "swapcached": 0,
+        "anon_thp": 83886080,
+        "file_thp": 0,
+        "shmem_thp": 0,
+        "inactive_anon": 0,
+        "active_anon": 380411904,
+        "inactive_file": 2543616,
+        "active_file": 200704,
+        "unevictable": 0,
+        "slab_reclaimable": 728400,
+        "slab_unreclaimable": 2893360,
+        "slab": 3621760,
+        "hugetlb": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 13,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "workingset_nodereclaim": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_proactive": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_direct": 158,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_proactive": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_direct": 215,
+        "pgscan_khugepaged": 0,
+        "pgscan_proactive": 0,
+        "pgrefill": 22,
+        "pgpromote_success": 0,
+        "pgscan": 215,
+        "pgsteal": 158,
+        "pswpin": 0,
+        "pswpout": 0,
+        "pgfault": 831603,
+        "pgmajfault": 0,
+        "pgactivate": 57,
+        "pgdeactivate": 0,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0,
+        "thp_fault_alloc": 157,
+        "thp_collapse_alloc": 0,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "numa_hint_faults": 0
+      },
+      "scope": "cgroup-v2 charges for this scope; other tasks in the same cgroup, file cache, and charged kernel memory are included"
+    },
+    "after_sibling_stop": {
+      "status": "measured",
+      "path": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/densevm-cgroup-sweep3-20261030.scope",
+      "current_bytes": 352956416,
+      "memory_limit": "3221225472",
+      "memory_max_bytes": 3221225472,
+      "memory_stat": {
+        "anon": 335958016,
+        "file": 2846720,
+        "kernel": 11390976,
+        "kernel_stack": 704512,
+        "pagetables": 3825664,
+        "sec_pagetables": 1462272,
+        "percpu": 7488,
+        "sock": 0,
+        "vmalloc": 802816,
+        "shmem": 0,
+        "zswap": 0,
+        "zswapped": 0,
+        "zswap_incomp": 0,
+        "file_mapped": 430080,
+        "file_dirty": 245760,
+        "file_writeback": 0,
+        "swapcached": 0,
+        "anon_thp": 67108864,
+        "file_thp": 0,
+        "shmem_thp": 0,
+        "inactive_anon": 0,
+        "active_anon": 335679488,
+        "inactive_file": 2654208,
+        "active_file": 200704,
+        "unevictable": 0,
+        "slab_reclaimable": 661816,
+        "slab_unreclaimable": 2570840,
+        "slab": 3232656,
+        "hugetlb": 0,
+        "workingset_refault_anon": 0,
+        "workingset_refault_file": 13,
+        "workingset_activate_anon": 0,
+        "workingset_activate_file": 0,
+        "workingset_restore_anon": 0,
+        "workingset_restore_file": 0,
+        "workingset_nodereclaim": 0,
+        "pgdemote_kswapd": 0,
+        "pgdemote_direct": 0,
+        "pgdemote_khugepaged": 0,
+        "pgdemote_proactive": 0,
+        "pgsteal_kswapd": 0,
+        "pgsteal_direct": 158,
+        "pgsteal_khugepaged": 0,
+        "pgsteal_proactive": 0,
+        "pgscan_kswapd": 0,
+        "pgscan_direct": 215,
+        "pgscan_khugepaged": 0,
+        "pgscan_proactive": 0,
+        "pgrefill": 22,
+        "pgpromote_success": 0,
+        "pgscan": 215,
+        "pgsteal": 158,
+        "pswpin": 0,
+        "pswpout": 0,
+        "pgfault": 832445,
+        "pgmajfault": 0,
+        "pgactivate": 57,
+        "pgdeactivate": 0,
+        "pglazyfree": 0,
+        "pglazyfreed": 0,
+        "swpin_zero": 0,
+        "swpout_zero": 0,
+        "zswpin": 0,
+        "zswpout": 0,
+        "zswpwb": 0,
+        "thp_fault_alloc": 157,
+        "thp_collapse_alloc": 0,
+        "thp_swpout": 0,
+        "thp_swpout_fallback": 0,
+        "numa_pages_migrated": 0,
+        "numa_pte_updates": 0,
+        "numa_hint_faults": 0
+      },
+      "scope": "cgroup-v2 charges for this scope; other tasks in the same cgroup, file cache, and charged kernel memory are included"
+    }
+  },
+  "clone_id_memory_maps": {
+    "tree-child-001": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-001",
+        "qemu_pid": 398681,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 543,
+        "private_pages_estimate": 544,
+        "resident_pages_estimate": 6655,
+        "shared_pages_estimate": 6111
+      },
+      "private_clean_kib": 4,
+      "private_dirty_kib": 2172,
+      "pss_kib": 5271,
+      "rss_kib": 26620,
+      "shared_clean_kib": 24444,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-002": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-002",
+        "qemu_pid": 398729,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 543,
+        "private_pages_estimate": 543,
+        "resident_pages_estimate": 6655,
+        "shared_pages_estimate": 6112
+      },
+      "private_clean_kib": 0,
+      "private_dirty_kib": 2172,
+      "pss_kib": 5267,
+      "rss_kib": 26620,
+      "shared_clean_kib": 24448,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-003": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-003",
+        "qemu_pid": 398799,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 543,
+        "private_pages_estimate": 543,
+        "resident_pages_estimate": 6655,
+        "shared_pages_estimate": 6112
+      },
+      "private_clean_kib": 0,
+      "private_dirty_kib": 2172,
+      "pss_kib": 5267,
+      "rss_kib": 26620,
+      "shared_clean_kib": 24448,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-004": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-004",
+        "qemu_pid": 398962,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 542,
+        "private_pages_estimate": 542,
+        "resident_pages_estimate": 6655,
+        "shared_pages_estimate": 6113
+      },
+      "private_clean_kib": 0,
+      "private_dirty_kib": 2168,
+      "pss_kib": 5265,
+      "rss_kib": 26620,
+      "shared_clean_kib": 24452,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-005": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-005",
+        "qemu_pid": 399109,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 538,
+        "private_pages_estimate": 538,
+        "resident_pages_estimate": 6590,
+        "shared_pages_estimate": 6052
+      },
+      "private_clean_kib": 0,
+      "private_dirty_kib": 2152,
+      "pss_kib": 5188,
+      "rss_kib": 26360,
+      "shared_clean_kib": 24208,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-006": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-006",
+        "qemu_pid": 399319,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 534,
+        "private_pages_estimate": 534,
+        "resident_pages_estimate": 6558,
+        "shared_pages_estimate": 6024
+      },
+      "private_clean_kib": 0,
+      "private_dirty_kib": 2136,
+      "pss_kib": 5150,
+      "rss_kib": 26232,
+      "shared_clean_kib": 24096,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-007": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-007",
+        "qemu_pid": 399497,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 532,
+        "private_pages_estimate": 532,
+        "resident_pages_estimate": 6558,
+        "shared_pages_estimate": 6026
+      },
+      "private_clean_kib": 0,
+      "private_dirty_kib": 2128,
+      "pss_kib": 5146,
+      "rss_kib": 26232,
+      "shared_clean_kib": 24104,
+      "shared_dirty_kib": 0
+    },
+    "tree-child-008": {
+      "clone": {
+        "generation_id": "sha256:b5ce4a1b6552a670d52485940320e701a06b99c2a79e660851fa6570139ecc2e",
+        "id": "tree-child-008",
+        "qemu_pid": 399571,
+        "ram_file": "/home/xtrmn8/dv30/tree/child-memory.img"
+      },
+      "page_estimates": {
+        "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+        "page_size_bytes": 4096,
+        "private_dirty_pages_estimate": 519,
+        "private_pages_estimate": 531,
+        "resident_pages_estimate": 6558,
+        "shared_pages_estimate": 6027
+      },
+      "private_clean_kib": 48,
+      "private_dirty_kib": 2076,
+      "pss_kib": 5144,
+      "rss_kib": 26232,
+      "shared_clean_kib": 24108,
+      "shared_dirty_kib": 0
+    }
+  },
+  "clone_count": 8,
+  "configured_guest_ram_bytes": 2147483648,
+  "startup": {
+    "clone_samples": [
+      {
+        "id": "tree-child-001",
+        "startup_ms": 1096.548
+      },
+      {
+        "id": "tree-child-002",
+        "startup_ms": 1111.372
+      },
+      {
+        "id": "tree-child-003",
+        "startup_ms": 1215.812
+      },
+      {
+        "id": "tree-child-004",
+        "startup_ms": 1109.661
+      },
+      {
+        "id": "tree-child-005",
+        "startup_ms": 1204.215
+      },
+      {
+        "id": "tree-child-006",
+        "startup_ms": 1129.083
+      },
+      {
+        "id": "tree-child-007",
+        "startup_ms": 1164.769
+      },
+      {
+        "id": "tree-child-008",
+        "startup_ms": 1063.836
+      }
+    ],
+    "time_to_n_clones_ms": 9249.785
+  },
+  "identities": {
+    "macs": [
+      "72:d8:dc:e3:c9:fd",
+      "7e:c7:3a:cc:96:16",
+      "5a:09:15:8d:58:8b",
+      "2e:79:c5:e8:44:57",
+      "46:e5:ed:06:1c:48",
+      "aa:b9:be:c8:62:8d",
+      "42:00:26:68:69:12",
+      "d2:68:ed:00:a1:47"
+    ],
+    "machine_ids": [
+      "18705e5f214abb463a6969b2c4663052",
+      "d4dd5c3ff0cb1e226e56fd4195190b46",
+      "08be72b615744a0174e82e5a3a32a435",
+      "b2d083fe81b07ef8c7ec43c15d5bdf23",
+      "8a4d54c1f70f6ab41e48516f23b2412d",
+      "536394aad58e7d327cbfcf058149289f",
+      "8b9d589a6995528e85d486be30cd2f46",
+      "36a7490785a9df82001f937a2cdd9bc9"
+    ],
+    "unique": true
+  },
+  "divergence": {
+    "mode": "all-clones",
+    "percent_of_guest_probe_region": 25,
+    "probe_region_mib": 32,
+    "pages_per_dirty_clone": 2048,
+    "targets": [
+      "tree-child-001",
+      "tree-child-002",
+      "tree-child-003",
+      "tree-child-004",
+      "tree-child-005",
+      "tree-child-006",
+      "tree-child-007",
+      "tree-child-008"
+    ],
+    "byte_values": {
+      "tree-child-001": 91,
+      "tree-child-002": 92,
+      "tree-child-003": 93,
+      "tree-child-004": 94,
+      "tree-child-005": 95,
+      "tree-child-006": 96,
+      "tree-child-007": 97,
+      "tree-child-008": 98
+    },
+    "disk_write": "one marker byte per target when divergence is nonzero"
+  },
+  "initial_guest_state": {
+    "tree-child-001": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-002": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-003": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-004": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-005": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-006": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-007": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    },
+    "tree-child-008": {
+      "ram": "RAM 73",
+      "disk": "DISK 73"
+    }
+  },
+  "memory_before_divergence": {
+    "tree-child-001": {
+      "process": {
+        "rss_kib": 70796,
+        "pss_kib": 39659,
+        "shared_clean_kib": 35388,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 96,
+        "private_dirty_kib": 35312
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5440,
+        "shared_clean_kib": 24932,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 4,
+        "private_dirty_kib": 2296
+      }
+    },
+    "tree-child-002": {
+      "process": {
+        "rss_kib": 70888,
+        "pss_kib": 39568,
+        "shared_clean_kib": 35548,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 35316
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5436,
+        "shared_clean_kib": 24936,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2296
+      }
+    },
+    "tree-child-003": {
+      "process": {
+        "rss_kib": 70568,
+        "pss_kib": 39530,
+        "shared_clean_kib": 35224,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 32,
+        "private_dirty_kib": 35312
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5436,
+        "shared_clean_kib": 24936,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2296
+      }
+    },
+    "tree-child-004": {
+      "process": {
+        "rss_kib": 70748,
+        "pss_kib": 39605,
+        "shared_clean_kib": 35384,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 64,
+        "private_dirty_kib": 35300
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5425,
+        "shared_clean_kib": 24952,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2280
+      }
+    },
+    "tree-child-005": {
+      "process": {
+        "rss_kib": 70776,
+        "pss_kib": 39570,
+        "shared_clean_kib": 35424,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 28,
+        "private_dirty_kib": 35324
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5400,
+        "shared_clean_kib": 24888,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2272
+      }
+    },
+    "tree-child-006": {
+      "process": {
+        "rss_kib": 70396,
+        "pss_kib": 39467,
+        "shared_clean_kib": 35100,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 32,
+        "private_dirty_kib": 35264
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5360,
+        "shared_clean_kib": 24780,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2252
+      }
+    },
+    "tree-child-007": {
+      "process": {
+        "rss_kib": 70684,
+        "pss_kib": 39504,
+        "shared_clean_kib": 35380,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 28,
+        "private_dirty_kib": 35276
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5359,
+        "shared_clean_kib": 24784,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 2248
+      }
+    },
+    "tree-child-008": {
+      "process": {
+        "rss_kib": 68728,
+        "pss_kib": 37572,
+        "shared_clean_kib": 35356,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 72,
+        "private_dirty_kib": 33300
+      },
+      "template_ram_mapping": {
+        "pss_kib": 5354,
+        "shared_clean_kib": 24792,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 48,
+        "private_dirty_kib": 2192
+      }
+    }
+  },
+  "guest_state_after_divergence": {
+    "tree-child-001": {
+      "ram": "RAM 91",
+      "disk": "DISK 91"
+    },
+    "tree-child-002": {
+      "ram": "RAM 92",
+      "disk": "DISK 92"
+    },
+    "tree-child-003": {
+      "ram": "RAM 93",
+      "disk": "DISK 93"
+    },
+    "tree-child-004": {
+      "ram": "RAM 94",
+      "disk": "DISK 94"
+    },
+    "tree-child-005": {
+      "ram": "RAM 95",
+      "disk": "DISK 95"
+    },
+    "tree-child-006": {
+      "ram": "RAM 96",
+      "disk": "DISK 96"
+    },
+    "tree-child-007": {
+      "ram": "RAM 97",
+      "disk": "DISK 97"
+    },
+    "tree-child-008": {
+      "ram": "RAM 98",
+      "disk": "DISK 98"
+    }
+  },
+  "memory_after_divergence": {
+    "tree-child-001": {
+      "process": {
+        "rss_kib": 79316,
+        "pss_kib": 48159,
+        "shared_clean_kib": 35408,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 96,
+        "private_dirty_kib": 43812
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13689,
+        "shared_clean_kib": 24952,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 4,
+        "private_dirty_kib": 10544
+      }
+    },
+    "tree-child-002": {
+      "process": {
+        "rss_kib": 80180,
+        "pss_kib": 48268,
+        "shared_clean_kib": 36332,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 24,
+        "private_dirty_kib": 43824
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13885,
+        "shared_clean_kib": 25720,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 10552
+      }
+    },
+    "tree-child-003": {
+      "process": {
+        "rss_kib": 79020,
+        "pss_kib": 47999,
+        "shared_clean_kib": 35188,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 32,
+        "private_dirty_kib": 43800
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13654,
+        "shared_clean_kib": 24900,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 10532
+      }
+    },
+    "tree-child-004": {
+      "process": {
+        "rss_kib": 80040,
+        "pss_kib": 48299,
+        "shared_clean_kib": 36176,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 64,
+        "private_dirty_kib": 43800
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13863,
+        "shared_clean_kib": 25744,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 10524
+      }
+    },
+    "tree-child-005": {
+      "process": {
+        "rss_kib": 79360,
+        "pss_kib": 48087,
+        "shared_clean_kib": 35500,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 28,
+        "private_dirty_kib": 43832
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13662,
+        "shared_clean_kib": 24964,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 10524
+      }
+    },
+    "tree-child-006": {
+      "process": {
+        "rss_kib": 78976,
+        "pss_kib": 47981,
+        "shared_clean_kib": 35176,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 32,
+        "private_dirty_kib": 43768
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13622,
+        "shared_clean_kib": 24856,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 10504
+      }
+    },
+    "tree-child-007": {
+      "process": {
+        "rss_kib": 80032,
+        "pss_kib": 48206,
+        "shared_clean_kib": 36228,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 28,
+        "private_dirty_kib": 43776
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13809,
+        "shared_clean_kib": 25632,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 0,
+        "private_dirty_kib": 10496
+      }
+    },
+    "tree-child-008": {
+      "process": {
+        "rss_kib": 78076,
+        "pss_kib": 46275,
+        "shared_clean_kib": 36204,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 72,
+        "private_dirty_kib": 41800
+      },
+      "template_ram_mapping": {
+        "pss_kib": 13805,
+        "shared_clean_kib": 25640,
+        "shared_dirty_kib": 0,
+        "private_clean_kib": 48,
+        "private_dirty_kib": 10440
+      }
+    }
+  },
+  "aggregate_memory": {
+    "before_divergence": {
+      "process": {
+        "pss_kib": 314475,
+        "private_dirty_kib": 280404
+      },
+      "template_ram_mapping": {
+        "pss_kib": 43210,
+        "shared_clean_kib": 199000,
+        "shared_dirty_kib": 0,
+        "private_dirty_kib": 18132
+      }
+    },
+    "after_divergence": {
+      "process": {
+        "pss_kib": 383274,
+        "private_dirty_kib": 348412
+      },
+      "template_ram_mapping": {
+        "pss_kib": 109989,
+        "shared_clean_kib": 202408,
+        "shared_dirty_kib": 0,
+        "private_dirty_kib": 84116
+      }
+    }
+  },
+  "memory_delta": {
+    "tree-child-001": {
+      "pss_kib": 8249,
+      "private_dirty_kib": 8248
+    },
+    "tree-child-002": {
+      "pss_kib": 8449,
+      "private_dirty_kib": 8256
+    },
+    "tree-child-003": {
+      "pss_kib": 8218,
+      "private_dirty_kib": 8236
+    },
+    "tree-child-004": {
+      "pss_kib": 8438,
+      "private_dirty_kib": 8244
+    },
+    "tree-child-005": {
+      "pss_kib": 8262,
+      "private_dirty_kib": 8252
+    },
+    "tree-child-006": {
+      "pss_kib": 8262,
+      "private_dirty_kib": 8252
+    },
+    "tree-child-007": {
+      "pss_kib": 8450,
+      "private_dirty_kib": 8248
+    },
+    "tree-child-008": {
+      "pss_kib": 8451,
+      "private_dirty_kib": 8248
+    }
+  },
+  "template_artifact_hashes_after": {
+    "ram": "8660a9dddb343d863e12797defbf10a45a7e473e3a1c6594b0aa87ad30b78185",
+    "disk": "d57e6c3d223c08692131c88ed842be1d6c9643b205b99be36054ddeb015dbefb"
+  },
+  "stops": [
+    {
+      "id": "tree-child-001",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-002",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-003",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-004",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-005",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-006",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-007",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    },
+    {
+      "id": "tree-child-008",
+      "state": "stopped",
+      "pid_gone_on_return": true
+    }
+  ],
+  "sibling_survival_after_stop": {
+    "stopped_clone": "tree-child-001",
+    "stopped_qemu_pid": 398681,
+    "survivors": {
+      "tree-child-002": {
+        "qemu_pid": 398729,
+        "process_present": true,
+        "ram_reply": "RAM 92",
+        "disk_reply": "DISK 92"
+      },
+      "tree-child-003": {
+        "qemu_pid": 398799,
+        "process_present": true,
+        "ram_reply": "RAM 93",
+        "disk_reply": "DISK 93"
+      },
+      "tree-child-004": {
+        "qemu_pid": 398962,
+        "process_present": true,
+        "ram_reply": "RAM 94",
+        "disk_reply": "DISK 94"
+      },
+      "tree-child-005": {
+        "qemu_pid": 399109,
+        "process_present": true,
+        "ram_reply": "RAM 95",
+        "disk_reply": "DISK 95"
+      },
+      "tree-child-006": {
+        "qemu_pid": 399319,
+        "process_present": true,
+        "ram_reply": "RAM 96",
+        "disk_reply": "DISK 96"
+      },
+      "tree-child-007": {
+        "qemu_pid": 399497,
+        "process_present": true,
+        "ram_reply": "RAM 97",
+        "disk_reply": "DISK 97"
+      },
+      "tree-child-008": {
+        "qemu_pid": 399571,
+        "process_present": true,
+        "ram_reply": "RAM 98",
+        "disk_reply": "DISK 98"
+      }
+    }
+  },
+  "cleanup_leftover_pids": []
+}

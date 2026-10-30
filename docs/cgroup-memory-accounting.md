@@ -29,6 +29,14 @@ counters such as `pgfault`, so its JSON field name is intentionally unit
 neutral. Without the wrapper, these fields say `not-requested`. PSS remains a
 separate measurement; do not add PSS to cgroup memory because the values overlap.
 
+The persistent clone runner also samples cgroup-v2 memory at four stages:
+before clone creation, after all clones start, after requested RAM/disk
+divergence, and after clone 1 stops while siblings remain live. By default it
+resolves the current process's cgroup-v2 membership; set `DENSEVM_CGROUP_PATH`
+to sample an explicit cgroup. Missing or malformed files produce an
+`unavailable` sample and do not invalidate the VM run. The persistent sweep
+summary reports cgroup deltas separately from QEMU PSS.
+
 Linux documents that cgroup v2 accounts major user and kernel memory classes,
 but says its coverage is not completely watertight. `memory.stat` includes
 kernel fields such as `kernel`, `pagetables`, and `sec_pagetables`; on x86 and
@@ -75,3 +83,17 @@ KiB and its mapping `Private_Dirty` rose 16 KiB. Cgroup `memory.current` rose
 bytes. This is one sample; cache charges and cgroup ownership affect the
 relationship between these measurements. See the linked run README and raw
 JSON for the full values.
+
+## Persistent eight-clone divergence
+
+A 2026-10-30 repeat sampled eight identity-gated persistent clones inside a
+dedicated transient systemd scope capped at 3 GiB. At 0%, 5%, 10%, 25%, 50%,
+and 100% divergence of each 32 MiB test region, the cgroup `memory.current`
+increase from clone startup to post-divergence was 2.5, 18.4, 31.1, 70.2,
+133.9, and 260.8 MiB. At 100%, `memory.stat` anonymous memory rose 261.35 MiB,
+file memory 0.50 MiB, `kernel` 0.26 MiB, and `sec_pagetables` 0.38 MiB. The
+experiment limit was recorded as 3,221,225,472 bytes at every sample. This
+captures only charges assigned to that cgroup, not total host memory; the
+baseline includes cached template artifacts, and no matched ordinary-VM
+cgroup baseline was collected. Full per-stage values and commands:
+[`persistent cgroup divergence sweep`](../results/kvm-recovery-2026-10-30/persistent-cgroup-divergence-sweep/).
