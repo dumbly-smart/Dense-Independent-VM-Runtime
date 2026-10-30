@@ -180,6 +180,17 @@ fn clones_report_independent_vcpu_register_snapshots() {
             .len()
             >= 14
     );
+    for clone in ["a", "b"] {
+        for cpu in 0..result["guest_vcpus"].as_u64().unwrap() {
+            for register in ["CR0", "CR2", "CR3", "CR4", "EFER"] {
+                assert!(
+                    result["vcpu_register_state"][clone]["control_registers"]
+                        [format!("CPU#{cpu}:{register}")]
+                    .is_number()
+                );
+            }
+        }
+    }
     assert!(
         !result["vcpu_register_state"]["differing_general_purpose_registers"]
             .as_array()
@@ -220,6 +231,17 @@ fn clones_keep_guest_lapic_tpr_writes_private() {
         serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
     assert_eq!(result["guest_vcpus"], 2);
     assert_eq!(result["vcpu_register_state_verified"], true);
+    for clone in ["a", "b"] {
+        for cpu in 0..2 {
+            for register in ["CR0", "CR2", "CR3", "CR4", "EFER"] {
+                assert!(
+                    result["vcpu_register_state"][clone]["control_registers"]
+                        [format!("CPU#{cpu}:{register}")]
+                    .is_number()
+                );
+            }
+        }
+    }
     assert_eq!(
         result["vcpu_register_state"]["lapic_tpr_state"]["status"],
         "verified"

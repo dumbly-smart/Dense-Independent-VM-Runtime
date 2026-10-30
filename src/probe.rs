@@ -435,6 +435,30 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_control_registers_and_efer_separately_for_every_monitor_cpu() {
+        let output = "CPU#0\nCR0=80050033 CR2=0000000000001000 CR3=0000000000200003 CR4=00f70ef0\nEFER=0000000000000d01\nCPU#1\nCR0=80050033 CR2=0000000000002000 CR3=0000000000300003 CR4=00f70ef0\nEFER=0000000000000d01\n";
+
+        let registers = parse_qemu_control_registers(output).unwrap();
+
+        assert_eq!(registers["CPU#0:CR0"], 0x8005_0033);
+        assert_eq!(registers["CPU#0:CR2"], 0x1000);
+        assert_eq!(registers["CPU#0:CR3"], 0x200003);
+        assert_eq!(registers["CPU#0:CR4"], 0x00f7_0ef0);
+        assert_eq!(registers["CPU#0:EFER"], 0x0d01);
+        assert_eq!(registers["CPU#1:CR2"], 0x2000);
+        assert_eq!(registers["CPU#1:CR3"], 0x300003);
+    }
+
+    #[test]
+    fn rejects_incomplete_control_register_snapshots() {
+        assert!(
+            parse_qemu_control_registers("CPU#0\nCR0=80050033 CR2=0 CR3=200003 CR4=f70ef0\n")
+                .is_err()
+        );
+        assert!(parse_qemu_control_registers("no register dump").is_err());
+    }
+
+    #[test]
     fn validates_live_vcpu_topology_from_qmp() {
         let cpus = json!([
             {"cpu-index": 0, "thread-id": 101},
@@ -1582,6 +1606,60 @@ fn parse_qemu_gprs(output: &str) -> Result<std::collections::BTreeMap<String, u6
     Ok(registers)
 }
 
+fn parse_qemu_control_registers(
+    output: &str,
+) -> Result<std::collections::BTreeMap<String, u64>, String> {
+    const REQUIRED: [&str; 5] = ["CR0", "CR2", "CR3", "CR4", "EFER"];
+    let mut current_cpu = None;
+    let mut cpu_indexes = Vec::new();
+    let mut registers = std::collections::BTreeMap::new();
+    for line in output.lines() {
+        if let Some(index) = line.trim().strip_prefix("CPU#") {
+            let index = index
+                .parse::<u8>()
+                .map_err(|error| format!("invalid QEMU monitor CPU header: {error}"))?;
+            current_cpu = Some(index);
+            cpu_indexes.push(index);
+        }
+        let Some(cpu) = current_cpu else {
+            continue;
+        };
+        for field in line.split_ascii_whitespace() {
+            let Some((name, value)) = field.split_once('=') else {
+                continue;
+            };
+            if !REQUIRED.contains(&name) {
+                continue;
+            }
+            let value = value
+                .strip_prefix("0x")
+                .or_else(|| value.strip_prefix("0X"))
+                .unwrap_or(value);
+            let value = u64::from_str_radix(value, 16)
+                .map_err(|error| format!("invalid QEMU {name} control-register value: {error}"))?;
+            let key = format!("CPU#{cpu}:{name}");
+            if registers.insert(key.clone(), value).is_some() {
+                return Err(format!("QEMU register output repeated {key}"));
+            }
+        }
+    }
+    cpu_indexes.sort_unstable();
+    cpu_indexes.dedup();
+    if cpu_indexes.is_empty() {
+        return Err("QEMU monitor output contained no CPU register blocks".into());
+    }
+    parse_qemu_monitor_cpu_indexes(output, cpu_indexes.len() as u8)?;
+    for cpu in cpu_indexes {
+        for name in REQUIRED {
+            let key = format!("CPU#{cpu}:{name}");
+            if !registers.contains_key(&key) {
+                return Err(format!("QEMU CPU#{cpu} register output omitted {name}"));
+            }
+        }
+    }
+    Ok(registers)
+}
+
 fn parse_qemu_monitor_cpu_indexes(output: &str, expected: u8) -> Result<Vec<u8>, String> {
     let mut indexes = Vec::new();
     for line in output.lines() {
@@ -2396,6 +2474,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         stop_and_verify(&mut bq)?;
         let (a_vcpu_registers, a_vcpu_register_text) = qemu_user_register_snapshot(&mut aq, vcpus)?;
         let (b_vcpu_registers, b_vcpu_register_text) = qemu_user_register_snapshot(&mut bq, vcpus)?;
+        let a_control_registers = parse_qemu_control_registers(&a_vcpu_register_text)?;
+        let b_control_registers = parse_qemu_control_registers(&b_vcpu_register_text)?;
         let a_lapic_text = qemu_lapic_snapshot(&mut aq, 0)?;
         let b_lapic_text = qemu_lapic_snapshot(&mut bq, 0)?;
         let (a_gs_vcpu_index, a_gs_base_observed) =
@@ -2457,8 +2537,9 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                 "status":if verified {"verified"} else {"failed"},
                 "capture":"QMP human-monitor-command info registers and info lapic while each clone was paused",
                 "workload":"guest CPU arithmetic with clone-specific seed and user GS base, stopped after both workloads announced readiness",
-                "a":{"seed":a_register_seed,"gs_base_expected":a_gs_base,"gs_base_observed":a_gs_base_observed,"gs_base_vcpu_index":a_gs_vcpu_index,"registers":a_vcpu_registers,"monitor_output":a_vcpu_register_text,"lapic_output":a_lapic_text,"workload_done":a_register_workload_done},
-                "b":{"seed":b_register_seed,"gs_base_expected":b_gs_base,"gs_base_observed":b_gs_base_observed,"gs_base_vcpu_index":b_gs_vcpu_index,"registers":b_vcpu_registers,"monitor_output":b_vcpu_register_text,"lapic_output":b_lapic_text,"workload_done":b_register_workload_done},
+                "a":{"seed":a_register_seed,"gs_base_expected":a_gs_base,"gs_base_observed":a_gs_base_observed,"gs_base_vcpu_index":a_gs_vcpu_index,"registers":a_vcpu_registers,"control_registers":a_control_registers,"monitor_output":a_vcpu_register_text,"lapic_output":a_lapic_text,"workload_done":a_register_workload_done},
+                "b":{"seed":b_register_seed,"gs_base_expected":b_gs_base,"gs_base_observed":b_gs_base_observed,"gs_base_vcpu_index":b_gs_vcpu_index,"registers":b_vcpu_registers,"control_registers":b_control_registers,"monitor_output":b_vcpu_register_text,"lapic_output":b_lapic_text,"workload_done":b_register_workload_done},
+                "control_register_snapshot_interpretation":"QEMU-reported per-vCPU CR0/CR2/CR3/CR4/EFER values; equal values are observations and do not prove shared or independently writable state",
                 "differing_general_purpose_registers":differing_vcpu_registers,
                 "lapic_tpr_state":lapic_tpr_state
             }),
