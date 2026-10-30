@@ -48,7 +48,7 @@ cargo run -- benchmark baseline --count 8 --out /tmp/densevm-baseline-8
 cargo run -- benchmark baseline --count 2 --accel tcg --out /tmp/densevm-tcg-2
 # Count TCG translation events (trace output perturbs timings; limit two VMs):
 cargo run -- benchmark baseline --count 1 --accel tcg --trace-translations --out /tmp/densevm-tcg-traced-1
-# Inspect saved disk and live RAM metadata:
+# Inspect saved disk and aggregate/page-estimated live RAM metadata:
 cargo run -- inspect /tmp/densevm-my-run/clone-a.qcow2 disk
 cargo run -- memory-map QEMU_PID /tmp/densevm-my-run/memory.img
 cargo run -- ksm status
@@ -98,6 +98,9 @@ The two-clone KVM RAM/disk isolation probe also succeeded; see
 [`results/kvm-recovery-2026-10-30/`](results/kvm-recovery-2026-10-30/).
 `--divergence-mib` controls how much of A's 32 MiB test region is dirtied;
 `--divergence-percent` supports exact page-count sweeps from 0% to 100%.
+The `memory-map` command reports `/proc/smaps` sharing/private totals and
+page-count estimates for the matching RAM mapping; see
+[`docs/memory-map.md`](docs/memory-map.md) for their limits.
 
 ## Current research status
 

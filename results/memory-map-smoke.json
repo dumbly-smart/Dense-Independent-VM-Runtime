@@ -1,0 +1,23 @@
+{
+  "page_estimates": {
+    "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
+    "page_size_bytes": 4096,
+    "private_dirty_pages_estimate": 128,
+    "private_pages_estimate": 128,
+    "resident_pages_estimate": 2048,
+    "shared_pages_estimate": 1920
+  },
+  "private_clean_kib": 0,
+  "private_dirty_kib": 512,
+  "pss_kib": 4352,
+  "rss_kib": 8192,
+  "shared_clean_kib": 0,
+  "shared_dirty_kib": 7680,
+  "smoke_test_setup": {
+    "mapped_bytes": 8388608,
+    "writer_private_cow_pages": 128,
+    "concurrent_process_mappings": 2,
+    "host_page_size_bytes": 4096,
+    "process": "two Python MAP_PRIVATE/COW smoke processes; not QEMU guests"
+  }
+}

@@ -1,6 +1,6 @@
 use densevm::metrics::{
-    MemoryTotals, parse_cgroup_memory, parse_smaps_for_path, parse_smaps_rollup,
-    parse_tcg_translation_events,
+    MemoryTotals, estimate_ram_pages, parse_cgroup_memory, parse_smaps_for_path,
+    parse_smaps_rollup, parse_tcg_translation_events,
 };
 
 #[test]
@@ -25,6 +25,25 @@ fn parses_resident_shared_and_private_kib() {
             private_dirty_kib: 50,
         }
     );
+}
+
+#[test]
+fn estimates_shared_and_private_ram_pages_from_smaps_totals() {
+    let totals = MemoryTotals {
+        rss_kib: 128,
+        pss_kib: 80,
+        shared_clean_kib: 48,
+        shared_dirty_kib: 16,
+        private_clean_kib: 32,
+        private_dirty_kib: 32,
+    };
+    let pages = estimate_ram_pages(&totals, 4096).unwrap();
+    assert_eq!(pages["page_size_bytes"], 4096);
+    assert_eq!(pages["resident_pages_estimate"], 32);
+    assert_eq!(pages["shared_pages_estimate"], 16);
+    assert_eq!(pages["private_pages_estimate"], 16);
+    assert_eq!(pages["private_dirty_pages_estimate"], 8);
+    assert!(estimate_ram_pages(&totals, 0).is_err());
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::metrics::parse_smaps_for_path;
+use crate::metrics::{estimate_ram_pages, parse_smaps_for_path};
 use serde_json::{Value, json};
 use std::fs;
 use std::io::Write;
@@ -666,7 +666,13 @@ pub fn memory_map(pid: u32, path: &Path) -> Result<Value, String> {
     let smaps = fs::read_to_string(format!("/proc/{pid}/smaps"))
         .map_err(|e| format!("read smaps for {pid}: {e}"))?;
     let totals = parse_smaps_for_path(&smaps, path.to_str().ok_or("RAM path is not UTF-8")?)?;
-    serde_json::to_value(totals).map_err(|e| e.to_string())
+    let page_size = command_output(Command::new("getconf").arg("PAGESIZE"))?
+        .trim()
+        .parse::<u64>()
+        .map_err(|error| format!("invalid host page size: {error}"))?;
+    let mut result = serde_json::to_value(&totals).map_err(|e| e.to_string())?;
+    result["page_estimates"] = estimate_ram_pages(&totals, page_size)?;
+    Ok(result)
 }
 
 pub fn ksm_status() -> Result<Value, String> {

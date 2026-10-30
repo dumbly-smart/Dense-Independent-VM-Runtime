@@ -147,3 +147,13 @@ resume. This is one sample per mode on QEMU 11.1.2 / Linux 7.2.11-arch1-1 and
 one synthetic guest; host/rt event loss is not attributed to a specific QEMU
 or guest layer. See [`docs/rtc-clock-experiment.md`](docs/rtc-clock-experiment.md)
 and the machine-readable [comparison](results/kvm-recovery-2026-10-30/rtc-clock-comparison.json).
+
+## RAM mapping page estimates
+
+`densevm memory-map PID RAM_FILE` now adds estimated resident, shared,
+private, and private-dirty page counts derived from matching `/proc/PID/smaps`
+KiB totals and the host page size. A two-process 8 MiB MAP_PRIVATE smoke
+measured 1,920 shared and 128 private-dirty pages after one process changed
+128 pages. This validates the reporting command, not guest COW. The
+[method and caveats](docs/memory-map.md) explain why this is an aggregate
+classification rather than a guest-physical page map.

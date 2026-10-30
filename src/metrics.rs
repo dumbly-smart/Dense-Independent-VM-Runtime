@@ -80,6 +80,34 @@ impl MemoryTotals {
     }
 }
 
+pub fn estimate_ram_pages(totals: &MemoryTotals, page_size_bytes: u64) -> Result<Value, String> {
+    if page_size_bytes == 0 {
+        return Err("host page size must be positive".into());
+    }
+    let pages_for_kib = |kib: u64| -> Result<u64, String> {
+        kib.checked_mul(1024)
+            .and_then(|bytes| bytes.checked_add(page_size_bytes / 2))
+            .map(|rounded| rounded / page_size_bytes)
+            .ok_or_else(|| "RAM page estimate overflows".into())
+    };
+    let shared_kib = totals
+        .shared_clean_kib
+        .checked_add(totals.shared_dirty_kib)
+        .ok_or("shared RAM KiB total overflows")?;
+    let private_kib = totals
+        .private_clean_kib
+        .checked_add(totals.private_dirty_kib)
+        .ok_or("private RAM KiB total overflows")?;
+    Ok(json!({
+        "page_size_bytes":page_size_bytes,
+        "resident_pages_estimate":pages_for_kib(totals.rss_kib)?,
+        "shared_pages_estimate":pages_for_kib(shared_kib)?,
+        "private_pages_estimate":pages_for_kib(private_kib)?,
+        "private_dirty_pages_estimate":pages_for_kib(totals.private_dirty_kib)?,
+        "accounting":"rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages"
+    }))
+}
+
 pub fn parse_smaps_rollup(input: &str) -> Result<MemoryTotals, String> {
     fn read(input: &str, key: &str) -> Result<u64, String> {
         let line = input
