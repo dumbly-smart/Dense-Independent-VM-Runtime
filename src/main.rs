@@ -30,6 +30,7 @@ fn main() {
             lapic_tpr_state,
             nmi_isolation,
             maskable_interrupt_isolation,
+            tsc_aux_state,
             rtc_alarm,
             rtc_clock,
         } => densevm::probe::run_options(
@@ -48,6 +49,7 @@ fn main() {
                 lapic_tpr_state,
                 nmi_isolation,
                 maskable_interrupt_isolation,
+                tsc_aux_state,
                 rtc_alarm,
                 rtc_clock,
             },

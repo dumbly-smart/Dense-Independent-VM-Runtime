@@ -24,6 +24,7 @@ fn parses_probe_with_count_and_output() {
             lapic_tpr_state: false,
             nmi_isolation: false,
             maskable_interrupt_isolation: false,
+            tsc_aux_state: false,
             rtc_alarm: false,
             rtc_clock: None
         }
@@ -53,6 +54,7 @@ fn parses_probe_with_count_and_output() {
             lapic_tpr_state: false,
             nmi_isolation: false,
             maskable_interrupt_isolation: false,
+            tsc_aux_state: false,
             rtc_alarm: false,
             rtc_clock: None
         }
@@ -360,6 +362,17 @@ fn accepts_the_maskable_interrupt_isolation_probe_flag() {
         ]),
         Ok(Command::Probe {
             maskable_interrupt_isolation: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn accepts_the_tsc_aux_state_probe_flag() {
+    assert!(matches!(
+        parse_args(["densevm", "probe", "--out", "/tmp/run", "--tsc-aux-state"]),
+        Ok(Command::Probe {
+            tsc_aux_state: true,
             ..
         })
     ));

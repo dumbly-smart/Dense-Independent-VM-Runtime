@@ -44,6 +44,7 @@ pub enum Command {
         lapic_tpr_state: bool,
         nmi_isolation: bool,
         maskable_interrupt_isolation: bool,
+        tsc_aux_state: bool,
         rtc_alarm: bool,
         rtc_clock: Option<RtcClock>,
     },
@@ -186,6 +187,7 @@ where
     let mut lapic_tpr_state = false;
     let mut nmi_isolation = false;
     let mut maskable_interrupt_isolation = false;
+    let mut tsc_aux_state = false;
     let mut rtc_alarm = false;
     let mut rtc_clock = None;
     let mut divergence_pages = 32 * 256;
@@ -221,6 +223,7 @@ where
             }
             "--nmi-isolation" => nmi_isolation = true,
             "--maskable-interrupt-isolation" => maskable_interrupt_isolation = true,
+            "--tsc-aux-state" => tsc_aux_state = true,
             "--rtc-alarm" => rtc_alarm = true,
             "--rtc-clock" => {
                 rtc_clock = Some(match value(args, "--rtc-clock")?.as_str() {
@@ -271,6 +274,7 @@ where
         lapic_tpr_state,
         nmi_isolation,
         maskable_interrupt_isolation,
+        tsc_aux_state,
         rtc_alarm,
         rtc_clock,
     })

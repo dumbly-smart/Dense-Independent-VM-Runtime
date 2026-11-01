@@ -134,6 +134,45 @@ fn set_guest_lapic_tpr_msr(cpu_index: u8, value: u8) -> std::io::Result<()> {
     Ok(())
 }
 
+fn read_guest_tsc_aux_msr(cpu_index: u8) -> std::io::Result<u32> {
+    if cpu_index > 3 {
+        return Err(std::io::Error::other(format!(
+            "unsupported CPU index {cpu_index}"
+        )));
+    }
+    let mut msr = OpenOptions::new()
+        .read(true)
+        .open(format!("/dev/cpu/{cpu_index}/msr"))?;
+    msr.seek(SeekFrom::Start(0xc000_0103))?;
+    let mut bytes = [0u8; 8];
+    msr.read_exact(&mut bytes)?;
+    Ok(u64::from_ne_bytes(bytes) as u32)
+}
+
+fn set_guest_tsc_aux_msr(cpu_index: u8, value: u32) -> std::io::Result<u32> {
+    if cpu_index > 3 {
+        return Err(std::io::Error::other(format!(
+            "unsupported CPU index {cpu_index}"
+        )));
+    }
+    let mut msr = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(format!("/dev/cpu/{cpu_index}/msr"))?;
+    msr.seek(SeekFrom::Start(0xc000_0103))?;
+    msr.write_all(&u64::from(value).to_ne_bytes())?;
+    msr.seek(SeekFrom::Start(0xc000_0103))?;
+    let mut bytes = [0u8; 8];
+    msr.read_exact(&mut bytes)?;
+    let observed = u64::from_ne_bytes(bytes) as u32;
+    if observed != value {
+        return Err(std::io::Error::other(format!(
+            "IA32_TSC_AUX readback was {observed:#010x}, expected {value:#010x}"
+        )));
+    }
+    Ok(observed)
+}
+
 fn set_guest_lapic_tpr_mmio(cpu_index: u8, value: u8) -> std::io::Result<()> {
     if cpu_index != 0 {
         return Err(std::io::Error::other(
@@ -1590,6 +1629,24 @@ fn main() {
                 },
                 _ => "ERROR LAPIC TPR expects a CPU index 0..3 and TPR value 0..255".to_string(),
             },
+            ["tsc-aux-read", cpu_index] => match cpu_index.parse::<u8>() {
+                Ok(cpu_index) => match read_guest_tsc_aux_msr(cpu_index) {
+                    Ok(value) => format!("TSC-AUX cpu={cpu_index} value={value:#010x}"),
+                    Err(error) => format!("ERROR TSC_AUX read: {error}"),
+                },
+                Err(_) => "ERROR TSC_AUX read expects a CPU index 0..3".to_string(),
+            },
+            ["tsc-aux-write", cpu_index, value] => {
+                match (cpu_index.parse::<u8>(), value.parse::<u32>()) {
+                    (Ok(cpu_index), Ok(value)) => match set_guest_tsc_aux_msr(cpu_index, value) {
+                        Ok(observed) => {
+                            format!("TSC-AUX cpu={cpu_index} value={observed:#010x}")
+                        }
+                        Err(error) => format!("ERROR TSC_AUX write: {error}"),
+                    },
+                    _ => "ERROR TSC_AUX write expects a CPU index 0..3 and a u32 value".to_string(),
+                }
+            }
             ["ram-read"] => format!("RAM {}", region[0]),
             ["ram-write", value] => match value.parse::<u8>() {
                 Ok(value) => {

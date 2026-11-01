@@ -350,6 +350,47 @@ fn qmp_keyboard_interrupt_is_observed_only_by_the_target_clone() {
 }
 
 #[test]
+#[ignore = "requires local KVM, two guest vCPUs, and guest MSR-device access"]
+fn guest_tsc_aux_writes_are_private_for_every_vcpu() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out = std::env::temp_dir().join(format!("densevm-tsc-aux-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--skip-guest-oom",
+            "--vcpus",
+            "2",
+            "--tsc-aux-state",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "probe failed; artifacts at {}",
+        out.display()
+    );
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["tsc_aux_state_verified"], true);
+    let per_vcpu = result["tsc_aux_state"]["per_vcpu"].as_array().unwrap();
+    assert_eq!(per_vcpu.len(), 2);
+    for (cpu_index, sample) in per_vcpu.iter().enumerate() {
+        assert_eq!(sample["cpu_index"], cpu_index as u64);
+        assert_eq!(sample["status"], "verified");
+        assert_ne!(sample["a"]["target"], sample["b"]["target"]);
+        assert_eq!(sample["a"]["original"], sample["a"]["restored"]);
+        assert_eq!(sample["b"]["original"], sample["b"]["restored"]);
+    }
+}
+
+#[test]
 #[ignore = "requires local KVM and QEMU; compares running and QMP-paused RTC alarm delivery"]
 fn probe_records_guest_rtc_alarm_delivery_with_virtual_clock() {
     let stamp = SystemTime::now()

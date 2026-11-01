@@ -548,6 +548,16 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_guest_tsc_aux_readbacks_for_the_requested_cpu() {
+        assert_eq!(
+            parse_guest_tsc_aux("TSC-AUX cpu=1 value=0xabcdef01", 1),
+            Ok(0xabcdef01)
+        );
+        assert!(parse_guest_tsc_aux("TSC-AUX cpu=0 value=0x1", 1).is_err());
+        assert!(parse_guest_tsc_aux("TSC-AUX cpu=1 value=invalid", 1).is_err());
+    }
+
+    #[test]
     fn parses_pending_lapic_interrupt_bitmaps() {
         assert_eq!(parse_qemu_lapic_irr_pending("IRR (none)"), Ok(false));
         assert_eq!(
@@ -1203,6 +1213,45 @@ fn parse_guest_ps2_interrupts(response: &str) -> Result<Option<u64>, String> {
 fn guest_ps2_interrupts(serial: &mut Serial) -> Result<Option<u64>, String> {
     parse_guest_ps2_interrupts(
         &serial.command("ps2-keyboard-interrupts-read", "PS2-KEYBOARD-INTERRUPTS ")?,
+    )
+}
+
+fn parse_guest_tsc_aux(response: &str, cpu_index: u8) -> Result<u32, String> {
+    if !response.starts_with("TSC-AUX ") {
+        return Err(format!("invalid guest TSC_AUX response {response:?}"));
+    }
+    let field = |name: &str| {
+        response
+            .split_ascii_whitespace()
+            .find_map(|part| part.strip_prefix(&format!("{name}=")))
+            .ok_or_else(|| format!("guest TSC_AUX response omitted {name}"))
+    };
+    let observed_cpu = field("cpu")?
+        .parse::<u8>()
+        .map_err(|error| format!("invalid guest TSC_AUX CPU index: {error}"))?;
+    if observed_cpu != cpu_index {
+        return Err(format!(
+            "guest TSC_AUX response selected CPU {observed_cpu}, expected {cpu_index}"
+        ));
+    }
+    let value = field("value")?;
+    let hex = value
+        .strip_prefix("0x")
+        .ok_or_else(|| format!("invalid guest TSC_AUX value {value:?}"))?;
+    u32::from_str_radix(hex, 16).map_err(|error| format!("invalid guest TSC_AUX value: {error}"))
+}
+
+fn guest_tsc_aux_read(serial: &mut Serial, cpu_index: u8) -> Result<u32, String> {
+    parse_guest_tsc_aux(
+        &serial.command(&format!("tsc-aux-read {cpu_index}"), "TSC-AUX ")?,
+        cpu_index,
+    )
+}
+
+fn guest_tsc_aux_write(serial: &mut Serial, cpu_index: u8, value: u32) -> Result<u32, String> {
+    parse_guest_tsc_aux(
+        &serial.command(&format!("tsc-aux-write {cpu_index} {value}"), "TSC-AUX ")?,
+        cpu_index,
     )
 }
 
@@ -2043,6 +2092,49 @@ fn set_guest_lapic_tpr(serial: &mut Serial, cpu_index: u8, value: u8) -> Result<
     Ok(reply)
 }
 
+fn run_tsc_aux_isolation_for_cpu(
+    cpu_index: u8,
+    aserial: &mut Serial,
+    bserial: &mut Serial,
+) -> Result<Value, String> {
+    let a_original = guest_tsc_aux_read(aserial, cpu_index)?;
+    let b_original = guest_tsc_aux_read(bserial, cpu_index)?;
+    let a_target = 0xa11c_0000u32 | u32::from(cpu_index);
+    let b_target = 0xb0b0_0000u32 | u32::from(cpu_index);
+    if a_original == a_target || b_original == b_target || a_target == b_target {
+        return Err(format!(
+            "could not select distinct TSC_AUX test values for CPU {cpu_index}"
+        ));
+    }
+
+    let a_write = guest_tsc_aux_write(aserial, cpu_index, a_target)?;
+    let a_after_a_write = guest_tsc_aux_read(aserial, cpu_index)?;
+    let b_after_a_write = guest_tsc_aux_read(bserial, cpu_index)?;
+    let b_write = guest_tsc_aux_write(bserial, cpu_index, b_target)?;
+    let a_after_b_write = guest_tsc_aux_read(aserial, cpu_index)?;
+    let b_after_b_write = guest_tsc_aux_read(bserial, cpu_index)?;
+    let a_restore = guest_tsc_aux_write(aserial, cpu_index, a_original)?;
+    let b_restore = guest_tsc_aux_write(bserial, cpu_index, b_original)?;
+    let a_restored = guest_tsc_aux_read(aserial, cpu_index)?;
+    let b_restored = guest_tsc_aux_read(bserial, cpu_index)?;
+    let verified = a_write == a_target
+        && a_after_a_write == a_target
+        && b_after_a_write == b_original
+        && b_write == b_target
+        && a_after_b_write == a_target
+        && b_after_b_write == b_target
+        && a_restored == a_original
+        && b_restored == b_original;
+    Ok(json!({
+        "cpu_index":cpu_index,
+        "status":if verified {"verified"} else {"failed"},
+        "msr":"IA32_TSC_AUX (0xc0000103)",
+        "a":{"original":a_original,"target":a_target,"after_a_write":a_after_a_write,"after_b_write":a_after_b_write,"restored":a_restored},
+        "b":{"original":b_original,"target":b_target,"after_a_write":b_after_a_write,"after_b_write":b_after_b_write,"restored":b_restored},
+        "write_readbacks":{"a":a_write,"b":b_write,"a_restore":a_restore,"b_restore":b_restore}
+    }))
+}
+
 fn run_lapic_tpr_isolation_for_cpu(
     cpu_index: u8,
     aq: &mut Qmp,
@@ -2161,6 +2253,7 @@ pub fn run_experiment(
             lapic_tpr_state: false,
             nmi_isolation: false,
             maskable_interrupt_isolation: false,
+            tsc_aux_state: false,
             rtc_alarm: false,
             rtc_clock: None,
         },
@@ -2182,6 +2275,7 @@ pub struct ProbeOptions<'a> {
     pub lapic_tpr_state: bool,
     pub nmi_isolation: bool,
     pub maskable_interrupt_isolation: bool,
+    pub tsc_aux_state: bool,
     pub rtc_alarm: bool,
     pub rtc_clock: Option<RtcClock>,
 }
@@ -2242,6 +2336,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         lapic_tpr_state: capture_lapic_tpr_state,
         nmi_isolation: capture_nmi_isolation,
         maskable_interrupt_isolation: capture_maskable_interrupt_isolation,
+        tsc_aux_state: capture_tsc_aux_state,
         rtc_alarm: capture_rtc_alarm,
         rtc_clock,
     } = options;
@@ -2713,6 +2808,31 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                 json!({"status":"not-requested","how_to_enable":"densevm probe --maskable-interrupt-isolation"}),
             )
         };
+    let (tsc_aux_state_verified, tsc_aux_state) = if capture_tsc_aux_state {
+        let mut per_vcpu = Vec::with_capacity(usize::from(vcpus));
+        for cpu_index in 0..vcpus {
+            per_vcpu.push(run_tsc_aux_isolation_for_cpu(
+                cpu_index,
+                &mut aserial,
+                &mut bserial,
+            )?);
+        }
+        let verified = per_vcpu.iter().all(|state| state["status"] == "verified");
+        (
+            Some(verified),
+            json!({
+                "status":if verified {"verified"} else {"failed"},
+                "method":"write and read IA32_TSC_AUX through each guest vCPU's MSR device; cross-check sibling value after each write and restore originals",
+                "tested_vcpu_indexes":(0..vcpus).collect::<Vec<_>>(),
+                "per_vcpu":per_vcpu
+            }),
+        )
+    } else {
+        (
+            None,
+            json!({"status":"not-requested","how_to_enable":"densevm probe --tsc-aux-state"}),
+        )
+    };
     let (vcpu_register_state_verified, vcpu_register_state) = if capture_vcpu_register_state {
         let a_register_seed = 0x0a11_ce55_d15c_a11u64;
         let b_register_seed = 0x0b0b_5eed_c0de_22u64;
@@ -3430,6 +3550,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     result["nmi_isolation_verified"] = json!(nmi_isolation_verified);
     result["maskable_interrupt_isolation"] = maskable_interrupt_isolation;
     result["maskable_interrupt_isolation_verified"] = json!(maskable_interrupt_isolation_verified);
+    result["tsc_aux_state"] = tsc_aux_state;
+    result["tsc_aux_state_verified"] = json!(tsc_aux_state_verified);
     result["clones"]["active_cpu_sample_interval_ms"] = json!(clone_active_cpu_sample_interval_ms);
     result["clones"]["a"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[0]);
     result["clones"]["a"]["active_cpu_percent_one_core"] = json!(cpu_ticks_as_percent_of_one_core(
@@ -3527,6 +3649,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && vcpu_register_state_verified != Some(false)
         && nmi_isolation_verified != Some(false)
         && maskable_interrupt_isolation_verified != Some(false)
+        && tsc_aux_state_verified != Some(false)
         && rtc_alarm_verified != Some(false))
     {
         return Err("one or more isolation checks failed; see result.json".into());
