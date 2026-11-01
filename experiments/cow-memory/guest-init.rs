@@ -562,6 +562,22 @@ pub(crate) fn local_timer_interrupt_count(interrupts: &str) -> Option<u64> {
     found_cpu_counter.then_some(count)
 }
 
+pub(crate) fn non_maskable_interrupt_count(interrupts: &str) -> Option<u64> {
+    let line = interrupts
+        .lines()
+        .find(|line| line.trim_start().starts_with("NMI:"))?;
+    let mut count = 0_u64;
+    let mut found_cpu_counter = false;
+    for value in line.split_whitespace().skip(1) {
+        let Ok(value) = value.parse::<u64>() else {
+            break;
+        };
+        count = count.checked_add(value)?;
+        found_cpu_counter = true;
+    }
+    found_cpu_counter.then_some(count)
+}
+
 pub(crate) fn rtc_epoch_seconds(contents: &str) -> Option<u64> {
     contents.trim().parse().ok()
 }
@@ -573,6 +589,16 @@ fn local_timer_interrupts_read() -> String {
             None => "LOCAL-TIMER-INTERRUPTS UNKNOWN LOC counter unavailable".to_string(),
         },
         Err(error) => format!("LOCAL-TIMER-INTERRUPTS UNKNOWN {error}"),
+    }
+}
+
+fn non_maskable_interrupts_read() -> String {
+    match fs::read_to_string("/proc/interrupts") {
+        Ok(contents) => match non_maskable_interrupt_count(&contents) {
+            Some(count) => format!("NMI-INTERRUPTS count={count}"),
+            None => "NMI-INTERRUPTS UNKNOWN NMI counter unavailable".to_string(),
+        },
+        Err(error) => format!("NMI-INTERRUPTS UNKNOWN {error}"),
     }
 }
 
@@ -1364,6 +1390,7 @@ fn main() {
             },
             ["timer-read"] => guest_timer_expirations(),
             ["local-timer-interrupts-read"] => local_timer_interrupts_read(),
+            ["nmi-interrupts-read"] => non_maskable_interrupts_read(),
             ["rtc-read"] => rtc_epoch_read(),
             ["rtc-alarm", delay] => match delay.parse::<u32>() {
                 Ok(delay) if (1..=60).contains(&delay) => match rtc_alarm_start(delay) {

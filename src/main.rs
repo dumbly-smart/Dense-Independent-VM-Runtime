@@ -28,6 +28,7 @@ fn main() {
             skip_guest_oom,
             vcpu_register_state,
             lapic_tpr_state,
+            nmi_isolation,
             rtc_alarm,
             rtc_clock,
         } => densevm::probe::run_options(
@@ -44,6 +45,7 @@ fn main() {
                 skip_guest_oom,
                 vcpu_register_state,
                 lapic_tpr_state,
+                nmi_isolation,
                 rtc_alarm,
                 rtc_clock,
             },

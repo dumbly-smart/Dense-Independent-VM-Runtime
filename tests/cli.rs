@@ -22,6 +22,7 @@ fn parses_probe_with_count_and_output() {
             skip_guest_oom: false,
             vcpu_register_state: false,
             lapic_tpr_state: false,
+            nmi_isolation: false,
             rtc_alarm: false,
             rtc_clock: None
         }
@@ -49,6 +50,7 @@ fn parses_probe_with_count_and_output() {
             skip_guest_oom: false,
             vcpu_register_state: false,
             lapic_tpr_state: false,
+            nmi_isolation: false,
             rtc_alarm: false,
             rtc_clock: None
         }
@@ -328,6 +330,17 @@ fn lapic_tpr_probe_enables_register_capture() {
         Ok(Command::Probe {
             vcpu_register_state: true,
             lapic_tpr_state: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn accepts_the_nmi_isolation_probe_flag() {
+    assert!(matches!(
+        parse_args(["densevm", "probe", "--out", "/tmp/run", "--nmi-isolation"]),
+        Ok(Command::Probe {
+            nmi_isolation: true,
             ..
         })
     ));

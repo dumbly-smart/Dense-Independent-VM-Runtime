@@ -746,7 +746,7 @@ mod tests {
                 "alpha",
                 CloneState::Starting,
                 CloneState::Running,
-                Some(1234),
+                Some(u32::MAX),
             )
             .unwrap();
         let server = qmp_server(&clone.qmp_socket, "alpha", true);

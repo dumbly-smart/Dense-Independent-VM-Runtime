@@ -699,11 +699,20 @@ mod login_tests {
             Ok(None)
         );
         assert_eq!(
+            parse_guest_nmi_interrupts("NMI-INTERRUPTS count=5"),
+            Ok(Some(5))
+        );
+        assert_eq!(
+            parse_guest_nmi_interrupts("NMI-INTERRUPTS UNKNOWN unavailable"),
+            Ok(None)
+        );
+        assert_eq!(
             parse_guest_rtc_epoch("RTC epoch_seconds=1792822284"),
             Ok(Some(1_792_822_284))
         );
         assert_eq!(parse_guest_rtc_epoch("RTC UNKNOWN"), Ok(None));
         assert!(parse_guest_local_timer_interrupts("LOCAL-TIMER-INTERRUPTS count=x").is_err());
+        assert!(parse_guest_nmi_interrupts("NMI-INTERRUPTS count=x").is_err());
         assert!(parse_guest_rtc_epoch("RTC epoch_seconds=x").is_err());
     }
 
@@ -1124,6 +1133,26 @@ fn parse_guest_local_timer_interrupts(response: &str) -> Result<Option<u64>, Str
         .parse::<u64>()
         .map(Some)
         .map_err(|error| format!("invalid local timer interrupt count: {error}"))
+}
+
+fn parse_guest_nmi_interrupts(response: &str) -> Result<Option<u64>, String> {
+    if response.starts_with("NMI-INTERRUPTS UNKNOWN") {
+        return Ok(None);
+    }
+    if !response.starts_with("NMI-INTERRUPTS ") {
+        return Err(format!("invalid guest NMI interrupt response {response:?}"));
+    }
+    response
+        .split_whitespace()
+        .find_map(|part| part.strip_prefix("count="))
+        .ok_or_else(|| "guest NMI interrupt response omitted count".to_string())?
+        .parse::<u64>()
+        .map(Some)
+        .map_err(|error| format!("invalid guest NMI interrupt count: {error}"))
+}
+
+fn guest_nmi_interrupts(serial: &mut Serial) -> Result<Option<u64>, String> {
+    parse_guest_nmi_interrupts(&serial.command("nmi-interrupts-read", "NMI-INTERRUPTS ")?)
 }
 
 fn parse_guest_rtc_epoch(response: &str) -> Result<Option<u64>, String> {
@@ -2040,6 +2069,7 @@ pub fn run_experiment(
             skip_guest_oom: false,
             vcpu_register_state: false,
             lapic_tpr_state: false,
+            nmi_isolation: false,
             rtc_alarm: false,
             rtc_clock: None,
         },
@@ -2059,6 +2089,7 @@ pub struct ProbeOptions<'a> {
     pub skip_guest_oom: bool,
     pub vcpu_register_state: bool,
     pub lapic_tpr_state: bool,
+    pub nmi_isolation: bool,
     pub rtc_alarm: bool,
     pub rtc_clock: Option<RtcClock>,
 }
@@ -2117,6 +2148,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         skip_guest_oom,
         vcpu_register_state: capture_vcpu_register_state,
         lapic_tpr_state: capture_lapic_tpr_state,
+        nmi_isolation: capture_nmi_isolation,
         rtc_alarm: capture_rtc_alarm,
         rtc_clock,
     } = options;
@@ -2451,6 +2483,47 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
     let b_identity_guest = prepare_identity(&mut bserial, &clone_identities[1])?;
     add_nic(&mut aq, &clone_identities[0].mac)?;
     add_nic(&mut bq, &clone_identities[1].mac)?;
+    let (nmi_isolation_verified, nmi_isolation) = if capture_nmi_isolation {
+        let a_before = guest_nmi_interrupts(&mut aserial)?;
+        let b_before = guest_nmi_interrupts(&mut bserial)?;
+        if let (Some(a_before), Some(b_before)) = (a_before, b_before) {
+            let injection = aq.execute("inject-nmi", None)?;
+            let mut a_after = a_before;
+            let mut b_after = b_before;
+            for _ in 0..40 {
+                thread::sleep(Duration::from_millis(50));
+                a_after = guest_nmi_interrupts(&mut aserial)?
+                    .ok_or("guest NMI interrupt counter became unavailable")?;
+                b_after = guest_nmi_interrupts(&mut bserial)?
+                    .ok_or("sibling guest NMI interrupt counter became unavailable")?;
+                if a_after > a_before {
+                    break;
+                }
+            }
+            let verified = a_after > a_before && b_after == b_before;
+            (
+                Some(verified),
+                json!({
+                    "status":if verified {"verified"} else {"failed"},
+                    "method":"QMP inject-nmi to clone A, then guest /proc/interrupts NMI counters sampled in A and B",
+                    "scope":"NMI delivery to one QEMU process; does not test queued maskable interrupts or exact delivery timing",
+                    "a":{"before":a_before,"after":a_after,"delta":a_after.saturating_sub(a_before)},
+                    "b":{"before":b_before,"after":b_after,"delta":b_after.saturating_sub(b_before)},
+                    "qmp_reply":injection
+                }),
+            )
+        } else {
+            (
+                None,
+                json!({"status":"unknown","reason":"guest /proc/interrupts does not expose an NMI counter"}),
+            )
+        }
+    } else {
+        (
+            None,
+            json!({"status":"not-requested","how_to_enable":"densevm probe --nmi-isolation"}),
+        )
+    };
     let (vcpu_register_state_verified, vcpu_register_state) = if capture_vcpu_register_state {
         let a_register_seed = 0x0a11_ce55_d15c_a11u64;
         let b_register_seed = 0x0b0b_5eed_c0de_22u64;
@@ -3164,6 +3237,8 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         "rtc_alarm":rtc_alarm,
         "rtc_alarm_verified":rtc_alarm_verified
     });
+    result["nmi_isolation"] = nmi_isolation;
+    result["nmi_isolation_verified"] = json!(nmi_isolation_verified);
     result["clones"]["active_cpu_sample_interval_ms"] = json!(clone_active_cpu_sample_interval_ms);
     result["clones"]["a"]["active_cpu_ticks"] = json!(clone_active_cpu_ticks[0]);
     result["clones"]["a"]["active_cpu_percent_one_core"] = json!(cpu_ticks_as_percent_of_one_core(
@@ -3259,6 +3334,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
         && range_before_verified
         && range_after_verified
         && vcpu_register_state_verified != Some(false)
+        && nmi_isolation_verified != Some(false)
         && rtc_alarm_verified != Some(false))
     {
         return Err("one or more isolation checks failed; see result.json".into());

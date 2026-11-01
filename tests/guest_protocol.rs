@@ -55,6 +55,19 @@ fn sums_guest_local_timer_interrupt_counts() {
 }
 
 #[test]
+fn sums_guest_non_maskable_interrupt_counts() {
+    let interrupts = "           CPU0       CPU1\nNMI:          2          3   Non-maskable interrupts\nLOC:        123        124   Local timer interrupts\n";
+    assert_eq!(
+        guest_init::non_maskable_interrupt_count(interrupts),
+        Some(5)
+    );
+    assert_eq!(
+        guest_init::non_maskable_interrupt_count("no NMI row\n"),
+        None
+    );
+}
+
+#[test]
 fn parses_guest_rtc_epoch_seconds() {
     assert_eq!(
         guest_init::rtc_epoch_seconds("1792822284\n"),
