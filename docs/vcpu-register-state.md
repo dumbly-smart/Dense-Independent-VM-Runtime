@@ -28,7 +28,7 @@ are `results/vcpu-multi2/result.json` and
 `results/vcpu-multi2-run2/result.json`. QEMU's HMP output contained only
 `CPU#0`, so this proves the multi-vCPU restore path ran, not independent
 register state for vCPU1. The sample does not verify every part of architectural
-CPU state. Independent control-register writes, other MSR writes, APIC
+CPU state. Independent control-register writes, MSR writes beyond IA32_TSC_AUX, APIC
 registers beyond TPR and pending interrupts remain unmeasured. The later
 per-vCPU TPR experiment below checks that register on both vCPU indexes. The
 result preserves the full HMP output for inspection, while the structured
@@ -90,3 +90,11 @@ Raw results: [`results/2026-10-24/vcpu-register-state-2.json`](../results/2026-1
 [`results/2026-10-24/lapic-tpr-divergence-2-run2.json`](../results/2026-10-24/lapic-tpr-divergence-2-run2.json),
 and [`results/2026-10-24/lapic-tpr-divergence-mmio-noeffect-2.json`](../results/2026-10-24/lapic-tpr-divergence-mmio-noeffect-2.json).
 The per-vCPU follow-up is [`results/kvm-recovery-2026-10-30/lapic-tpr-per-vcpu.json`](../results/kvm-recovery-2026-10-30/lapic-tpr-per-vcpu.json).
+
+
+A QEMU 11.1.3 two-vCPU follow-up wrote distinct `IA32_TSC_AUX` values
+through `/dev/cpu/N/msr` in both clones. For both CPU indexes, the sibling
+retained its original value after each write and both originals were restored.
+This verifies this one MSR in the tested guest only; it does not prove isolation
+for the rest of the MSR set. See
+[`the 2026-11-01 two-vCPU result`](../results/2026-11-01/tsc-aux-state-isolation-two-clones.md).

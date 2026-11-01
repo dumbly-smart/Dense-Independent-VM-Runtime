@@ -216,3 +216,7 @@ For a complete beginner-to-technical explanation, read
 - Exercised the persistent stage sampler in a live eight-clone all-diverged run under a 2 GiB cap. Current usage rose from 948,772,864 to 1,224,478,720 bytes; the cgroup peak reached 1,226,051,584 bytes after clone 1 stopped. All memory event deltas were zero, and the seven survivors returned their own RAM/disk markers. See `docs/cgroup-memory-accounting.md` and `results/kvm-recovery-2026-10-30/persistent-cgroup-pressure-eight/`.
 
 - Added structured per-vCPU CR0/CR2/CR3/CR4/EFER snapshots to the opt-in QMP register probe. A live two-vCPU clone test captured all five registers for CPU 0 and CPU 1 in both clones and passed existing GPR/GS and TPR-isolation checks. This records state but does not prove independent control-register writes. See `docs/vcpu-register-state.md` and `results/kvm-recovery-2026-10-30/vcpu-control-register-state-2vcpu.json`.
+- A two-vCPU `IA32_TSC_AUX` probe passed for both clones and both vCPUs: each
+  side wrote a distinct value, observed the sibling keep its prior value, then
+  restored the original 0/1 values. Other MSR writes remain unknown. Evidence:
+  `results/2026-11-01/tsc-aux-state-isolation-two-clones.md`.
