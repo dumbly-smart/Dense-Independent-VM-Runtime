@@ -18,25 +18,25 @@
     },
     "count": 2,
     "idle_cpu_sample_interval_ms": 1000,
-    "time_to_count_ready_ms": 2694,
+    "time_to_count_ready_ms": 2885,
     "vms": [
       {
         "active_cpu_percent_one_core": 103.0,
         "active_cpu_ticks": 103,
         "disk_allocated_bytes": 200704,
         "disk_benchmark": null,
-        "identity_guest": "IDENTITY dfc3460bc47eb7576841c82f22da7ff6 densevm-dfc3460bc47e RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-        "idle_cpu_ticks": 4,
+        "identity_guest": "IDENTITY 76257d8ce5d9b8b92f086ad6514353e3 densevm-76257d8ce5d9 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 3,
         "index": 0,
         "memory": {
-          "private_clean_kib": 76,
-          "private_dirty_kib": 201008,
-          "pss_kib": 206400,
-          "rss_kib": 226796,
-          "shared_clean_kib": 23668,
+          "private_clean_kib": 176,
+          "private_dirty_kib": 194892,
+          "pss_kib": 200305,
+          "rss_kib": 220652,
+          "shared_clean_kib": 23540,
           "shared_dirty_kib": 2044
         },
-        "pid": 85576,
+        "pid": 96273,
         "qemu_command": [
           "qemu-system-x86_64",
           "-machine",
@@ -50,7 +50,7 @@
           "-kernel",
           "/boot/vmlinuz-linux",
           "-initrd",
-          "/tmp/densevm-irq-85476-1793514455232748080/initramfs.cpio",
+          "/tmp/densevm-irq-95993-1793514685689041606/initramfs.cpio",
           "-append",
           "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
           "-display",
@@ -60,7 +60,7 @@
           "-nodefaults",
           "-no-reboot",
           "-drive",
-          "if=none,id=disk,file=/tmp/densevm-irq-85476-1793514455232748080/baseline-000.qcow2,format=qcow2",
+          "if=none,id=disk,file=/tmp/densevm-irq-95993-1793514685689041606/baseline-000.qcow2,format=qcow2",
           "-device",
           "virtio-blk-pci,drive=disk,id=blk0",
           "-netdev",
@@ -68,34 +68,34 @@
           "-device",
           "pcie-root-port,id=rp1,slot=2,chassis=1",
           "-device",
-          "virtio-net-pci,bus=rp1,netdev=net0,mac=fe:fe:12:f8:ba:b5,id=nic0",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=3a:f7:2f:a6:4a:3c,id=nic0",
           "-device",
           "vmgenid,guid=auto",
           "-chardev",
-          "socket,id=serial,path=/tmp/densevm-irq-85476-1793514455232748080/baseline-000.serial.sock,server=on,wait=off",
+          "socket,id=serial,path=/tmp/densevm-irq-95993-1793514685689041606/baseline-000.serial.sock,server=on,wait=off",
           "-serial",
           "chardev:serial",
           "-qmp",
-          "unix:/tmp/densevm-irq-85476-1793514455232748080/baseline-000.qmp.sock,server=on,wait=off"
+          "unix:/tmp/densevm-irq-95993-1793514685689041606/baseline-000.qmp.sock,server=on,wait=off"
         ]
       },
       {
-        "active_cpu_percent_one_core": 102.0,
-        "active_cpu_ticks": 102,
+        "active_cpu_percent_one_core": 103.0,
+        "active_cpu_ticks": 103,
         "disk_allocated_bytes": 200704,
         "disk_benchmark": null,
-        "identity_guest": "IDENTITY 665622011676452a0d29e6a4ac9c48ee densevm-665622011676 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-        "idle_cpu_ticks": 4,
+        "identity_guest": "IDENTITY 2a0eeedf2b8e65235a849044f1b1c529 densevm-2a0eeedf2b8e RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+        "idle_cpu_ticks": 3,
         "index": 1,
         "memory": {
-          "private_clean_kib": 96,
-          "private_dirty_kib": 202024,
-          "pss_kib": 207391,
-          "rss_kib": 227756,
-          "shared_clean_kib": 23592,
+          "private_clean_kib": 104,
+          "private_dirty_kib": 201024,
+          "pss_kib": 206471,
+          "rss_kib": 226972,
+          "shared_clean_kib": 23800,
           "shared_dirty_kib": 2044
         },
-        "pid": 85629,
+        "pid": 96286,
         "qemu_command": [
           "qemu-system-x86_64",
           "-machine",
@@ -109,7 +109,7 @@
           "-kernel",
           "/boot/vmlinuz-linux",
           "-initrd",
-          "/tmp/densevm-irq-85476-1793514455232748080/initramfs.cpio",
+          "/tmp/densevm-irq-95993-1793514685689041606/initramfs.cpio",
           "-append",
           "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
           "-display",
@@ -119,7 +119,7 @@
           "-nodefaults",
           "-no-reboot",
           "-drive",
-          "if=none,id=disk,file=/tmp/densevm-irq-85476-1793514455232748080/baseline-001.qcow2,format=qcow2",
+          "if=none,id=disk,file=/tmp/densevm-irq-95993-1793514685689041606/baseline-001.qcow2,format=qcow2",
           "-device",
           "virtio-blk-pci,drive=disk,id=blk0",
           "-netdev",
@@ -127,15 +127,15 @@
           "-device",
           "pcie-root-port,id=rp1,slot=2,chassis=1",
           "-device",
-          "virtio-net-pci,bus=rp1,netdev=net0,mac=22:9e:92:a8:8b:c8,id=nic0",
+          "virtio-net-pci,bus=rp1,netdev=net0,mac=12:1d:12:45:39:47,id=nic0",
           "-device",
           "vmgenid,guid=auto",
           "-chardev",
-          "socket,id=serial,path=/tmp/densevm-irq-85476-1793514455232748080/baseline-001.serial.sock,server=on,wait=off",
+          "socket,id=serial,path=/tmp/densevm-irq-95993-1793514685689041606/baseline-001.serial.sock,server=on,wait=off",
           "-serial",
           "chardev:serial",
           "-qmp",
-          "unix:/tmp/densevm-irq-85476-1793514455232748080/baseline-001.qmp.sock,server=on,wait=off"
+          "unix:/tmp/densevm-irq-95993-1793514685689041606/baseline-001.qmp.sock,server=on,wait=off"
         ]
       }
     ]
@@ -145,40 +145,40 @@
       "active_cpu_percent_one_core": 104.0,
       "active_cpu_ticks": 104,
       "after_ram_write_memory": {
-        "private_clean_kib": 216,
-        "private_dirty_kib": 35640,
-        "pss_kib": 53022,
-        "rss_kib": 85392,
-        "shared_clean_kib": 23720,
-        "shared_dirty_kib": 25816
+        "private_clean_kib": 104,
+        "private_dirty_kib": 36592,
+        "pss_kib": 53869,
+        "rss_kib": 86208,
+        "shared_clean_kib": 23848,
+        "shared_dirty_kib": 25664
       },
       "after_ram_write_ram_mapping": {
         "page_estimates": {
           "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
           "page_size_bytes": 4096,
-          "private_dirty_pages_estimate": 724,
-          "private_pages_estimate": 724,
-          "resident_pages_estimate": 7178,
-          "shared_pages_estimate": 6454
+          "private_dirty_pages_estimate": 957,
+          "private_pages_estimate": 957,
+          "resident_pages_estimate": 7373,
+          "shared_pages_estimate": 6416
         },
         "private_clean_kib": 0,
-        "private_dirty_kib": 2896,
-        "pss_kib": 15804,
-        "rss_kib": 28712,
+        "private_dirty_kib": 3828,
+        "pss_kib": 16660,
+        "rss_kib": 29492,
         "shared_clean_kib": 0,
-        "shared_dirty_kib": 25816
+        "shared_dirty_kib": 25664
       },
       "disk_benchmark": null,
-      "identity_guest": "IDENTITY 3d41f821feeb26b52d5bde12217d0d37 densevm-3d41f821feeb RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "identity_guest": "IDENTITY 4737a51b62f100b2568e75aa13dc6317 densevm-4737a51b62f1 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
       "idle_cpu_ticks": 4,
-      "mac_guest": "MAC ae:09:20:09:65:f6",
+      "mac_guest": "MAC da:99:a3:6c:47:c5",
       "memory": {
-        "private_clean_kib": 216,
-        "private_dirty_kib": 35640,
-        "pss_kib": 53035,
-        "rss_kib": 85392,
-        "shared_clean_kib": 23720,
-        "shared_dirty_kib": 25816
+        "private_clean_kib": 104,
+        "private_dirty_kib": 36592,
+        "pss_kib": 53881,
+        "rss_kib": 86208,
+        "shared_clean_kib": 23848,
+        "shared_dirty_kib": 25664
       },
       "migration": {
         "status": "completed"
@@ -186,7 +186,7 @@
       "overlay_after_full_write_allocated_bytes": 67375104,
       "overlay_final_allocated_bytes": 67375104,
       "overlay_initial_allocated_bytes": 200704,
-      "pid": 85822,
+      "pid": 96470,
       "qemu_command": [
         "qemu-system-x86_64",
         "-machine",
@@ -198,13 +198,13 @@
         "-smp",
         "1",
         "-object",
-        "memory-backend-file,id=ram,mem-path=/tmp/densevm-irq-85476-1793514455232748080/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "memory-backend-file,id=ram,mem-path=/tmp/densevm-irq-95993-1793514685689041606/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
         "-machine",
         "memory-backend=ram",
         "-kernel",
         "/boot/vmlinuz-linux",
         "-initrd",
-        "/tmp/densevm-irq-85476-1793514455232748080/initramfs.cpio",
+        "/tmp/densevm-irq-95993-1793514685689041606/initramfs.cpio",
         "-append",
         "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
         "-display",
@@ -214,7 +214,7 @@
         "-nodefaults",
         "-no-reboot",
         "-drive",
-        "if=none,id=disk,file=/tmp/densevm-irq-85476-1793514455232748080/clone-000.qcow2,format=qcow2",
+        "if=none,id=disk,file=/tmp/densevm-irq-95993-1793514685689041606/clone-000.qcow2,format=qcow2",
         "-device",
         "virtio-blk-pci,drive=disk,id=blk0",
         "-netdev",
@@ -224,11 +224,11 @@
         "-device",
         "vmgenid,guid=auto",
         "-chardev",
-        "socket,id=serial,path=/tmp/densevm-irq-85476-1793514455232748080/clone-000.serial.sock,server=on,wait=off",
+        "socket,id=serial,path=/tmp/densevm-irq-95993-1793514685689041606/clone-000.serial.sock,server=on,wait=off",
         "-serial",
         "chardev:serial",
         "-qmp",
-        "unix:/tmp/densevm-irq-85476-1793514455232748080/clone-000.qmp.sock,server=on,wait=off",
+        "unix:/tmp/densevm-irq-95993-1793514685689041606/clone-000.qmp.sock,server=on,wait=off",
         "-incoming",
         "defer"
       ],
@@ -236,69 +236,69 @@
         "page_estimates": {
           "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
           "page_size_bytes": 4096,
-          "private_dirty_pages_estimate": 724,
-          "private_pages_estimate": 724,
-          "resident_pages_estimate": 7178,
-          "shared_pages_estimate": 6454
+          "private_dirty_pages_estimate": 957,
+          "private_pages_estimate": 957,
+          "resident_pages_estimate": 7373,
+          "shared_pages_estimate": 6416
         },
         "private_clean_kib": 0,
-        "private_dirty_kib": 2896,
-        "pss_kib": 15804,
-        "rss_kib": 28712,
+        "private_dirty_kib": 3828,
+        "pss_kib": 16660,
+        "rss_kib": 29492,
         "shared_clean_kib": 0,
-        "shared_dirty_kib": 25816
+        "shared_dirty_kib": 25664
       },
       "vcpu_indexes": [
         0
       ],
-      "vmgenid": "1a670e9e-cd45-472b-8d89-353645618cda"
+      "vmgenid": "e934531c-cab8-4833-b251-a0df65898448"
     },
     "active_cpu_sample_interval_ms": 1000,
     "b": {
-      "active_cpu_percent_one_core": 103.0,
-      "active_cpu_ticks": 103,
+      "active_cpu_percent_one_core": 104.0,
+      "active_cpu_ticks": 104,
       "after_a_ram_write_memory": {
-        "private_clean_kib": 76,
-        "private_dirty_kib": 35368,
-        "pss_kib": 52714,
-        "rss_kib": 85292,
-        "shared_clean_kib": 24032,
-        "shared_dirty_kib": 25816
+        "private_clean_kib": 72,
+        "private_dirty_kib": 35420,
+        "pss_kib": 52681,
+        "rss_kib": 85144,
+        "shared_clean_kib": 23988,
+        "shared_dirty_kib": 25664
       },
       "after_a_ram_write_ram_mapping": {
         "page_estimates": {
           "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
           "page_size_bytes": 4096,
-          "private_dirty_pages_estimate": 661,
-          "private_pages_estimate": 661,
-          "resident_pages_estimate": 7115,
-          "shared_pages_estimate": 6454
+          "private_dirty_pages_estimate": 676,
+          "private_pages_estimate": 676,
+          "resident_pages_estimate": 7089,
+          "shared_pages_estimate": 6413
         },
         "private_clean_kib": 0,
-        "private_dirty_kib": 2644,
-        "pss_kib": 15552,
-        "rss_kib": 28460,
+        "private_dirty_kib": 2704,
+        "pss_kib": 15530,
+        "rss_kib": 28356,
         "shared_clean_kib": 0,
-        "shared_dirty_kib": 25816
+        "shared_dirty_kib": 25652
       },
       "disk_benchmark": null,
-      "identity_guest": "IDENTITY d9fad3218b8be83358975befe7bbae06 densevm-d9fad3218b8b RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "idle_cpu_ticks": 4,
-      "mac_guest": "MAC 42:e7:7c:98:54:b5",
+      "identity_guest": "IDENTITY d2f36a1ccb23482d86abf68349efaa18 densevm-d2f36a1ccb23 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "idle_cpu_ticks": 5,
+      "mac_guest": "MAC 1e:96:0c:9a:a5:03",
       "memory": {
-        "private_clean_kib": 76,
-        "private_dirty_kib": 35368,
-        "pss_kib": 52727,
-        "rss_kib": 85292,
-        "shared_clean_kib": 24032,
-        "shared_dirty_kib": 25816
+        "private_clean_kib": 72,
+        "private_dirty_kib": 35420,
+        "pss_kib": 52693,
+        "rss_kib": 85144,
+        "shared_clean_kib": 23988,
+        "shared_dirty_kib": 25664
       },
       "migration": {
         "status": "completed"
       },
       "overlay_final_allocated_bytes": 331776,
       "overlay_initial_allocated_bytes": 200704,
-      "pid": 85823,
+      "pid": 96471,
       "qemu_command": [
         "qemu-system-x86_64",
         "-machine",
@@ -310,13 +310,13 @@
         "-smp",
         "1",
         "-object",
-        "memory-backend-file,id=ram,mem-path=/tmp/densevm-irq-85476-1793514455232748080/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
+        "memory-backend-file,id=ram,mem-path=/tmp/densevm-irq-95993-1793514685689041606/memory.img,size=256M,share=off,readonly=on,rom=off,merge=off",
         "-machine",
         "memory-backend=ram",
         "-kernel",
         "/boot/vmlinuz-linux",
         "-initrd",
-        "/tmp/densevm-irq-85476-1793514455232748080/initramfs.cpio",
+        "/tmp/densevm-irq-95993-1793514685689041606/initramfs.cpio",
         "-append",
         "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
         "-display",
@@ -326,7 +326,7 @@
         "-nodefaults",
         "-no-reboot",
         "-drive",
-        "if=none,id=disk,file=/tmp/densevm-irq-85476-1793514455232748080/clone-001.qcow2,format=qcow2",
+        "if=none,id=disk,file=/tmp/densevm-irq-95993-1793514685689041606/clone-001.qcow2,format=qcow2",
         "-device",
         "virtio-blk-pci,drive=disk,id=blk0",
         "-netdev",
@@ -336,11 +336,11 @@
         "-device",
         "vmgenid,guid=auto",
         "-chardev",
-        "socket,id=serial,path=/tmp/densevm-irq-85476-1793514455232748080/clone-001.serial.sock,server=on,wait=off",
+        "socket,id=serial,path=/tmp/densevm-irq-95993-1793514685689041606/clone-001.serial.sock,server=on,wait=off",
         "-serial",
         "chardev:serial",
         "-qmp",
-        "unix:/tmp/densevm-irq-85476-1793514455232748080/clone-001.qmp.sock,server=on,wait=off",
+        "unix:/tmp/densevm-irq-95993-1793514685689041606/clone-001.qmp.sock,server=on,wait=off",
         "-incoming",
         "defer"
       ],
@@ -348,27 +348,27 @@
         "page_estimates": {
           "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
           "page_size_bytes": 4096,
-          "private_dirty_pages_estimate": 661,
-          "private_pages_estimate": 661,
-          "resident_pages_estimate": 7115,
-          "shared_pages_estimate": 6454
+          "private_dirty_pages_estimate": 673,
+          "private_pages_estimate": 673,
+          "resident_pages_estimate": 7089,
+          "shared_pages_estimate": 6416
         },
         "private_clean_kib": 0,
-        "private_dirty_kib": 2644,
-        "pss_kib": 15552,
-        "rss_kib": 28460,
+        "private_dirty_kib": 2692,
+        "pss_kib": 15524,
+        "rss_kib": 28356,
         "shared_clean_kib": 0,
-        "shared_dirty_kib": 25816
+        "shared_dirty_kib": 25664
       },
       "vcpu_indexes": [
         0
       ],
-      "vmgenid": "5888d4fe-1cf7-4d45-a4a3-b798b4135eaf"
+      "vmgenid": "19c8cae3-5051-4d85-8592-60d6b98e7628"
     },
     "count": 2,
     "extra": [],
     "idle_cpu_sample_interval_ms": 1000,
-    "time_to_count_resumed_ms": 434
+    "time_to_count_resumed_ms": 657
   },
   "dhcp_identity": {
     "guest_responses": [
@@ -639,7 +639,7 @@
       }
     }
   },
-  "host_mem_available_kib_at_start": 5453588,
+  "host_mem_available_kib_at_start": 4706372,
   "host_mem_required_kib": 2097152,
   "identity_unique": true,
   "identity_validation_verified": true,
@@ -670,18 +670,33 @@
   "mac_unique": true,
   "maskable_interrupt_isolation": {
     "a": {
-      "after": 10,
+      "after_paused_send_resume": 9,
+      "after_running_send": 10,
       "before": 9,
-      "delta": 1
+      "paused_send_delta": 0,
+      "running_send_delta": 1
     },
     "b": {
-      "after": 9,
+      "after_paused_send_resume": 9,
+      "after_running_send": 9,
       "before": 9,
-      "delta": 0
+      "paused_send_delta": 0,
+      "running_send_delta": 0
     },
-    "method": "QMP send-key to clone A, then guest /proc/interrupts i8042 counters sampled in A and B",
-    "qmp_reply": {},
-    "scope": "one emulated PS/2 keyboard IRQ path; does not test APIC IRR/ISR queue snapshots or every virtual device interrupt",
+    "lapic_output": {
+      "a_after": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+      "a_before": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+      "b_after": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n",
+      "b_before": "dumping local APIC state for CPU 0 \r\n\r\nLVT0\t 0x00010700 active-hi edge  masked                      ExtINT (vec 0)\r\nLVT1\t 0x00000400 active-hi edge                              NMI   \r\nLVTPC\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTERR\t 0x000000fe active-hi edge                              Fixed  (vec 254)\r\nLVTTHMR\t 0x00010000 active-hi edge  masked                      Fixed  (vec 0)\r\nLVTT\t 0x000400ec active-hi edge                 tsc-deadline Fixed  (vec 236)\r\nTimer\t DCR=0x0 (divide by 2) initial_count = 0 current_count = 0\r\nSPIV\t 0x000001ff APIC enabled, focus=off, spurious vec 255\r\nICR\t 0x00000028 physical edge de-assert no-shorthand\r\nICR2\t 0x00000000 cpu 0 (X2APIC ID)\r\nESR\t 0x00000000\r\nISR\t (none)\r\nIRR\t (none)\r\n\r\nAPR 0x00 TPR 0x10 DFR 0x0f LDR 0x00 PPR 0x10\r\n"
+    },
+    "method": "pause both guests, sample QEMU LAPIC IRR, QMP send-key to clone A, sample IRR again, resume, and compare guest /proc/interrupts i8042 counters",
+    "paused_qmp_reply": {},
+    "pending_lapic_irr": {
+      "reason": "no pending IRR was observed after QMP send-key while both guests were paused",
+      "status": "unknown"
+    },
+    "running_qmp_reply": {},
+    "scope": "one emulated PS/2 keyboard IRQ path; paused send-key is checked separately from a running send-key; pending IRR is verified only if a queued vector appears in a clean baseline",
     "status": "verified"
   },
   "maskable_interrupt_isolation_verified": true,
@@ -724,56 +739,56 @@
       "clones": [
         {
           "memory": {
-            "private_clean_kib": 216,
-            "private_dirty_kib": 35640,
-            "pss_kib": 53036,
-            "rss_kib": 85392,
-            "shared_clean_kib": 23720,
-            "shared_dirty_kib": 25816
+            "private_clean_kib": 104,
+            "private_dirty_kib": 36668,
+            "pss_kib": 53938,
+            "rss_kib": 86272,
+            "shared_clean_kib": 23848,
+            "shared_dirty_kib": 25652
           },
-          "pid": 85822,
+          "pid": 96470,
           "ram_mapping": {
             "page_estimates": {
               "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
               "page_size_bytes": 4096,
-              "private_dirty_pages_estimate": 724,
-              "private_pages_estimate": 724,
-              "resident_pages_estimate": 7178,
-              "shared_pages_estimate": 6454
+              "private_dirty_pages_estimate": 976,
+              "private_pages_estimate": 976,
+              "resident_pages_estimate": 7389,
+              "shared_pages_estimate": 6413
             },
             "private_clean_kib": 0,
-            "private_dirty_kib": 2896,
-            "pss_kib": 15804,
-            "rss_kib": 28712,
+            "private_dirty_kib": 3904,
+            "pss_kib": 16730,
+            "rss_kib": 29556,
             "shared_clean_kib": 0,
-            "shared_dirty_kib": 25816
+            "shared_dirty_kib": 25652
           }
         },
         {
           "memory": {
-            "private_clean_kib": 76,
-            "private_dirty_kib": 35368,
-            "pss_kib": 52727,
-            "rss_kib": 85292,
-            "shared_clean_kib": 24032,
-            "shared_dirty_kib": 25816
+            "private_clean_kib": 72,
+            "private_dirty_kib": 35432,
+            "pss_kib": 52686,
+            "rss_kib": 85144,
+            "shared_clean_kib": 23988,
+            "shared_dirty_kib": 25652
           },
-          "pid": 85823,
+          "pid": 96471,
           "ram_mapping": {
             "page_estimates": {
               "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
               "page_size_bytes": 4096,
-              "private_dirty_pages_estimate": 661,
-              "private_pages_estimate": 661,
-              "resident_pages_estimate": 7115,
-              "shared_pages_estimate": 6454
+              "private_dirty_pages_estimate": 676,
+              "private_pages_estimate": 676,
+              "resident_pages_estimate": 7089,
+              "shared_pages_estimate": 6413
             },
             "private_clean_kib": 0,
-            "private_dirty_kib": 2644,
-            "pss_kib": 15552,
-            "rss_kib": 28460,
+            "private_dirty_kib": 2704,
+            "pss_kib": 15530,
+            "rss_kib": 28356,
             "shared_clean_kib": 0,
-            "shared_dirty_kib": 25816
+            "shared_dirty_kib": 25652
           }
         }
       ],
@@ -787,56 +802,56 @@
       "clones": [
         {
           "memory": {
-            "private_clean_kib": 216,
-            "private_dirty_kib": 35640,
-            "pss_kib": 53035,
-            "rss_kib": 85392,
-            "shared_clean_kib": 23720,
-            "shared_dirty_kib": 25816
+            "private_clean_kib": 104,
+            "private_dirty_kib": 36592,
+            "pss_kib": 53881,
+            "rss_kib": 86208,
+            "shared_clean_kib": 23848,
+            "shared_dirty_kib": 25664
           },
-          "pid": 85822,
+          "pid": 96470,
           "ram_mapping": {
             "page_estimates": {
               "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
               "page_size_bytes": 4096,
-              "private_dirty_pages_estimate": 724,
-              "private_pages_estimate": 724,
-              "resident_pages_estimate": 7178,
-              "shared_pages_estimate": 6454
+              "private_dirty_pages_estimate": 957,
+              "private_pages_estimate": 957,
+              "resident_pages_estimate": 7373,
+              "shared_pages_estimate": 6416
             },
             "private_clean_kib": 0,
-            "private_dirty_kib": 2896,
-            "pss_kib": 15804,
-            "rss_kib": 28712,
+            "private_dirty_kib": 3828,
+            "pss_kib": 16660,
+            "rss_kib": 29492,
             "shared_clean_kib": 0,
-            "shared_dirty_kib": 25816
+            "shared_dirty_kib": 25664
           }
         },
         {
           "memory": {
-            "private_clean_kib": 76,
-            "private_dirty_kib": 35368,
-            "pss_kib": 52716,
-            "rss_kib": 85292,
-            "shared_clean_kib": 24032,
-            "shared_dirty_kib": 25816
+            "private_clean_kib": 72,
+            "private_dirty_kib": 35420,
+            "pss_kib": 52693,
+            "rss_kib": 85144,
+            "shared_clean_kib": 23988,
+            "shared_dirty_kib": 25664
           },
-          "pid": 85823,
+          "pid": 96471,
           "ram_mapping": {
             "page_estimates": {
               "accounting": "rounded estimates derived from matching /proc/PID/smaps KiB totals; shared/private reflect smaps classifications, not guest-physical page positions; PSS is excluded because it apportions shared pages",
               "page_size_bytes": 4096,
-              "private_dirty_pages_estimate": 661,
-              "private_pages_estimate": 661,
-              "resident_pages_estimate": 7115,
-              "shared_pages_estimate": 6454
+              "private_dirty_pages_estimate": 673,
+              "private_pages_estimate": 673,
+              "resident_pages_estimate": 7089,
+              "shared_pages_estimate": 6416
             },
             "private_clean_kib": 0,
-            "private_dirty_kib": 2644,
-            "pss_kib": 15552,
-            "rss_kib": 28460,
+            "private_dirty_kib": 2692,
+            "pss_kib": 15524,
+            "rss_kib": 28356,
             "shared_clean_kib": 0,
-            "shared_dirty_kib": 25816
+            "shared_dirty_kib": 25664
           }
         }
       ],
@@ -846,10 +861,10 @@
   },
   "ssh_host_keys": {
     "identity_responses": [
-      "IDENTITY dfc3460bc47eb7576841c82f22da7ff6 densevm-dfc3460bc47e RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "IDENTITY 665622011676452a0d29e6a4ac9c48ee densevm-665622011676 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "IDENTITY 3d41f821feeb26b52d5bde12217d0d37 densevm-3d41f821feeb RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
-      "IDENTITY d9fad3218b8be83358975befe7bbae06 densevm-d9fad3218b8b RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable"
+      "IDENTITY 76257d8ce5d9b8b92f086ad6514353e3 densevm-76257d8ce5d9 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 2a0eeedf2b8e65235a849044f1b1c529 densevm-2a0eeedf2b8e RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY 4737a51b62f100b2568e75aa13dc6317 densevm-4737a51b62f1 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable",
+      "IDENTITY d2f36a1ccb23482d86abf68349efaa18 densevm-d2f36a1ccb23 RNG-RESEEDED | SSH-IDENTITY ABSENT | DHCP-IDENTITY UNKNOWN DHCP client identity is not exercised by this guest | VMGENID-REACTION UNKNOWN template baseline unavailable"
     ],
     "present": false,
     "unique": true
@@ -857,10 +872,10 @@
   "surviving_clones_verified": true,
   "template": {
     "machine_state_allocated_bytes": 311296,
-    "memory_file_allocated_bytes": 226201600,
+    "memory_file_allocated_bytes": 220553216,
     "memory_file_bytes": 268435456,
     "memory_file_resident_bytes": 166912000,
-    "memory_sha256": "05d0a54d661ff6c6d41312fcc17e35ede347b9125c39e70dc0099377953a19ee",
+    "memory_sha256": "f899ad5c59d44a9ee21bc46ef87d988299e07997eeb007de0b5e7aca8e34ab3b",
     "migration": {
       "downtime": 3,
       "ram": {
@@ -882,9 +897,9 @@
         "total": 532480,
         "transferred": 310058
       },
-      "setup-time": 1,
+      "setup-time": 3,
       "status": "completed",
-      "total-time": 5
+      "total-time": 7
     },
     "qemu_command": [
       "qemu-system-x86_64",
@@ -897,13 +912,13 @@
       "-smp",
       "1",
       "-object",
-      "memory-backend-file,id=ram,mem-path=/tmp/densevm-irq-85476-1793514455232748080/memory.img,size=256M,share=on,readonly=off,merge=off",
+      "memory-backend-file,id=ram,mem-path=/tmp/densevm-irq-95993-1793514685689041606/memory.img,size=256M,share=on,readonly=off,merge=off",
       "-machine",
       "memory-backend=ram",
       "-kernel",
       "/boot/vmlinuz-linux",
       "-initrd",
-      "/tmp/densevm-irq-85476-1793514455232748080/initramfs.cpio",
+      "/tmp/densevm-irq-95993-1793514685689041606/initramfs.cpio",
       "-append",
       "console=ttyS0 rdinit=/init panic=-1 loglevel=3",
       "-display",
@@ -913,7 +928,7 @@
       "-nodefaults",
       "-no-reboot",
       "-drive",
-      "if=none,id=disk,file=/tmp/densevm-irq-85476-1793514455232748080/base.qcow2,format=qcow2",
+      "if=none,id=disk,file=/tmp/densevm-irq-95993-1793514685689041606/base.qcow2,format=qcow2",
       "-device",
       "virtio-blk-pci,drive=disk,id=blk0",
       "-netdev",
@@ -923,13 +938,13 @@
       "-device",
       "vmgenid,guid=auto",
       "-chardev",
-      "socket,id=serial,path=/tmp/densevm-irq-85476-1793514455232748080/template.serial.sock,server=on,wait=off",
+      "socket,id=serial,path=/tmp/densevm-irq-95993-1793514685689041606/template.serial.sock,server=on,wait=off",
       "-serial",
       "chardev:serial",
       "-qmp",
-      "unix:/tmp/densevm-irq-85476-1793514455232748080/template.qmp.sock,server=on,wait=off"
+      "unix:/tmp/densevm-irq-95993-1793514685689041606/template.qmp.sock,server=on,wait=off"
     ],
-    "vmgenid": "a11ca63c-2178-48ee-97b0-13384d7ec190"
+    "vmgenid": "aca700e4-7af7-4223-b509-628dc8ac572b"
   },
   "template_ram_unchanged": true,
   "vcpu_register_state": {

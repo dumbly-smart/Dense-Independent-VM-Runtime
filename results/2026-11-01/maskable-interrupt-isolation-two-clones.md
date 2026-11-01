@@ -10,11 +10,15 @@ Run the ignored KVM integration test:
 cargo test --test probe qmp_keyboard_interrupt_is_observed_only_by_the_target_clone -- --ignored --nocapture
 ```
 
-The test passed. QMP `send-key` delivered a key event to clone A. A's guest
-i8042 line in `/proc/interrupts` changed from 9 to 10; B remained at 9.
+The test passed. A QMP `send-key` while both guests were paused produced no
+visible LAPIC IRR entry in either clone. After both resumed, A's i8042 count
+remained 9 through the paused-send observation window; a separate QMP key sent
+while A was running increased A's count from 9 to 10. B remained at 9.
 
 This demonstrates isolation for the tested emulated PS/2 keyboard interrupt
-path in one-vCPU synthetic Linux guests. It does not inspect pending APIC
-IRR/ISR state, establish exact interrupt timing, cover virtio or other device
-interrupt paths, or generalize to other QEMU versions and guest distributions.
-The complete machine-readable probe is in the adjacent JSON file.
+path in one-vCPU synthetic Linux guests. The paused-send attempt did not expose
+a queued LAPIC interrupt, so pending interrupt isolation remains UNKNOWN. This
+does not establish exact interrupt timing, cover virtio or other virtual
+device interrupt paths, or generalize to other QEMU versions and guest
+distributions. The complete machine-readable probe is in the adjacent JSON
+file.
