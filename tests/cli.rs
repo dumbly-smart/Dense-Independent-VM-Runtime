@@ -23,6 +23,7 @@ fn parses_probe_with_count_and_output() {
             vcpu_register_state: false,
             lapic_tpr_state: false,
             nmi_isolation: false,
+            maskable_interrupt_isolation: false,
             rtc_alarm: false,
             rtc_clock: None
         }
@@ -51,6 +52,7 @@ fn parses_probe_with_count_and_output() {
             vcpu_register_state: false,
             lapic_tpr_state: false,
             nmi_isolation: false,
+            maskable_interrupt_isolation: false,
             rtc_alarm: false,
             rtc_clock: None
         }
@@ -341,6 +343,23 @@ fn accepts_the_nmi_isolation_probe_flag() {
         parse_args(["densevm", "probe", "--out", "/tmp/run", "--nmi-isolation"]),
         Ok(Command::Probe {
             nmi_isolation: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn accepts_the_maskable_interrupt_isolation_probe_flag() {
+    assert!(matches!(
+        parse_args([
+            "densevm",
+            "probe",
+            "--out",
+            "/tmp/run",
+            "--maskable-interrupt-isolation"
+        ]),
+        Ok(Command::Probe {
+            maskable_interrupt_isolation: true,
             ..
         })
     ));

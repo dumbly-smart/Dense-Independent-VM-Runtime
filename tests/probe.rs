@@ -310,6 +310,43 @@ fn qmp_nmi_delivery_is_observed_only_by_the_target_clone() {
 }
 
 #[test]
+#[ignore = "requires local KVM and QEMU with a guest i8042 device"]
+fn qmp_keyboard_interrupt_is_observed_only_by_the_target_clone() {
+    let stamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let out = std::env::temp_dir().join(format!("densevm-irq-{}-{stamp}", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_densevm"))
+        .args([
+            "probe",
+            "--skip-guest-oom",
+            "--maskable-interrupt-isolation",
+            "--divergence-percent",
+            "0",
+            "--out",
+            out.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "probe failed; artifacts at {}",
+        out.display()
+    );
+    let result: Value =
+        serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
+    assert_eq!(result["maskable_interrupt_isolation_verified"], true);
+    assert!(
+        result["maskable_interrupt_isolation"]["a"]["delta"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
+    assert_eq!(result["maskable_interrupt_isolation"]["b"]["delta"], 0);
+}
+
+#[test]
 #[ignore = "requires local KVM and QEMU; compares running and QMP-paused RTC alarm delivery"]
 fn probe_records_guest_rtc_alarm_delivery_with_virtual_clock() {
     let stamp = SystemTime::now()

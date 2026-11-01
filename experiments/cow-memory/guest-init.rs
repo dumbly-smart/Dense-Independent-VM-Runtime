@@ -578,6 +578,23 @@ pub(crate) fn non_maskable_interrupt_count(interrupts: &str) -> Option<u64> {
     found_cpu_counter.then_some(count)
 }
 
+pub(crate) fn ps2_keyboard_interrupt_count(interrupts: &str) -> Option<u64> {
+    let line = interrupts
+        .lines()
+        .find(|line| line.split_whitespace().any(|field| field == "i8042"))?;
+    let (_, counters) = line.split_once(':')?;
+    let mut count = 0_u64;
+    let mut found_cpu_counter = false;
+    for value in counters.split_whitespace() {
+        let Ok(value) = value.parse::<u64>() else {
+            break;
+        };
+        count = count.checked_add(value)?;
+        found_cpu_counter = true;
+    }
+    found_cpu_counter.then_some(count)
+}
+
 pub(crate) fn rtc_epoch_seconds(contents: &str) -> Option<u64> {
     contents.trim().parse().ok()
 }
@@ -599,6 +616,16 @@ fn non_maskable_interrupts_read() -> String {
             None => "NMI-INTERRUPTS UNKNOWN NMI counter unavailable".to_string(),
         },
         Err(error) => format!("NMI-INTERRUPTS UNKNOWN {error}"),
+    }
+}
+
+fn ps2_keyboard_interrupts_read() -> String {
+    match fs::read_to_string("/proc/interrupts") {
+        Ok(contents) => match ps2_keyboard_interrupt_count(&contents) {
+            Some(count) => format!("PS2-KEYBOARD-INTERRUPTS count={count}"),
+            None => "PS2-KEYBOARD-INTERRUPTS UNKNOWN i8042 counter unavailable".to_string(),
+        },
+        Err(error) => format!("PS2-KEYBOARD-INTERRUPTS UNKNOWN {error}"),
     }
 }
 
@@ -1391,6 +1418,7 @@ fn main() {
             ["timer-read"] => guest_timer_expirations(),
             ["local-timer-interrupts-read"] => local_timer_interrupts_read(),
             ["nmi-interrupts-read"] => non_maskable_interrupts_read(),
+            ["ps2-keyboard-interrupts-read"] => ps2_keyboard_interrupts_read(),
             ["rtc-read"] => rtc_epoch_read(),
             ["rtc-alarm", delay] => match delay.parse::<u32>() {
                 Ok(delay) if (1..=60).contains(&delay) => match rtc_alarm_start(delay) {

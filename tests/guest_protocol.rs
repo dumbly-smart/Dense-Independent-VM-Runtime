@@ -68,6 +68,19 @@ fn sums_guest_non_maskable_interrupt_counts() {
 }
 
 #[test]
+fn sums_only_the_guest_ps2_keyboard_interrupt_counters() {
+    let interrupts = "           CPU0       CPU1\n  1:         12          8   IO-APIC   1-edge      i8042\n  9:          4          3   IO-APIC   9-fasteoi   acpi\n";
+    assert_eq!(
+        guest_init::ps2_keyboard_interrupt_count(interrupts),
+        Some(20)
+    );
+    assert_eq!(
+        guest_init::ps2_keyboard_interrupt_count("  9: 4 3 IO-APIC 9-fasteoi acpi\n"),
+        None
+    );
+}
+
+#[test]
 fn parses_guest_rtc_epoch_seconds() {
     assert_eq!(
         guest_init::rtc_epoch_seconds("1792822284\n"),
