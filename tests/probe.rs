@@ -338,12 +338,15 @@ fn qmp_keyboard_interrupt_is_observed_only_by_the_target_clone() {
         serde_json::from_slice(&std::fs::read(out.join("result.json")).unwrap()).unwrap();
     assert_eq!(result["maskable_interrupt_isolation_verified"], true);
     assert!(
-        result["maskable_interrupt_isolation"]["a"]["delta"]
+        result["maskable_interrupt_isolation"]["a"]["running_send_delta"]
             .as_u64()
             .unwrap()
             > 0
     );
-    assert_eq!(result["maskable_interrupt_isolation"]["b"]["delta"], 0);
+    assert_eq!(
+        result["maskable_interrupt_isolation"]["b"]["running_send_delta"],
+        0
+    );
 }
 
 #[test]

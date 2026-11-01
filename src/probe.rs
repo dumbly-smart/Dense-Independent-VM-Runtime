@@ -548,6 +548,24 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_pending_lapic_interrupt_bitmaps() {
+        assert_eq!(parse_qemu_lapic_irr_pending("IRR (none)"), Ok(false));
+        assert_eq!(
+            parse_qemu_lapic_irr_pending("IRR 0x00000000 0x00000000"),
+            Ok(false)
+        );
+        assert_eq!(
+            parse_qemu_lapic_irr_pending("IRR 0x00000010 0x00000000"),
+            Ok(true)
+        );
+        assert_eq!(
+            parse_qemu_lapic_irr_pending("IRR[0x00]=0x00000010"),
+            Ok(true)
+        );
+        assert!(parse_qemu_lapic_irr_pending("ISR (none)").is_err());
+    }
+
+    #[test]
     fn selects_distinct_low_priority_task_priorities() {
         let (a, b) = choose_lapic_tpr_targets(0x10, 0x10).unwrap();
         assert_eq!((a, b), (0x11, 0x12));
@@ -1791,6 +1809,45 @@ fn parse_qemu_lapic_tpr(output: &str) -> Result<u8, String> {
     u8::from_str_radix(value, 16).map_err(|error| format!("invalid QEMU LAPIC TPR: {error}"))
 }
 
+fn parse_qemu_lapic_irr_pending(output: &str) -> Result<bool, String> {
+    let line = output
+        .lines()
+        .find(|line| line.trim_start().starts_with("IRR"))
+        .ok_or("QEMU LAPIC output omitted IRR")?;
+    if line.contains("(none)") {
+        return Ok(false);
+    }
+    let mut fields: Vec<_> = line.split_ascii_whitespace().skip(1).collect();
+    if fields.is_empty()
+        && let Some((_, bitmap)) = line.split_once('=')
+    {
+        fields.push(bitmap);
+    }
+    if fields.is_empty() {
+        return Err("QEMU LAPIC IRR output contained no bitmap".into());
+    }
+    let mut found_bitmap = false;
+    for field in fields {
+        let bitmap = field.rsplit_once('=').map_or(field, |(_, value)| value);
+        let bitmap = bitmap
+            .trim_matches(|character: char| !character.is_ascii_hexdigit() && character != 'x');
+        let Some(hex) = bitmap.strip_prefix("0x") else {
+            continue;
+        };
+        let value = u32::from_str_radix(hex, 16)
+            .map_err(|error| format!("invalid QEMU LAPIC IRR bitmap {bitmap}: {error}"))?;
+        found_bitmap = true;
+        if value != 0 {
+            return Ok(true);
+        }
+    }
+    if found_bitmap {
+        Ok(false)
+    } else {
+        Err("QEMU LAPIC IRR output contained no recognizable bitmap".into())
+    }
+}
+
 fn parse_qemu_segment_base(output: &str, segment: &str) -> Result<u64, String> {
     for line in output.lines() {
         let Some(rest) = line.trim_start().strip_prefix(segment) else {
@@ -2565,32 +2622,83 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
             let a_before = guest_ps2_interrupts(&mut aserial)?;
             let b_before = guest_ps2_interrupts(&mut bserial)?;
             if let (Some(a_before), Some(b_before)) = (a_before, b_before) {
+                stop_and_verify(&mut aq)?;
+                stop_and_verify(&mut bq)?;
+                let a_lapic_before = qemu_lapic_snapshot(&mut aq, 0)?;
+                let b_lapic_before = qemu_lapic_snapshot(&mut bq, 0)?;
+                let paused_injection = aq.execute(
+                    "send-key",
+                    Some(json!({"keys":[{"type":"qcode","data":"a"}],"hold-time":100})),
+                )?;
+                let a_lapic_after = qemu_lapic_snapshot(&mut aq, 0)?;
+                let b_lapic_after = qemu_lapic_snapshot(&mut bq, 0)?;
+                let pending_state = match (
+                    parse_qemu_lapic_irr_pending(&a_lapic_before),
+                    parse_qemu_lapic_irr_pending(&b_lapic_before),
+                    parse_qemu_lapic_irr_pending(&a_lapic_after),
+                    parse_qemu_lapic_irr_pending(&b_lapic_after),
+                ) {
+                    (Ok(false), Ok(false), Ok(true), Ok(false)) => (
+                        Some(true),
+                        json!({"status":"verified","a_before":false,"b_before":false,"a_after":true,"b_after":false}),
+                    ),
+                    (Ok(false), Ok(false), Ok(_), Ok(true)) => (
+                        Some(false),
+                        json!({"status":"failed","a_before":false,"b_before":false,"a_after":parse_qemu_lapic_irr_pending(&a_lapic_after)?,"b_after":true}),
+                    ),
+                    (Ok(false), Ok(false), Ok(false), Ok(false)) => (
+                        None,
+                        json!({"status":"unknown","reason":"no pending IRR was observed after QMP send-key while both guests were paused"}),
+                    ),
+                    (a_before, b_before, a_after, b_after) => (
+                        None,
+                        json!({
+                            "status":"unknown",
+                            "reason":"baseline IRR was nonempty or QEMU did not expose a parseable pending bitmap",
+                            "a_before":a_before.ok(),"b_before":b_before.ok(),
+                            "a_after":a_after.ok(),"b_after":b_after.ok()
+                        }),
+                    ),
+                };
+                resume_and_verify(&mut aq)?;
+                resume_and_verify(&mut bq)?;
+                thread::sleep(Duration::from_millis(200));
+                let a_after_paused_send = guest_ps2_interrupts(&mut aserial)?
+                    .ok_or("guest PS/2 interrupt counter became unavailable after resume")?;
+                let b_after_paused_send = guest_ps2_interrupts(&mut bserial)?.ok_or(
+                    "sibling guest PS/2 interrupt counter became unavailable after resume",
+                )?;
                 let injection = aq.execute(
                     "send-key",
                     Some(json!({"keys":[{"type":"qcode","data":"a"}],"hold-time":100})),
                 )?;
-                let mut a_after = a_before;
-                let mut b_after = b_before;
+                let mut a_after = a_after_paused_send;
+                let mut b_after = b_after_paused_send;
                 for _ in 0..40 {
                     thread::sleep(Duration::from_millis(50));
                     a_after = guest_ps2_interrupts(&mut aserial)?
                         .ok_or("guest PS/2 interrupt counter became unavailable")?;
                     b_after = guest_ps2_interrupts(&mut bserial)?
                         .ok_or("sibling guest PS/2 interrupt counter became unavailable")?;
-                    if a_after > a_before {
+                    if a_after > a_after_paused_send {
                         break;
                     }
                 }
-                let verified = a_after > a_before && b_after == b_before;
+                let verified = a_after > a_after_paused_send
+                    && b_after == b_after_paused_send
+                    && pending_state.0.unwrap_or(true);
                 (
                     Some(verified),
                     json!({
                         "status":if verified {"verified"} else {"failed"},
-                        "method":"QMP send-key to clone A, then guest /proc/interrupts i8042 counters sampled in A and B",
-                        "scope":"one emulated PS/2 keyboard IRQ path; does not test APIC IRR/ISR queue snapshots or every virtual device interrupt",
-                        "a":{"before":a_before,"after":a_after,"delta":a_after.saturating_sub(a_before)},
-                        "b":{"before":b_before,"after":b_after,"delta":b_after.saturating_sub(b_before)},
-                        "qmp_reply":injection
+                        "method":"pause both guests, sample QEMU LAPIC IRR, QMP send-key to clone A, sample IRR again, resume, and compare guest /proc/interrupts i8042 counters",
+                        "scope":"one emulated PS/2 keyboard IRQ path; paused send-key is checked separately from a running send-key; pending IRR is verified only if a queued vector appears in a clean baseline",
+                        "a":{"before":a_before,"after_paused_send_resume":a_after_paused_send,"after_running_send":a_after,"paused_send_delta":a_after_paused_send.saturating_sub(a_before),"running_send_delta":a_after.saturating_sub(a_after_paused_send)},
+                        "b":{"before":b_before,"after_paused_send_resume":b_after_paused_send,"after_running_send":b_after,"paused_send_delta":b_after_paused_send.saturating_sub(b_before),"running_send_delta":b_after.saturating_sub(b_after_paused_send)},
+                        "pending_lapic_irr":pending_state.1,
+                        "lapic_output":{"a_before":a_lapic_before,"b_before":b_lapic_before,"a_after":a_lapic_after,"b_after":b_lapic_after},
+                        "paused_qmp_reply":paused_injection,
+                        "running_qmp_reply":injection
                     }),
                 )
             } else {
