@@ -54,7 +54,7 @@ the tested QEMU, kernel, guest, devices, and workload.
   GPR blocks separately by vCPU, and a two-clone KVM restore succeeded on
   2026-10-30. One- and two-vCPU register capture passed; both vCPU indexes had
   differing GPR snapshots and the guest-specific user GS bases were observed
-  on CPU 0 and CPU 1 respectively. Other MSRs, detailed APIC registers,
+  on CPU 0 and CPU 1 respectively. MSR writes beyond IA32_TSC_AUX, detailed APIC registers,
   pending maskable interrupts and precise interrupt timing remain unverified.
   QMP NMI delivery isolation passed on a two-clone, one-vCPU Linux run: A’s NMI
   counter increased by one and B’s did not. This does not cover maskable pending

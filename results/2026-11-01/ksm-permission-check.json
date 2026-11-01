@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-01",
+  "uid": 1000,
+  "run": 0,
+  "run_permissions": "-rw-r--r-- root:root",
+  "merge_counters": {
+    "pages_shared": 0,
+    "pages_sharing": 0,
+    "pages_unshared": 0,
+    "pages_volatile": 0,
+    "full_scans": 0
+  },
+  "write_open_probe": {
+    "error": "PermissionError",
+    "errno": 13,
+    "message": "[Errno 13] Permission denied: '/sys/kernel/mm/ksm/run'"
+  },
+  "admin_access": false,
+  "changed_host_settings": false
+}
