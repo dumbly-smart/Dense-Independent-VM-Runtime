@@ -576,6 +576,19 @@ mod login_tests {
     }
 
     #[test]
+    fn parses_pending_ioapic_interrupt_bitmaps_from_info_pic() {
+        assert_eq!(
+            parse_qemu_ioapic_irr_pending("ioapic0:\n IRR (none)\n Remote IRR (none)\n"),
+            Ok(false)
+        );
+        assert_eq!(
+            parse_qemu_ioapic_irr_pending("ioapic0:\n IRR 0x00000010\n"),
+            Ok(true)
+        );
+        assert!(parse_qemu_ioapic_irr_pending("pic0: irr=00\n").is_err());
+    }
+
+    #[test]
     fn selects_distinct_low_priority_task_priorities() {
         let (a, b) = choose_lapic_tpr_targets(0x10, 0x10).unwrap();
         assert_eq!((a, b), (0x11, 0x12));
@@ -1897,6 +1910,24 @@ fn parse_qemu_lapic_irr_pending(output: &str) -> Result<bool, String> {
     }
 }
 
+fn parse_qemu_ioapic_irr_pending(output: &str) -> Result<bool, String> {
+    let ioapic = output
+        .find("ioapic0:")
+        .map(|index| &output[index..])
+        .ok_or("QEMU PIC output omitted ioapic0")?;
+    let irr_line = ioapic
+        .lines()
+        .skip(1)
+        .take_while(|line| !line.trim_start().starts_with("pic"))
+        .find(|line| line.trim_start().starts_with("IRR"))
+        .ok_or("QEMU PIC output omitted IOAPIC IRR")?;
+    parse_qemu_lapic_irr_pending(irr_line)
+}
+
+fn parse_qemu_pending_interrupt_state(lapic: &str, pic: &str) -> Result<bool, String> {
+    Ok(parse_qemu_lapic_irr_pending(lapic)? || parse_qemu_ioapic_irr_pending(pic)?)
+}
+
 fn parse_qemu_segment_base(output: &str, segment: &str) -> Result<u64, String> {
     for line in output.lines() {
         let Some(rest) = line.trim_start().strip_prefix(segment) else {
@@ -2042,6 +2073,20 @@ fn qemu_user_register_snapshot(
     unreachable!()
 }
 
+fn qemu_monitor_snapshot(qmp: &mut Qmp, command: &str) -> Result<String, String> {
+    let output = qmp.execute(
+        "human-monitor-command",
+        Some(json!({"command-line":command})),
+    )?;
+    let output = output
+        .as_str()
+        .ok_or("QMP human-monitor-command returned non-text output")?;
+    if output.is_empty() || output.contains("unknown command") {
+        return Err(format!("QEMU monitor command unavailable: {output}"));
+    }
+    Ok(output.to_string())
+}
+
 fn qemu_lapic_snapshot(qmp: &mut Qmp, cpu_index: u8) -> Result<String, String> {
     if cpu_index > 3 {
         return Err(format!("unsupported LAPIC CPU index {cpu_index}"));
@@ -2066,6 +2111,72 @@ fn qemu_lapic_snapshot(qmp: &mut Qmp, cpu_index: u8) -> Result<String, String> {
         ));
     }
     Ok(output.to_string())
+}
+
+fn run_paused_serial_irq_probe(
+    aq: &mut Qmp,
+    bq: &mut Qmp,
+    aserial: &mut Serial,
+) -> Result<(Option<bool>, Value), String> {
+    stop_and_verify(aq)?;
+    stop_and_verify(bq)?;
+    let a_before = qemu_lapic_snapshot(aq, 0)?;
+    let b_before = qemu_lapic_snapshot(bq, 0)?;
+    let a_pic_before = qemu_monitor_snapshot(aq, "info pic")?;
+    let b_pic_before = qemu_monitor_snapshot(bq, "info pic")?;
+    let a_irq_before = qemu_monitor_snapshot(aq, "info irq")?;
+    let b_irq_before = qemu_monitor_snapshot(bq, "info irq")?;
+    aserial.send("ping")?;
+    thread::sleep(Duration::from_millis(50));
+    let a_after = qemu_lapic_snapshot(aq, 0)?;
+    let b_after = qemu_lapic_snapshot(bq, 0)?;
+    let a_pic_after = qemu_monitor_snapshot(aq, "info pic")?;
+    let b_pic_after = qemu_monitor_snapshot(bq, "info pic")?;
+    let a_irq_after = qemu_monitor_snapshot(aq, "info irq")?;
+    let b_irq_after = qemu_monitor_snapshot(bq, "info irq")?;
+    let pending = match (
+        parse_qemu_pending_interrupt_state(&a_before, &a_pic_before),
+        parse_qemu_pending_interrupt_state(&b_before, &b_pic_before),
+        parse_qemu_pending_interrupt_state(&a_after, &a_pic_after),
+        parse_qemu_pending_interrupt_state(&b_after, &b_pic_after),
+    ) {
+        (Ok(false), Ok(false), Ok(true), Ok(false)) => (
+            Some(true),
+            json!({"status":"verified","a_before":false,"b_before":false,"a_after":true,"b_after":false}),
+        ),
+        (Ok(false), Ok(false), Ok(_), Ok(true)) => (
+            Some(false),
+            json!({"status":"failed","a_before":false,"b_before":false,"b_after":true}),
+        ),
+        (Ok(false), Ok(false), Ok(false), Ok(false)) => (
+            None,
+            json!({"status":"unknown","reason":"serial input did not expose a pending LAPIC or IOAPIC IRR while guests were paused"}),
+        ),
+        (a_before, b_before, a_after, b_after) => (
+            None,
+            json!({
+                "status":"unknown",
+                "reason":"baseline IRR was nonempty or QEMU did not expose a parseable pending bitmap",
+                "a_before":a_before.ok(),"b_before":b_before.ok(),
+                "a_after":a_after.ok(),"b_after":b_after.ok()
+            }),
+        ),
+    };
+    resume_and_verify(aq)?;
+    resume_and_verify(bq)?;
+    let guest_reply = aserial.expect("PONG", Duration::from_secs(3))?;
+    Ok((
+        pending.0,
+        json!({
+            "status":pending.1["status"],
+            "method":"write a serial ping while both VMs are QMP-paused, inspect LAPIC IRR, resume, and require A's PONG",
+            "pending_lapic_irr":pending.1,
+            "lapic_output":{"a_before":a_before,"b_before":b_before,"a_after":a_after,"b_after":b_after},
+            "pic_output":{"a_before":a_pic_before,"b_before":b_pic_before,"a_after":a_pic_after,"b_after":b_pic_after},
+            "irq_stats":{"a_before":a_irq_before,"b_before":b_irq_before,"a_after":a_irq_after,"b_after":b_irq_after},
+            "guest_reply":guest_reply
+        }),
+    ))
 }
 
 fn choose_lapic_tpr_targets(a_original: u8, b_original: u8) -> Result<(u8, u8), String> {
@@ -2779,9 +2890,12 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                         break;
                     }
                 }
+                let (serial_pending_verified, serial_pending) =
+                    run_paused_serial_irq_probe(&mut aq, &mut bq, &mut aserial)?;
                 let verified = a_after > a_after_paused_send
                     && b_after == b_after_paused_send
-                    && pending_state.0.unwrap_or(true);
+                    && pending_state.0.unwrap_or(true)
+                    && serial_pending_verified.unwrap_or(true);
                 (
                     Some(verified),
                     json!({
@@ -2791,6 +2905,7 @@ fn run_two_clone(out: &Path, options: ProbeOptions<'_>) -> Result<(), String> {
                         "a":{"before":a_before,"after_paused_send_resume":a_after_paused_send,"after_running_send":a_after,"paused_send_delta":a_after_paused_send.saturating_sub(a_before),"running_send_delta":a_after.saturating_sub(a_after_paused_send)},
                         "b":{"before":b_before,"after_paused_send_resume":b_after_paused_send,"after_running_send":b_after,"paused_send_delta":b_after_paused_send.saturating_sub(b_before),"running_send_delta":b_after.saturating_sub(b_after_paused_send)},
                         "pending_lapic_irr":pending_state.1,
+                        "paused_serial_input":serial_pending,
                         "lapic_output":{"a_before":a_lapic_before,"b_before":b_lapic_before,"a_after":a_lapic_after,"b_after":b_lapic_after},
                         "paused_qmp_reply":paused_injection,
                         "running_qmp_reply":injection

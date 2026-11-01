@@ -347,6 +347,16 @@ fn qmp_keyboard_interrupt_is_observed_only_by_the_target_clone() {
         result["maskable_interrupt_isolation"]["b"]["running_send_delta"],
         0
     );
+    assert_eq!(
+        result["maskable_interrupt_isolation"]["paused_serial_input"]["guest_reply"],
+        "PONG"
+    );
+    assert!(matches!(
+        result["maskable_interrupt_isolation"]["paused_serial_input"]["pending_lapic_irr"]
+            ["status"]
+            .as_str(),
+        Some("verified" | "unknown")
+    ));
 }
 
 #[test]
