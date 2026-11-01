@@ -60,6 +60,11 @@ the tested QEMU, kernel, guest, devices, and workload.
   counter increased by one and B’s did not. This does not cover maskable pending
   interrupts or APIC IRR/ISR state; see
   `results/2026-11-01/nmi-isolation-two-clones.md`.
+- A QMP `send-key` experiment measured one maskable interrupt path: the i8042
+  count increased only in clone A (9 to 10; B stayed at 9). This tests the
+  synthetic guest PS/2 keyboard only; APIC pending state and other device
+  interrupt paths remain unknown. Evidence:
+  `results/2026-11-01/maskable-interrupt-isolation-two-clones.md`.
 - A fresh QEMU 11.1.2 / Linux 7.2.11-arch1-1 run of the ignored LAPIC TPR
   isolation test passed on 2026-10-30. Clone A changed TPR from `0x10` to
   `0x11` while B stayed at `0x10`; B then changed to `0x12` while A read
