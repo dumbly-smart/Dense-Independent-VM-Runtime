@@ -54,9 +54,12 @@ mode, DenseVM's `KsmGuard` enables KSM and restores it. In `--sudo-ksm` mode,
 the harness toggles only the `run` control while DenseVM observes the already
 enabled state; an exit trap attempts to restore the original `0` after errors,
 INT, or TERM. `run-status.json` records the final observed value and whether it
-matches the initial state. SIGKILL, power loss, or a sudo policy that prevents
-the final write can bypass or defeat cleanup; inspect the recorded status and
-host setting after any interrupted run.
+matches the initial state. Sudo credentials are refreshed before restoration
+if their timestamp expired. If another host actor changes KSM to a different
+state during the run (such as `run=2` for unmerging), cleanup refuses to
+overwrite it and records the mismatch. SIGKILL, power loss, or a sudo policy
+that prevents the final write can bypass or defeat cleanup; inspect the
+recorded status and host setting after any interrupted run.
 
 The output directory contains:
 

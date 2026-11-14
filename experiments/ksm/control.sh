@@ -22,3 +22,23 @@ write_ksm_run() {
     return 1
   fi
 }
+
+# The experiment only accepts an initial run=0. Restore that value if KSM is
+# still in the state this run enabled; if another host actor changed it to a
+# different state (for example, run=2/unmerge), leave that state untouched.
+restore_ksm_run() {
+  local path=$1 mode=$2 current
+  current=$(cat "$path") || return 1
+  if [[ "$current" == 0 ]]; then
+    return 0
+  fi
+  if [[ "$current" != 1 ]]; then
+    echo "KSM run changed during the experiment (run=$current); refusing to overwrite host state" >&2
+    return 1
+  fi
+  if [[ "$mode" == sudo ]] && ! sudo -v; then
+    echo 'could not refresh sudo credentials to restore KSM' >&2
+    return 1
+  fi
+  write_ksm_run "$path" 0 "$mode"
+}

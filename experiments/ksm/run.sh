@@ -180,7 +180,7 @@ record_unexpected_exit() {
   local exit_code=$?
   local current_run
   if ((ksm_restore_required)); then
-    if write_ksm_run "$ksm_run" "$initial_run" sudo; then
+    if restore_ksm_run "$ksm_run" sudo; then
       ksm_restore_required=0
     else
       echo 'densevm: failed to restore KSM after experiment exit; inspect host state immediately' >&2
@@ -240,7 +240,7 @@ else
   exit "$result"
 fi
 if [[ "$write_mode" == sudo ]]; then
-  if ! write_ksm_run "$ksm_run" "$initial_run" sudo; then
+  if ! restore_ksm_run "$ksm_run" sudo; then
     write_run_status ksm-restore 1 "$(cat "$ksm_run" 2>/dev/null || true)"
     echo 'KSM restoration failed; inspect host state immediately' >&2
     exit 1

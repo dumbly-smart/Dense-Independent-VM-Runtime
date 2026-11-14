@@ -71,6 +71,16 @@ impl KsmGuard {
 
     pub fn restore(&mut self) -> Result<(), String> {
         if self.changed {
+            let current = read_value(&self.root, "run")?;
+            if current == self.snapshot.run {
+                self.changed = false;
+                return Ok(());
+            }
+            if current != 1 {
+                return Err(format!(
+                    "KSM run changed while the experiment was running (run={current}); refusing to overwrite host state"
+                ));
+            }
             write_value(&self.root, "run", self.snapshot.run)?;
             if read_value(&self.root, "run")? != self.snapshot.run {
                 return Err("KSM restoration verification failed".into());
@@ -126,6 +136,21 @@ mod tests {
         fs::create_dir(root.join("run")).unwrap();
         assert!(guard.restore().is_err());
         fs::remove_dir(root.join("run")).unwrap();
+        drop(guard);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn guard_does_not_overwrite_a_concurrent_host_state_change() {
+        let root = fixture();
+        let mut guard = KsmGuard::enable_at(root.clone()).unwrap();
+        fs::write(root.join("run"), "2").unwrap();
+
+        let error = guard.restore().unwrap_err();
+
+        assert!(error.contains("changed while the experiment was running"));
+        assert_eq!(read_value(&root, "run").unwrap(), 2);
+        fs::write(root.join("run"), "0").unwrap();
         drop(guard);
         fs::remove_dir_all(root).unwrap();
     }
