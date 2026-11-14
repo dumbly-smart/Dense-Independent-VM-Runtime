@@ -5,10 +5,11 @@ usage() {
   cat <<'USAGE'
 Usage: experiments/ksm/run.sh --out DIR [--count N] [--guest DIR]
        [--divergence-percent 0..100] [--include-guest-oom] [--check-only]
+       [--sudo-ksm]
 
 Runs matched template-COW and template-COW-plus-KSM probes. The output path
-must be new. KSM must initially be disabled and writable by this process. The
-script never invokes sudo and never writes KSM sysfs itself.
+must be new. KSM must initially be disabled. With --sudo-ksm, sudo is used
+only to change the KSM run switch; DenseVM and QEMU stay unprivileged.
 USAGE
 }
 
@@ -18,6 +19,7 @@ divergence_percent=0
 guest=
 skip_guest_oom=1
 check_only=0
+sudo_ksm=0
 while (($#)); do
   case "$1" in
     --out) (($# >= 2)) || { usage >&2; exit 2; }; out=$2; shift 2 ;;
@@ -26,6 +28,7 @@ while (($#)); do
     --divergence-percent) (($# >= 2)) || { usage >&2; exit 2; }; divergence_percent=$2; shift 2 ;;
     --include-guest-oom) skip_guest_oom=0; shift ;;
     --check-only) check_only=1; shift ;;
+    --sudo-ksm) sudo_ksm=1; shift ;;
     --help|-h) usage; exit 0 ;;
     *) printf 'unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
@@ -58,20 +61,26 @@ if [[ -r "$ksm_run" ]]; then initial_run=$(<"$ksm_run"); fi
 if [[ -w "$ksm_run" ]]; then write_access=true; fi
 status=ready
 reason=
+write_mode=direct
 if [[ ! -r "$ksm_run" ]]; then
   status=blocked; reason='KSM run control is unavailable'
 elif [[ "$initial_run" != 0 ]]; then
   status=blocked; reason="KSM must initially be disabled (run=$initial_run) for a controlled comparison"
-elif [[ "$write_access" != true ]]; then
-  status=blocked; reason='current user cannot enable host-global KSM; administrator access is required'
 elif [[ ! -x "$densevm_bin" ]]; then
   status=blocked; reason="DenseVM executable is missing or not executable: $densevm_bin"
+elif [[ "$write_access" != true ]]; then
+  if ((sudo_ksm)) && command -v sudo >/dev/null 2>&1; then
+    write_mode=sudo
+  else
+    status=blocked; reason='current user cannot enable host-global KSM; use --sudo-ksm with sudo or grant explicit write access'
+  fi
 fi
 
 if ((check_only)); then
   KSM_PREFLIGHT_STATUS=$status KSM_PREFLIGHT_REASON=$reason \
     KSM_PREFLIGHT_RUN=${initial_run:-null} KSM_PREFLIGHT_WRITABLE=$write_access \
     KSM_PREFLIGHT_BIN=$densevm_bin KSM_PREFLIGHT_COUNT=$count \
+    KSM_PREFLIGHT_WRITE_MODE=$write_mode \
     KSM_PREFLIGHT_DIVERGENCE=$divergence_percent python3 - <<'PY'
 import json, os
 print(json.dumps({
@@ -79,6 +88,8 @@ print(json.dumps({
     "reason": os.environ["KSM_PREFLIGHT_REASON"] or None,
     "ksm_run_before": None if os.environ["KSM_PREFLIGHT_RUN"] == "null" else int(os.environ["KSM_PREFLIGHT_RUN"]),
     "ksm_run_writable": os.environ["KSM_PREFLIGHT_WRITABLE"] == "true",
+    "ksm_write_mode": os.environ["KSM_PREFLIGHT_WRITE_MODE"],
+    "sudo_credentials_checked": False,
     "densevm_binary": os.environ["KSM_PREFLIGHT_BIN"],
     "clone_count": int(os.environ["KSM_PREFLIGHT_COUNT"]),
     "divergence_percent": int(os.environ["KSM_PREFLIGHT_DIVERGENCE"]),
@@ -95,6 +106,7 @@ mkdir -p "$out" || exit 1
 KSM_PREFLIGHT_STATUS=$status KSM_PREFLIGHT_REASON=$reason \
   KSM_PREFLIGHT_RUN=${initial_run:-null} KSM_PREFLIGHT_WRITABLE=$write_access \
   KSM_PREFLIGHT_BIN=$densevm_bin KSM_PREFLIGHT_COUNT=$count \
+  KSM_PREFLIGHT_WRITE_MODE=$write_mode \
   KSM_PREFLIGHT_DIVERGENCE=$divergence_percent KSM_PREFLIGHT_GUEST=$guest \
   KSM_PREFLIGHT_SKIP_OOM=$skip_guest_oom python3 - "$out/preflight.json" <<'PY'
 import json, os, sys
@@ -103,6 +115,8 @@ print(json.dumps({
     "reason": os.environ["KSM_PREFLIGHT_REASON"] or None,
     "ksm_run_before": None if os.environ["KSM_PREFLIGHT_RUN"] == "null" else int(os.environ["KSM_PREFLIGHT_RUN"]),
     "ksm_run_writable": os.environ["KSM_PREFLIGHT_WRITABLE"] == "true",
+    "ksm_write_mode": os.environ["KSM_PREFLIGHT_WRITE_MODE"],
+    "sudo_credentials_checked": False,
     "densevm_binary": os.environ["KSM_PREFLIGHT_BIN"],
     "clone_count": int(os.environ["KSM_PREFLIGHT_COUNT"]),
     "divergence_percent": int(os.environ["KSM_PREFLIGHT_DIVERGENCE"]),
@@ -136,18 +150,64 @@ print(json.dumps({
 PY
 }
 
+record_restoration_status() {
+  local current=$1
+  KSM_CURRENT_RUN=$current KSM_INITIAL_RUN=$initial_run python3 - "$out/run-status.json" <<'PY'
+import json, os, sys
+path = sys.argv[1]
+try:
+    with open(path) as stream:
+        status = json.load(stream)
+except FileNotFoundError:
+    status = {"status": "failed", "stage": "interrupted-or-unexpected-exit"}
+status["ksm_run_after_exit"] = (
+    int(os.environ["KSM_CURRENT_RUN"])
+    if os.environ["KSM_CURRENT_RUN"].isdigit() else None
+)
+status["restored_to_initial"] = (
+    os.environ["KSM_CURRENT_RUN"] == os.environ["KSM_INITIAL_RUN"]
+)
+with open(path, "w") as stream:
+    json.dump(status, stream, indent=2)
+    stream.write("\n")
+PY
+}
+
+source "$repo_root/experiments/ksm/control.sh"
+ksm_restore_required=0
+
 record_unexpected_exit() {
   local exit_code=$?
   local current_run
+  if ((ksm_restore_required)); then
+    if write_ksm_run "$ksm_run" "$initial_run" sudo; then
+      ksm_restore_required=0
+    else
+      echo 'densevm: failed to restore KSM after experiment exit; inspect host state immediately' >&2
+      current_run=$(cat "$ksm_run" 2>/dev/null || true)
+      write_run_status ksm-restore-on-exit 1 "$current_run"
+      exit 1
+    fi
+  fi
   current_run=$(cat "$ksm_run" 2>/dev/null || true)
   if [[ ! -e "$out/run-status.json" && $exit_code -ne 0 ]]; then
     write_run_status interrupted-or-unexpected-exit "$exit_code" "$current_run"
+  fi
+  if [[ -n "$out" && -d "$out" && -e "$out/run-status.json" ]]; then
+    record_restoration_status "$current_run"
   fi
   if [[ -n "$current_run" && "$current_run" != "$initial_run" ]]; then
     echo "densevm: KSM run value is $current_run after experiment exit; original value was $initial_run" >&2
   fi
 }
 trap record_unexpected_exit EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if [[ "$write_mode" == sudo ]] && ! sudo -v; then
+  write_run_status sudo-authentication 1 "$(cat "$ksm_run" 2>/dev/null || true)"
+  exit 1
+fi
 
 if "$densevm_bin" probe --out "$out/template-cow" "${common_args[@]}"; then
   :
@@ -163,12 +223,29 @@ if [[ "$after_control" != "$initial_run" ]]; then
   exit 1
 fi
 
+if [[ "$write_mode" == sudo ]]; then
+  # Arm restoration before writing, matching KsmGuard's rollback discipline.
+  ksm_restore_required=1
+  if ! write_ksm_run "$ksm_run" 1 sudo; then
+    write_run_status ksm-enable 1 "$(cat "$ksm_run" 2>/dev/null || true)"
+    exit 1
+  fi
+fi
+
 if "$densevm_bin" probe --out "$out/template-cow-plus-ksm" "${common_args[@]}" --ksm; then
   :
 else
   result=$?
   write_run_status ksm "$result" "$(cat "$ksm_run" 2>/dev/null || true)"
   exit "$result"
+fi
+if [[ "$write_mode" == sudo ]]; then
+  if ! write_ksm_run "$ksm_run" "$initial_run" sudo; then
+    write_run_status ksm-restore 1 "$(cat "$ksm_run" 2>/dev/null || true)"
+    echo 'KSM restoration failed; inspect host state immediately' >&2
+    exit 1
+  fi
+  ksm_restore_required=0
 fi
 after_ksm=$(cat "$ksm_run" 2>/dev/null || true)
 if [[ "$after_ksm" != "$initial_run" ]]; then

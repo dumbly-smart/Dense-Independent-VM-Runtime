@@ -89,7 +89,9 @@ raw scheduler ticks and should be converted using the host's clock-tick rate.
 clone PSS, RAM-mapping PSS, global KSM counters, and `ksmd` ticks. The current
 host fails its read-only preflight because `/sys/kernel/mm/ksm/run` is not
 writable; no positive KSM merge measurement is available yet. See
-`docs/ksm-experiment.md` for the exact procedure. A fresh 2026-11-01 check
-confirmed `run=0`, zero merge counters, root ownership/mode `0644`, and
-`EACCES` when opening the control file for writing; no host setting changed:
-[`permission-check result`](../results/2026-11-01/ksm-permission-check.json).
+`docs/ksm-experiment.md` for the exact procedure, including the sudo-only
+sysfs-write mode. A 2026-11-01 check recorded `run=0`, zero merge counters,
+root ownership/mode `0644`, and `EACCES` when opening the control file for
+writing. A 2026-11-14 read-only check reconfirmed the permission block and that
+noninteractive sudo is unavailable; neither check changed host state:
+[`latest permission-check result`](../results/2026-11-14/ksm-permission-check.json).

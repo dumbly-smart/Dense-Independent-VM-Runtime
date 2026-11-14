@@ -44,7 +44,9 @@ the tested QEMU, kernel, guest, devices, and workload.
 
 - **Positive KSM comparison: blocked by host permission.** KSM is host-global;
   `/sys/kernel/mm/ksm/run` is not writable by the current account. The paired
-  harness and read-only preflight exist, but no positive merge result is
+  harness has an explicit `--sudo-ksm` path that elevates only the sysfs write
+  and keeps DenseVM/QEMU unprivileged. Its helper tests verify writes and
+  readback, but this account has no sudo access, so no positive merge result is
   claimed.
 - **Whole-host memory cost: partial.** Process PSS and selected cgroup-v2
   accounting are measured. Some KVM allocations, kernel page tables, and

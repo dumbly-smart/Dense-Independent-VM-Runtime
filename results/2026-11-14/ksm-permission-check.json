@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-14",
+  "uid": 1000,
+  "ksm_run": "0",
+  "ksm_run_owner": {
+    "uid": 0,
+    "gid": 0,
+    "mode_octal": "0o644"
+  },
+  "ksm_run_readable": true,
+  "ksm_run_writable_by_current_user": false,
+  "sudo_binary": "/usr/bin/sudo",
+  "sudo_noninteractive_available": false,
+  "host_setting_changed": false
+}
